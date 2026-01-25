@@ -59,9 +59,9 @@ sequenceDiagram
         G->>E: 4. Fetch FHIR data (parallel)
         E-->>G: Conditions, Observations, Procedures, Documents
         G->>I: 5. Send Bundle (JSON + PDF bytes)
-        I->>I: 6. Parse documents (LlamaParse)
+        I->>I: 6. Parse documents (PyMuPDF4LLM)
         I->>I: 7. Match policy criteria
-        I->>I: 8. LLM reasoning (GPT-4o)
+        I->>I: 8. LLM reasoning (GPT-4.1)
         I-->>G: 9. PA form data
         G->>G: 10. Stamp PDF (iText7)
         G->>E: 11. Upload DocumentReference
@@ -107,7 +107,7 @@ prior-auth/
 | Component | Technology | Purpose |
 |-----------|------------|---------|
 | **Gateway** | .NET 10, iText7, Polly | Epic integration, PDF generation, resilience |
-| **Intelligence** | Python 3.11, FastAPI, LangChain | Clinical reasoning, LLM orchestration |
+| **Intelligence** | Python 3.11, FastAPI, PyMuPDF4LLM | Clinical reasoning, PDF extraction |
 | **Dashboard** | React 19, Vite, TanStack Router/Query | Shadow dashboard + SMART fallback |
 | **Orchestration** | .NET Aspire | Local dev environment |
 | **Database** | PostgreSQL | Audit logs, vector storage |
@@ -119,23 +119,17 @@ prior-auth/
 
 - .NET 10 SDK
 - Node.js 20+
-- Python 3.11+ with `uv`
-- Docker (for Aspire containers)
+- Docker Desktop or Podman Desktop (required for containerized services)
 
 ### Development Setup
 
 ```bash
 # Install dependencies
 npm install
-cd apps/intelligence && uv sync && cd ../..
+npm run build:shared
 
-# Start all services via Aspire
+# Start all services via Aspire (Docker must be running)
 npm run dev
-
-# Or start individually:
-npm run dev:dashboard      # React dashboard
-npm run dev:intelligence   # Python API
-dotnet run --project apps/gateway/Gateway.API
 ```
 
 ### Schema Synchronization
@@ -157,8 +151,8 @@ This generates:
 |----------|---------|-------------|
 | `Epic__ClientId` | Gateway | Epic Launchpad client ID |
 | `Epic__FhirBaseUrl` | Gateway | FHIR R4 endpoint |
-| `OPENAI_API_KEY` | Intelligence | GPT-4o access |
-| `LLAMA_CLOUD_API_KEY` | Intelligence | LlamaParse access |
+| `LLM_PROVIDER` | Intelligence | LLM provider: `github`, `azure`, `gemini` |
+| `GITHUB_TOKEN` | Intelligence | GitHub Models access (default) |
 | `Demo__EnableCaching` | Gateway | Enable Redis caching |
 
 ## Testing Strategy

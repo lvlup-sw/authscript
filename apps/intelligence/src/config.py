@@ -41,10 +41,6 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_model: str = "gpt-4.1"
 
-    # LlamaParse for PDF extraction
-    # Get key: https://cloud.llamaindex.ai/
-    llama_cloud_api_key: str = ""
-
     # Database
     database_url: str = ""
 

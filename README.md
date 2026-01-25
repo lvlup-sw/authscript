@@ -56,12 +56,6 @@ dotnet user-secrets set "Parameters:azure-openai-endpoint" "https://your-resourc
 dotnet user-secrets set "Parameters:google-api-key" "your-key"
 ```
 
-#### PDF Parsing (Optional)
-
-```bash
-dotnet user-secrets set "Parameters:llama-cloud-api-key" "llx-..."
-```
-
 **Where to get API keys:**
 
 | Provider | Source | Default Model | Free Tier |
@@ -69,7 +63,6 @@ dotnet user-secrets set "Parameters:llama-cloud-api-key" "llx-..."
 | GitHub Models | [github.com/settings/tokens](https://github.com/settings/tokens) | `gpt-4.1` | Free with GitHub account |
 | Azure OpenAI | [Azure Portal](https://portal.azure.com/) → Azure OpenAI | `gpt-4.1` | Pay-as-you-go |
 | Google Gemini | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | `gemini-2.5-flash` | Free tier available |
-| LlamaCloud | [cloud.llamaindex.ai](https://cloud.llamaindex.ai/) | — | 1,000 pages/day |
 
 #### GitHub Education (Recommended for Students)
 
@@ -225,7 +218,6 @@ For production or CI/CD, set these environment variables:
 | `AZURE_OPENAI_API_KEY` | Intelligence | Azure OpenAI API key |
 | `AZURE_OPENAI_ENDPOINT` | Intelligence | Azure OpenAI endpoint URL |
 | `GOOGLE_API_KEY` | Intelligence | Google Gemini API key |
-| `LLAMA_CLOUD_API_KEY` | Intelligence | LlamaParse for PDF extraction |
 | `Epic__ClientId` | Gateway | Epic Launchpad client ID |
 | `Epic__FhirBaseUrl` | Gateway | FHIR R4 endpoint (has default) |
 

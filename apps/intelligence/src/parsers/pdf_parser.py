@@ -1,72 +1,62 @@
-"""PDF parsing utilities using LlamaParse."""
+"""PDF parsing utilities using PyMuPDF4LLM.
 
+Extracts text from clinical documents in markdown format optimized for LLM processing.
+"""
+
+import tempfile
 import os
-from typing import Optional
-
-from src.config import settings
 
 
 async def parse_pdf(pdf_bytes: bytes) -> str:
     """
-    Parse PDF document and extract text using LlamaParse.
+    Parse PDF document and extract text as markdown.
 
-    Falls back to basic extraction if LlamaParse is unavailable.
+    Uses PyMuPDF4LLM for LLM-optimized extraction with table preservation.
     """
-    if settings.llama_cloud_api_key:
-        return await _parse_with_llamaparse(pdf_bytes)
-    else:
-        return _fallback_parse(pdf_bytes)
+    # PyMuPDF4LLM requires a file path
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
+        f.write(pdf_bytes)
+        temp_path = f.name
 
-
-async def _parse_with_llamaparse(pdf_bytes: bytes) -> str:
-    """Parse PDF using LlamaParse API."""
     try:
-        from llama_parse import LlamaParse
+        return _extract_markdown(temp_path)
+    finally:
+        os.unlink(temp_path)
 
-        parser = LlamaParse(
-            api_key=settings.llama_cloud_api_key,
-            result_type="markdown",
-            parsing_instruction="""
-            This is a medical clinical document. Extract:
-            - Patient demographics (name, DOB, MRN)
-            - Diagnoses and ICD-10 codes
-            - Dates of service
-            - Clinical findings and assessments
-            - Treatment history (medications, physical therapy, imaging)
-            - Preserve table structures for lab results
-            """,
-            language="en",
+
+def _extract_markdown(pdf_path: str) -> str:
+    """Extract markdown from PDF using PyMuPDF4LLM."""
+    try:
+        import pymupdf4llm
+
+        # Extract as markdown with table detection
+        md_text = pymupdf4llm.to_markdown(
+            pdf_path,
+            page_chunks=False,  # Return single string, not list
+            write_images=False,  # Skip image extraction
         )
 
-        # LlamaParse expects a file path, so we need to write temp file
-        import tempfile
-
-        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
-            f.write(pdf_bytes)
-            temp_path = f.name
-
-        try:
-            documents = await parser.aload_data(temp_path)
-            return "\n\n".join(doc.text for doc in documents)
-        finally:
-            os.unlink(temp_path)
+        return md_text
 
     except Exception as e:
-        print(f"LlamaParse error: {e}, falling back to basic extraction")
-        return _fallback_parse(pdf_bytes)
+        # Fallback to basic PyMuPDF extraction
+        return _fallback_extract(pdf_path, error=str(e))
 
 
-def _fallback_parse(pdf_bytes: bytes) -> str:
-    """Basic PDF text extraction fallback."""
+def _fallback_extract(pdf_path: str, error: str = "") -> str:
+    """Basic text extraction fallback using PyMuPDF."""
     try:
-        import fitz  # PyMuPDF
+        import pymupdf
 
-        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        doc = pymupdf.open(pdf_path)
         text_parts = []
         for page in doc:
             text_parts.append(page.get_text())
+        doc.close()
+
+        if error:
+            return f"[Fallback extraction due to: {error}]\n\n" + "\n\n".join(text_parts)
         return "\n\n".join(text_parts)
-    except ImportError:
-        return "[PDF parsing unavailable - install pymupdf for fallback support]"
+
     except Exception as e:
         return f"[PDF parsing error: {e}]"

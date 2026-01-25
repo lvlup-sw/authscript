@@ -21,9 +21,6 @@ var azureOpenAiEndpoint = builder.AddParameter("azure-openai-endpoint");
 // Google Gemini (alternative)
 var googleApiKey = builder.AddParameter("google-api-key", secret: true);
 
-// LlamaParse for PDF extraction
-var llamaCloudApiKey = builder.AddParameter("llama-cloud-api-key", secret: true);
-
 // ---------------------------------------------------------------------------
 // Infrastructure
 // ---------------------------------------------------------------------------
@@ -49,8 +46,6 @@ var intelligence = builder
     .WithEnvironment("AZURE_OPENAI_API_KEY", azureOpenAiKey)
     .WithEnvironment("AZURE_OPENAI_ENDPOINT", azureOpenAiEndpoint)
     .WithEnvironment("GOOGLE_API_KEY", googleApiKey)
-    // PDF parsing
-    .WithEnvironment("LLAMA_CLOUD_API_KEY", llamaCloudApiKey)
     .WithEnvironment("DATABASE_URL", postgres.Resource.ConnectionStringExpression)
     .WaitFor(postgres);
 
