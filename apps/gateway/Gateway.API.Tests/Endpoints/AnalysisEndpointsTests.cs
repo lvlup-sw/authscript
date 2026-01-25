@@ -1,3 +1,4 @@
+using Gateway.API.Contracts;
 using Gateway.API.Models;
 using Gateway.API.Services;
 using Microsoft.AspNetCore.Http;

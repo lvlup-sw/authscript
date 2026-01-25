@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../apps/gateway/src/Gateway.API/Gateway.API.csproj" />
+    <ProjectReference Include="../../apps/gateway/Gateway.API/Gateway.API.csproj" />
   </ItemGroup>
 
 </Project>

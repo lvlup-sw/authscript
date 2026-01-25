@@ -3,6 +3,7 @@
 // Handles CDS Hooks, FHIR data aggregation, and PDF generation
 // ===========================================================================
 
+using Gateway.API.Contracts;
 using Gateway.API.Endpoints;
 using Gateway.API.Services;
 

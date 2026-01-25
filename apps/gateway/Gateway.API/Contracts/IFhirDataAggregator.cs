@@ -1,6 +1,6 @@
 using Gateway.API.Models;
 
-namespace Gateway.API.Services;
+namespace Gateway.API.Contracts;
 
 /// <summary>
 /// Aggregates clinical data from FHIR API for prior authorization processing.

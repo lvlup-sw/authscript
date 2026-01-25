@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
+using Gateway.API.Contracts;
 using Gateway.API.Models;
 
 namespace Gateway.API.Services;

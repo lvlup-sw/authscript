@@ -1,6 +1,6 @@
 using Gateway.API.Models;
 
-namespace Gateway.API.Services;
+namespace Gateway.API.Contracts;
 
 /// <summary>
 /// Client for the Intelligence service that analyzes clinical data

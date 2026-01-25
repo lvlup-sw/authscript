@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Gateway.API.Contracts;
 using Gateway.API.Models;
 using StackExchange.Redis;
 

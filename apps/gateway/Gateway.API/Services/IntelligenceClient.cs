@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using Gateway.API.Contracts;
 using Gateway.API.Models;
 
 namespace Gateway.API.Services;

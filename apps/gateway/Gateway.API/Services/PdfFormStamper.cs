@@ -1,3 +1,4 @@
+using Gateway.API.Contracts;
 using Gateway.API.Models;
 using iText.Forms;
 using iText.Kernel.Pdf;

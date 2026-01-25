@@ -1,6 +1,6 @@
 using Gateway.API.Models;
 
-namespace Gateway.API.Services;
+namespace Gateway.API.Contracts;
 
 /// <summary>
 /// Stamps prior authorization form data onto PDF templates.

@@ -33,6 +33,7 @@ The architecture follows a **"Bulletproof Happy Path"** philosophy: narrow scope
 8. [Security & Compliance](#8-security--compliance)
 9. [Implementation Roadmap](#9-implementation-roadmap)
 10. [Risk Register](#10-risk-register)
+11. [Implementation Status & Strategic Recommendations](#11-implementation-status--strategic-recommendations)
 
 ---
 
@@ -1217,6 +1218,52 @@ Week 7: Polish & Buffer
 | OAuth token expires mid-demo | Low | High | Refresh token logic; test token lifetime |
 | Network issues at PSL | Low | Critical | Mobile hotspot backup; local demo option |
 | Demo patient data doesn't trigger happy path | Low | High | Pre-validate all scenarios; rehearse |
+
+---
+
+## 11. Implementation Status & Strategic Recommendations
+
+### 11.1 Current Implementation Status (as of 2026-01-25)
+
+| Layer | Status | Completion | Notes |
+|-------|--------|------------|-------|
+| **Types & Validation** | Complete | 100% | 65 tests (shared/types + shared/validation) |
+| **Dashboard UI** | Complete | 100% | 284 tests, all 4 key views implemented |
+| **Backend Structure** | Scaffolded | 40% | Endpoints exist, need FHIR integration |
+| **Intelligence Logic** | Complete | 60% | 22 tests, needs LLM connection |
+| **Epic Integration** | Not Started | 5% | OAuth, FHIR queries pending |
+| **Demo Infrastructure** | Not Started | 0% | Redis cache, warming scripts |
+
+### 11.2 Architecture Decisions
+
+**Dashboard Technology:** React 19 + TanStack Router/Query (instead of Blazor)
+- Better ecosystem for real-time UI
+- TanStack Query provides excellent caching
+- Polling-based status updates (SignalR upgrade deferred)
+
+**Directory Structure:** Flattened apps layout (adopted from ares-elite-platform)
+- `apps/gateway/Gateway.API/` (not nested `src/`)
+- Interfaces in `Contracts/` subdirectory
+
+### 11.3 Remaining Work (Priority Order)
+
+| Priority | Task | Effort | Demo-Critical |
+|----------|------|--------|---------------|
+| P0 | Epic OAuth + JWT validation | 2-3 days | Yes |
+| P0 | FHIR data fetching | 3-4 days | Yes |
+| P0 | LlamaParse integration | 2-3 days | Yes |
+| P0 | GPT-4o reasoning chains | 3-4 days | Yes |
+| P1 | Redis cache + warming | 2 days | Yes |
+| P1 | End-to-end pipeline test | 2 days | Yes |
+| P2 | SignalR upgrade | 1-2 days | No |
+| P2 | SMART app fallback | 3-4 days | No |
+
+### 11.4 Strategic Recommendations
+
+1. **Prioritize Happy Path**: Focus on demo-001 patient, MRI Lumbar, Blue Cross
+2. **Use Cached Responses**: Pre-compute LLM responses for demo patients
+3. **Build Integration Tests First**: Mock Epic responses for development
+4. **Prepare Recovery Scripts**: Dashboard fallback if CDS Hook fails
 
 ---
 

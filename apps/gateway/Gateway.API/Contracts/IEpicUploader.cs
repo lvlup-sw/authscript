@@ -1,4 +1,4 @@
-namespace Gateway.API.Services;
+namespace Gateway.API.Contracts;
 
 /// <summary>
 /// Uploads completed PA forms to Epic as FHIR DocumentReference resources.

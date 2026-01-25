@@ -1,6 +1,6 @@
 using Gateway.API.Models;
 
-namespace Gateway.API.Services;
+namespace Gateway.API.Contracts;
 
 /// <summary>
 /// Caching service for demo mode to reduce redundant Intelligence service calls.
