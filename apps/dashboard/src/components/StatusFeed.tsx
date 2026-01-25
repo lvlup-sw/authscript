@@ -124,7 +124,7 @@ export function StatusFeed({
       {/* Status header */}
       <div className="flex items-center gap-2">
         {feedStatus === 'completed' ? (
-          <span className="text-lg text-green-500">OK</span>
+          <span className="text-lg text-[hsl(var(--success))]">OK</span>
         ) : feedStatus === 'error' || status?.status === 'error' ? (
           <span className="text-lg text-destructive">X</span>
         ) : (
@@ -151,7 +151,7 @@ export function StatusFeed({
             <div
               className={cn(
                 'h-full transition-all duration-300',
-                feedStatus === 'completed' ? 'bg-green-500' : 'bg-primary'
+                feedStatus === 'completed' ? 'bg-[hsl(var(--success))]' : 'bg-primary'
               )}
               style={{ width: `${status.progress}%` }}
             />

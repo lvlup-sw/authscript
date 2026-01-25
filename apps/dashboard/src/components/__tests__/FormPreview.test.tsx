@@ -41,14 +41,14 @@ describe('FormPreview', () => {
       render(<FormPreview fieldMappings={mockFieldMappings} showHighlights />);
 
       const field = screen.getByText('John Doe').closest('[data-field]');
-      expect(field).toHaveClass('bg-green-50');
+      expect(field).toHaveClass('bg-[hsl(var(--success)/0.1)]');
     });
 
     it('FormPreview_WithoutHighlights_NoHighlightClass', () => {
       render(<FormPreview fieldMappings={mockFieldMappings} showHighlights={false} />);
 
       const field = screen.getByText('John Doe').closest('[data-field]');
-      expect(field).not.toHaveClass('bg-green-50');
+      expect(field).not.toHaveClass('bg-[hsl(var(--success)/0.1)]');
     });
   });
 
