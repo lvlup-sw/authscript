@@ -34,48 +34,58 @@ cd apps/intelligence && uv sync && cd ../..
 ### Start Services
 
 ```bash
+# From project root (npm wrapper)
 npm run dev
+
+# Or directly via Aspire (recommended)
+cd orchestration/AuthScript.AppHost
+dotnet run
 ```
 
-This starts all services with .NET Aspire orchestration.
+This starts all services with .NET Aspire orchestration. The Aspire Dashboard opens automatically.
 
 ### Service URLs
 
 | Service | URL |
 |---------|-----|
 | Aspire Dashboard | https://localhost:15888 |
-| Gateway API | http://localhost:5100 |
+| Gateway API | http://localhost:5000 |
 | Intelligence API | http://localhost:8000 |
 | Dashboard | http://localhost:5173 |
 
 ## IDE Setup
 
+All IDEs use .NET Aspire to orchestrate services. The AppHost project starts all services (Gateway, Intelligence, Dashboard) with proper dependencies.
+
 ### VS Code (Recommended)
 
-1. Open the `prior-auth` folder
-2. Install recommended extensions when prompted
-3. Use the integrated terminal to run commands
-4. **Run services:** `npm run dev` or use the Tasks: Run Task command
+1. Install the [C# Dev Kit](https://marketplace.visualstudio.com/items?itemName=ms-dotnettools.csdevkit) extension
+2. Open the `prior-auth` folder
+3. Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
+4. Run: **".NET: Open Solution"** → select `orchestration/AuthScript.sln`
+5. In the Solution Explorer, right-click `AuthScript.AppHost` → **"Debug" → "Start New Instance"**
 
-### Visual Studio
+Alternatively, from the terminal:
+```bash
+cd orchestration/AuthScript.AppHost
+dotnet run
+```
+
+The Aspire Dashboard opens automatically at https://localhost:15888 showing all services.
+
+### Visual Studio / Rider
 
 1. Open `orchestration/AuthScript.sln`
 2. Set `AuthScript.AppHost` as the startup project
-3. Press F5 to start with debugging
-4. For frontend: open a terminal and run `npm run dev:dashboard`
-
-### JetBrains Rider
-
-1. Open the `prior-auth` folder as a directory
-2. Open `orchestration/AuthScript.sln` for backend work
-3. Use the built-in terminal for npm commands
-4. Configure a compound run configuration for full-stack development
+3. Press F5 (or Run) to start with debugging
+4. The Aspire Dashboard opens automatically with all services
 
 ## Key Commands
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start all services (Aspire) |
+| `dotnet run --project orchestration/AuthScript.AppHost` | Start all services (Aspire) |
+| `npm run dev` | Start all services (npm wrapper) |
 | `npm run dev:dashboard` | Start dashboard only |
 | `npm run dev:intelligence` | Start Python service only |
 | `npm run sync:schemas` | Regenerate TypeScript from OpenAPI |

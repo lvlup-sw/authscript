@@ -28,7 +28,7 @@ var redis = builder
 // Intelligence Service (Python/FastAPI)
 // ---------------------------------------------------------------------------
 var intelligence = builder.AddUvicornApp("intelligence", "../../apps/intelligence", "src.main:app")
-    .WithHttpEndpoint(port: 8000, name: "http")
+    .WithHttpEndpoint(port: 8000, name: "intelligence-api")
     .WithEnvironment("OPENAI_API_KEY", openAiApiKey)
     .WithEnvironment("LLAMA_CLOUD_API_KEY", llamaCloudApiKey)
     .WithEnvironment("DATABASE_URL", postgres)
@@ -36,7 +36,7 @@ var intelligence = builder.AddUvicornApp("intelligence", "../../apps/intelligenc
     .WaitFor(postgres);
 
 // ---------------------------------------------------------------------------
-// Gateway Service (.NET 8 API)
+// Gateway Service (.NET 10 API)
 // ---------------------------------------------------------------------------
 var gateway = builder.AddProject<Projects.Gateway_API>("gateway")
     .WithReference(postgres)
@@ -44,20 +44,20 @@ var gateway = builder.AddProject<Projects.Gateway_API>("gateway")
     .WaitFor(postgres)
     .WaitFor(redis)
     .WaitFor(intelligence)
-    .WithHttpEndpoint(port: 5000, name: "api")
+    .WithHttpEndpoint(port: 5000, name: "gateway-api")
     .WithExternalHttpEndpoints()
     .WithEnvironment("Epic__ClientId", epicClientId)
     .WithEnvironment("Epic__FhirBaseUrl", "https://fhir.epic.com/interconnect-fhir-oauth/api/FHIR/R4")
-    .WithEnvironment("Intelligence__BaseUrl", intelligence.GetEndpoint("http"))
+    .WithEnvironment("Intelligence__BaseUrl", intelligence.GetEndpoint("intelligence-api"))
     .WithEnvironment("Demo__EnableCaching", "true");
 
 // ---------------------------------------------------------------------------
 // Dashboard (React/Vite)
 // ---------------------------------------------------------------------------
 var dashboard = builder.AddNpmApp("dashboard", "../../apps/dashboard", "dev")
-    .WithHttpEndpoint(port: 5173, env: "VITE_PORT", name: "http")
+    .WithHttpEndpoint(port: 5173, env: "VITE_PORT", name: "dashboard-ui")
     .WithEnvironment("BROWSER", "none")
-    .WithEnvironment("VITE_GATEWAY_URL", gateway.GetEndpoint("api"))
+    .WithEnvironment("VITE_GATEWAY_URL", gateway.GetEndpoint("gateway-api"))
     .WaitFor(gateway)
     .WithExternalHttpEndpoints();
 
