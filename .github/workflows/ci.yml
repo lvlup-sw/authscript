@@ -152,7 +152,7 @@ jobs:
       - name: Test with coverage
         working-directory: apps/intelligence
         run: |
-          uv run pytest tests/ \
+          uv run pytest src/tests/ \
             --cov=src \
             --cov-report=xml:coverage.xml \
             --cov-fail-under=${{ env.COVERAGE_THRESHOLD }}
