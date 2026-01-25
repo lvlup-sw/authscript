@@ -15,6 +15,7 @@
     "build": "npm run build --workspaces --if-present",
     "build:dashboard": "npm run build -w apps/dashboard",
     "build:shared": "npm run build -w shared/types && npm run build -w shared/validation",
+    "build:containers": "docker build -t authscript-intelligence ./apps/intelligence && docker build -t authscript-gateway ./apps/gateway/Gateway.API && docker build -t authscript-dashboard ./apps/dashboard",
     "test": "npm run test --workspaces --if-present",
     "test:dashboard": "npm run test -w apps/dashboard",
     "test:intelligence": "cd apps/intelligence && uv run pytest",

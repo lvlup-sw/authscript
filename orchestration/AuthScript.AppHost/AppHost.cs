@@ -7,9 +7,21 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 // ---------------------------------------------------------------------------
 // Secrets (configure via dotnet user-secrets)
+// LLM Provider: Set LLM_PROVIDER to "github", "azure", "gemini", or "openai"
 // ---------------------------------------------------------------------------
 var epicClientId = builder.AddParameter("epic-client-id", secret: true);
-var openAiApiKey = builder.AddParameter("openai-api-key", secret: true);
+
+// GitHub Models (default - free with GitHub account)
+var githubToken = builder.AddParameter("github-token", secret: true);
+
+// Azure OpenAI (alternative)
+var azureOpenAiKey = builder.AddParameter("azure-openai-key", secret: true);
+var azureOpenAiEndpoint = builder.AddParameter("azure-openai-endpoint");
+
+// Google Gemini (alternative)
+var googleApiKey = builder.AddParameter("google-api-key", secret: true);
+
+// LlamaParse for PDF extraction
 var llamaCloudApiKey = builder.AddParameter("llama-cloud-api-key", secret: true);
 
 // ---------------------------------------------------------------------------
@@ -25,20 +37,29 @@ var redis = builder
     .WithDataVolume("authscript-redis-data");
 
 // ---------------------------------------------------------------------------
-// Intelligence Service (Python/FastAPI)
+// Intelligence Service (Python/FastAPI in container)
+// Containerized to avoid host Python/uv environment issues
 // ---------------------------------------------------------------------------
-var intelligence = builder.AddUvicornApp("intelligence", "../../apps/intelligence", "src.main:app")
-    .WithHttpEndpoint(port: 8000, name: "intelligence-api")
-    .WithEnvironment("OPENAI_API_KEY", openAiApiKey)
+var intelligence = builder
+    .AddDockerfile("intelligence", "../../apps/intelligence")
+    .WithHttpEndpoint(port: 8000, targetPort: 8000, name: "intelligence-api")
+    // LLM Provider config (GitHub Models is default)
+    .WithEnvironment("LLM_PROVIDER", "github")
+    .WithEnvironment("GITHUB_TOKEN", githubToken)
+    .WithEnvironment("AZURE_OPENAI_API_KEY", azureOpenAiKey)
+    .WithEnvironment("AZURE_OPENAI_ENDPOINT", azureOpenAiEndpoint)
+    .WithEnvironment("GOOGLE_API_KEY", googleApiKey)
+    // PDF parsing
     .WithEnvironment("LLAMA_CLOUD_API_KEY", llamaCloudApiKey)
-    .WithEnvironment("DATABASE_URL", postgres)
-    .WithReference(postgres)
+    .WithEnvironment("DATABASE_URL", postgres.Resource.ConnectionStringExpression)
     .WaitFor(postgres);
 
 // ---------------------------------------------------------------------------
 // Gateway Service (.NET 10 API)
+// Uses AddProject for native Aspire integration (debugging, hot reload)
 // ---------------------------------------------------------------------------
-var gateway = builder.AddProject<Projects.Gateway_API>("gateway")
+var gateway = builder
+    .AddProject<Projects.Gateway_API>("gateway")
     .WithReference(postgres)
     .WithReference(redis)
     .WaitFor(postgres)
@@ -52,12 +73,12 @@ var gateway = builder.AddProject<Projects.Gateway_API>("gateway")
     .WithEnvironment("Demo__EnableCaching", "true");
 
 // ---------------------------------------------------------------------------
-// Dashboard (React/Vite)
+// Dashboard (React/Vite + nginx in container)
+// Containerized for production-like SPA serving with nginx
 // ---------------------------------------------------------------------------
-var dashboard = builder.AddNpmApp("dashboard", "../../apps/dashboard", "dev")
-    .WithHttpEndpoint(port: 5173, env: "VITE_PORT", name: "dashboard-ui")
-    .WithEnvironment("BROWSER", "none")
-    .WithEnvironment("VITE_GATEWAY_URL", gateway.GetEndpoint("gateway-api"))
+var dashboard = builder
+    .AddDockerfile("dashboard", "../../apps/dashboard")
+    .WithHttpEndpoint(port: 3000, targetPort: 80, name: "dashboard-ui")
     .WaitFor(gateway)
     .WithExternalHttpEndpoints();
 

@@ -15,8 +15,9 @@ AI-powered prior authorization automation that integrates directly into Epic's c
 
 - [Node.js 20+](https://nodejs.org/) with npm
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
-- [Python 3.11+](https://www.python.org/) with [uv](https://docs.astral.sh/uv/)
-- [Docker](https://www.docker.com/) (for Aspire containers)
+- **[Docker Desktop](https://www.docker.com/products/docker-desktop/)** or **[Podman Desktop](https://podman-desktop.io/)** (required)
+
+> **Note:** Docker Desktop (or Podman) must be running before starting the app. The Intelligence and Dashboard services run in containers.
 
 ### Setup
 
@@ -26,10 +27,65 @@ npm install
 
 # Build shared packages
 npm run build:shared
-
-# Install Python dependencies
-cd apps/intelligence && uv sync && cd ../..
 ```
+
+### Configure Secrets
+
+The Intelligence service requires an LLM provider for clinical reasoning. Choose one of the supported providers below.
+
+```bash
+cd orchestration/AuthScript.AppHost
+```
+
+#### Option 1: GitHub Models (Recommended - Free)
+
+```bash
+dotnet user-secrets set "Parameters:github-token" "ghp_..."
+```
+
+#### Option 2: Azure OpenAI
+
+```bash
+dotnet user-secrets set "Parameters:azure-openai-key" "your-key"
+dotnet user-secrets set "Parameters:azure-openai-endpoint" "https://your-resource.openai.azure.com"
+```
+
+#### Option 3: Google Gemini
+
+```bash
+dotnet user-secrets set "Parameters:google-api-key" "your-key"
+```
+
+#### PDF Parsing (Optional)
+
+```bash
+dotnet user-secrets set "Parameters:llama-cloud-api-key" "llx-..."
+```
+
+**Where to get API keys:**
+
+| Provider | Source | Default Model | Free Tier |
+|----------|--------|---------------|-----------|
+| GitHub Models | [github.com/settings/tokens](https://github.com/settings/tokens) | `gpt-4.1` | Free with GitHub account |
+| Azure OpenAI | [Azure Portal](https://portal.azure.com/) → Azure OpenAI | `gpt-4.1` | Pay-as-you-go |
+| Google Gemini | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | `gemini-2.5-flash` | Free tier available |
+| LlamaCloud | [cloud.llamaindex.ai](https://cloud.llamaindex.ai/) | — | 1,000 pages/day |
+
+#### GitHub Education (Recommended for Students)
+
+UW students can get **free Copilot Pro** and enhanced GitHub Models access:
+
+1. Sign up at [GitHub Education for Students](https://github.com/education/students)
+2. Verify with your `@uw.edu` or `@cs.washington.edu` email
+3. Access the [Student Developer Pack](https://education.github.com/pack) benefits
+4. Manage benefits at [github.com/settings/education/benefits](https://github.com/settings/education/benefits)
+
+**What you get:**
+- **Copilot Pro** — Free while enrolled (normally $10/month)
+- **GitHub Models** — Higher rate limits for AI model access
+- **90+ tools** — JetBrains IDEs, Azure credits, domain names, and more
+
+> **Tip:** Use your school email for faster verification. Benefits renew automatically while you remain a verified student.
 
 ### Start Services
 
@@ -51,7 +107,7 @@ This starts all services with .NET Aspire orchestration. The Aspire Dashboard op
 | Aspire Dashboard | https://localhost:15888 |
 | Gateway API | http://localhost:5000 |
 | Intelligence API | http://localhost:8000 |
-| Dashboard | http://localhost:5173 |
+| Dashboard | http://localhost:3000 |
 
 ## IDE Setup
 
@@ -87,7 +143,7 @@ The Aspire Dashboard opens automatically at https://localhost:15888 showing all 
 | `dotnet run --project orchestration/AuthScript.AppHost` | Start all services (Aspire) |
 | `npm run dev` | Start all services (npm wrapper) |
 | `npm run dev:dashboard` | Start dashboard only |
-| `npm run dev:intelligence` | Start Python service only |
+| `npm run build:containers` | Build all Docker images |
 | `npm run sync:schemas` | Regenerate TypeScript from OpenAPI |
 | `npm run test` | Run all tests |
 | `npm run build:shared` | Build shared type packages |
@@ -124,7 +180,7 @@ prior-auth/
 │   └── dashboard/                # React 19 - Shadow dashboard
 │       └── src/
 ├── orchestration/
-│   └── AuthScript.AppHost/       # .NET Aspire orchestration
+│   └── AuthScript.AppHost/       # .NET Aspire orchestration (AppHost.cs)
 ├── shared/
 │   ├── types/                    # @authscript/types
 │   └── validation/               # @authscript/validation (Zod)
@@ -139,7 +195,7 @@ prior-auth/
 | Service | Technology | Purpose |
 |---------|-----------|---------|
 | **Gateway** | .NET 10, iText7, Polly | CDS Hooks, FHIR aggregation, PDF generation |
-| **Intelligence** | Python 3.11, FastAPI, LangChain | Clinical reasoning, LLM orchestration |
+| **Intelligence** | Python 3.11, FastAPI | Clinical reasoning (GitHub/Azure/Gemini) |
 | **Dashboard** | React 19, Vite, TanStack | Shadow dashboard + SMART fallback |
 
 ## Testing
@@ -150,20 +206,28 @@ npm run test
 
 # Run specific service tests
 npm run test:dashboard
-npm run test:intelligence
 dotnet test apps/gateway/Gateway.API.Tests
+
+# Intelligence tests (run inside container or with local Python)
+cd apps/intelligence && uv run pytest
 ```
 
 ## Environment Variables
 
-Create a `.env` file or configure in your IDE:
+For local development, use `dotnet user-secrets` (see [Configure Secrets](#configure-secrets) above).
+
+For production or CI/CD, set these environment variables:
 
 | Variable | Service | Description |
 |----------|---------|-------------|
+| `LLM_PROVIDER` | Intelligence | Provider: `github`, `azure`, `gemini` |
+| `GITHUB_TOKEN` | Intelligence | GitHub PAT for GitHub Models |
+| `AZURE_OPENAI_API_KEY` | Intelligence | Azure OpenAI API key |
+| `AZURE_OPENAI_ENDPOINT` | Intelligence | Azure OpenAI endpoint URL |
+| `GOOGLE_API_KEY` | Intelligence | Google Gemini API key |
+| `LLAMA_CLOUD_API_KEY` | Intelligence | LlamaParse for PDF extraction |
 | `Epic__ClientId` | Gateway | Epic Launchpad client ID |
-| `Epic__FhirBaseUrl` | Gateway | FHIR R4 endpoint |
-| `OPENAI_API_KEY` | Intelligence | GPT-4o access |
-| `LLAMA_CLOUD_API_KEY` | Intelligence | LlamaParse access |
+| `Epic__FhirBaseUrl` | Gateway | FHIR R4 endpoint (has default) |
 
 ---
 

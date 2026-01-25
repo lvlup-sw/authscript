@@ -127,7 +127,7 @@ async def _generate_clinical_summary(
 ) -> str:
     """Generate a clinical summary for the PA form."""
     # Try LLM generation first
-    if settings.openai_api_key:
+    if settings.llm_configured:
         return await _generate_summary_with_llm(clinical_bundle, evidence, policy)
 
     # Fallback to template-based summary
@@ -141,9 +141,7 @@ async def _generate_summary_with_llm(
 ) -> str:
     """Generate clinical summary using LLM."""
     try:
-        from openai import AsyncOpenAI
-
-        client = AsyncOpenAI(api_key=settings.openai_api_key)
+        from src.llm_client import chat_completion
 
         # Build evidence summary
         evidence_text = "\n".join(
@@ -151,7 +149,8 @@ async def _generate_summary_with_llm(
             for item in evidence
         )
 
-        prompt = f"""Write a 2-3 sentence clinical justification for medical necessity of an MRI Lumbar Spine.
+        system_prompt = "You are a clinical documentation specialist writing prior authorization justifications."
+        user_prompt = f"""Write a 2-3 sentence clinical justification for medical necessity of an MRI Lumbar Spine.
 
 Patient Information:
 - Name: {clinical_bundle.patient.name if clinical_bundle.patient else 'Unknown'}
@@ -163,19 +162,14 @@ Evidence Found:
 Write a professional medical necessity statement suitable for a prior authorization form.
 Focus on the clinical need and supporting evidence. Be concise."""
 
-        response = await client.chat.completions.create(
-            model=settings.openai_model,
-            messages=[
-                {"role": "system", "content": "You are a clinical documentation specialist writing prior authorization justifications."},
-                {"role": "user", "content": prompt},
-            ],
+        content = await chat_completion(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
             temperature=0.3,
             max_tokens=200,
         )
 
-        return response.choices[0].message.content or _generate_template_summary(
-            clinical_bundle, evidence, policy
-        )
+        return content or _generate_template_summary(clinical_bundle, evidence, policy)
 
     except Exception:
         return _generate_template_summary(clinical_bundle, evidence, policy)

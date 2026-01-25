@@ -1,0 +1,31 @@
+# Build outputs
+bin/
+obj/
+
+# Test projects
+*.Tests/
+TestResults/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*.user
+*.suo
+
+# Environment
+.env
+.env.*
+!.env.example
+appsettings.*.json
+!appsettings.json
+!appsettings.Development.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# NuGet
+*.nupkg
+.nuget/

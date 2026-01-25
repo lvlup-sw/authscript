@@ -66,7 +66,7 @@ async def extract_evidence(
             evidence_items.append(diagnosis_evidence)
         else:
             # If no pattern match, use LLM or mark as unclear
-            if settings.openai_api_key:
+            if settings.llm_configured:
                 llm_evidence = await _extract_with_llm(
                     structured_data, criterion, policy
                 )
@@ -176,11 +176,10 @@ async def _extract_with_llm(
 ) -> EvidenceItem:
     """Use LLM to extract evidence for a criterion."""
     try:
-        from openai import AsyncOpenAI
+        from src.llm_client import chat_completion
 
-        client = AsyncOpenAI(api_key=settings.openai_api_key)
-
-        prompt = f"""Analyze this clinical data for evidence of: {criterion['description']}
+        system_prompt = "You are a clinical documentation specialist."
+        user_prompt = f"""Analyze this clinical data for evidence of: {criterion['description']}
 
 Clinical Data:
 {structured_data}
@@ -195,17 +194,15 @@ STATUS: <status>
 EVIDENCE: <evidence>
 CONFIDENCE: <number>"""
 
-        response = await client.chat.completions.create(
-            model=settings.openai_model,
-            messages=[
-                {"role": "system", "content": "You are a clinical documentation specialist."},
-                {"role": "user", "content": prompt},
-            ],
+        content = await chat_completion(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
             temperature=0,
             max_tokens=500,
         )
 
-        content = response.choices[0].message.content or ""
+        if not content:
+            raise ValueError("No response from LLM")
 
         # Parse response
         status = "UNCLEAR"

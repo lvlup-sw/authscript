@@ -16,18 +16,53 @@ class Settings(BaseSettings):
     version: str = "0.1.0"
     debug: bool = False
 
-    # OpenAI
-    openai_api_key: str = ""
-    openai_model: str = "gpt-4o"
+    # LLM Provider Selection
+    # Supported: "github", "azure", "gemini", "openai"
+    llm_provider: str = "github"
 
-    # LlamaParse
+    # GitHub Models (OpenAI-compatible)
+    # Get token: https://github.com/settings/tokens (no special scopes needed)
+    github_token: str = ""
+    github_model: str = "gpt-4.1"  # GPT-4o deprecated June 2025
+
+    # Azure OpenAI
+    # Get key: Azure Portal > Azure OpenAI > Keys and Endpoint
+    azure_openai_api_key: str = ""
+    azure_openai_endpoint: str = ""  # e.g., https://your-resource.openai.azure.com
+    azure_openai_deployment: str = "gpt-4.1"  # GPT-4o deprecated
+    azure_openai_api_version: str = "2024-12-01-preview"
+
+    # Google Gemini
+    # Get key: https://aistudio.google.com/apikey
+    google_api_key: str = ""
+    gemini_model: str = "gemini-2.5-flash"  # 1.5 retired, 2.0 deprecated March 2026
+
+    # OpenAI (fallback/alternative)
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4.1"
+
+    # LlamaParse for PDF extraction
+    # Get key: https://cloud.llamaindex.ai/
     llama_cloud_api_key: str = ""
 
     # Database
     database_url: str = ""
 
     # CORS
-    cors_origins: list[str] = ["http://localhost:5173", "http://localhost:5000"]
+    cors_origins: list[str] = ["http://localhost:3000", "http://localhost:5000"]
+
+    @property
+    def llm_configured(self) -> bool:
+        """Check if any LLM provider is configured."""
+        if self.llm_provider == "github":
+            return bool(self.github_token)
+        elif self.llm_provider == "azure":
+            return bool(self.azure_openai_api_key and self.azure_openai_endpoint)
+        elif self.llm_provider == "gemini":
+            return bool(self.google_api_key)
+        elif self.llm_provider == "openai":
+            return bool(self.openai_api_key)
+        return False
 
 
 settings = Settings()
