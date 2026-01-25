@@ -1,0 +1,33 @@
+{
+  "name": "@authscript/validation",
+  "version": "0.1.0",
+  "description": "Shared Zod validation schemas for AuthScript",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./common": {
+      "types": "./dist/common.d.ts",
+      "default": "./dist/common.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^3.25.56"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "vitest": "^3.2.4"
+  }
+}
