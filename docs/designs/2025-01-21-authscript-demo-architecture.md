@@ -57,7 +57,7 @@ The architecture follows a **"Bulletproof Happy Path"** philosophy: narrow scope
 │                        AUTHSCRIPT SYSTEM (.NET Aspire)                       │
 │                                                                              │
 │  ┌──────────────────────────────────────────────────────────────────────┐   │
-│  │                      GATEWAY SERVICE (.NET 8)                         │   │
+│  │                      GATEWAY SERVICE (.NET 10)                        │   │
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  │   │
 │  │  │ CDS Hook    │  │ FHIR Data   │  │ PDF Form    │  │ Response    │  │   │
 │  │  │ Controller  │──│ Aggregator  │──│ Stamper     │──│ Builder     │  │   │
@@ -79,7 +79,7 @@ The architecture follows a **"Bulletproof Happy Path"** philosophy: narrow scope
 │  └────────────────────┘  └────────────────────┘  └────────────────────┘    │
 │                                                                              │
 │  ┌──────────────────────────────────────────────────────────────────────┐   │
-│  │                     SMART APP / SHADOW DASHBOARD (Blazor)             │   │
+│  │                     SMART APP / SHADOW DASHBOARD (React 19)           │   │
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  │   │
 │  │  │ Live Status │  │ AI Analysis │  │ Form        │  │ Manual      │  │   │
 │  │  │ Feed        │  │ Display     │  │ Preview     │  │ Submit      │  │   │
@@ -149,13 +149,12 @@ The architecture follows a **"Bulletproof Happy Path"** philosophy: narrow scope
 
 ## 2. Component Specifications
 
-### 2.1 Gateway Service (.NET 8)
+### 2.1 Gateway Service (.NET 10)
 
 **Responsibility:** Orchestration layer handling Epic integration, data aggregation, and PDF generation.
 
 **Technology Stack:**
-- .NET 8 Web API
-- Firely SDK (FHIR client)
+- .NET 10 Minimal API
 - iText7 (PDF manipulation)
 - Polly (resilience)
 - Aspire service defaults
@@ -324,9 +323,15 @@ Example:
 python scripts/warm_demo_cache.py --patients demo_patients.json
 ```
 
-### 2.5 Shadow Dashboard / SMART App (Blazor)
+### 2.5 Shadow Dashboard (React 19)
 
 **Responsibility:** Real-time visibility into AuthScript processing AND manual fallback interface.
+
+**Technology Stack:**
+- React 19 + Vite
+- TanStack Router (file-based routing)
+- TanStack Query (data fetching + caching)
+- Polling-based status updates (SignalR upgrade deferred)
 
 **Dual-Mode Design:**
 
@@ -338,7 +343,7 @@ python scripts/warm_demo_cache.py --patients demo_patients.json
 **Key Views:**
 
 1. **Live Feed View**
-   - Real-time status updates via SignalR
+   - Real-time status updates via polling
    - Shows: "Fetching data..." → "Parsing documents..." → "Analyzing..."
    - Visual progress indicator
 
@@ -357,21 +362,15 @@ python scripts/warm_demo_cache.py --patients demo_patients.json
    - "Submit to Epic" button
    - Confirmation of upload
 
-**SignalR Hub:**
-```csharp
-public class ProcessingHub : Hub
-{
-    public async Task JoinRequest(string transactionId)
-        => await Groups.AddToGroupAsync(Context.ConnectionId, transactionId);
-}
-
-// Usage from Gateway:
-await _hubContext.Clients.Group(transactionId)
-    .SendAsync("StatusUpdate", new {
-        Step = "parsing_documents",
-        Message = "Extracting text from clinical notes...",
-        Progress = 40
-    });
+**Status Polling:**
+```typescript
+// TanStack Query polling pattern
+const { data: status } = useQuery({
+  queryKey: ['analysis', transactionId, 'status'],
+  queryFn: () => fetchAnalysisStatus(transactionId),
+  refetchInterval: (query) =>
+    query.state.data?.step === 'completed' ? false : 2000,
+});
 ```
 
 ---
@@ -1060,31 +1059,29 @@ public async Task<CdsResponse> HandleOrderSelect(CdsRequest request)
 }
 ```
 
-### 7.3 Blazor SMART App Structure
+### 7.3 React Dashboard / SMART App Structure
 
 ```
-/AuthScript.SmartApp
-├── Program.cs
-├── Components/
-│   ├── Layout/
-│   │   └── MainLayout.razor      # App shell
-│   ├── Pages/
-│   │   ├── Launch.razor          # OAuth entry point
-│   │   ├── Callback.razor        # OAuth callback
-│   │   ├── Analysis.razor        # Main analysis view
-│   │   └── Submit.razor          # Final submission
-│   └── Shared/
-│       ├── StatusFeed.razor      # Real-time updates
-│       ├── EvidencePanel.razor   # Extracted evidence
-│       ├── FormPreview.razor     # PDF preview
-│       └── ConfidenceMeter.razor # AI confidence display
-├── Services/
-│   ├── SmartAuthService.cs       # OAuth handling
-│   ├── FhirDataService.cs        # Data fetching
-│   └── AnalysisService.cs        # Intelligence API client
-└── wwwroot/
-    └── css/
-        └── app.css               # Styling
+/apps/dashboard
+├── src/
+│   ├── routes/
+│   │   ├── __root.tsx            # App shell layout
+│   │   ├── index.tsx             # Home / launch page
+│   │   ├── callback.tsx          # OAuth callback
+│   │   ├── -analysis.$txnId.tsx  # Analysis view (dynamic route)
+│   │   └── submit.tsx            # Final submission
+│   ├── components/
+│   │   ├── StatusFeed.tsx        # Real-time updates
+│   │   ├── EvidencePanel.tsx     # Extracted evidence
+│   │   ├── FormPreview.tsx       # PDF preview
+│   │   └── ConfidenceMeter.tsx   # AI confidence display
+│   ├── api/
+│   │   └── authscriptService.ts  # Gateway API client
+│   ├── lib/
+│   │   └── smartAuth.ts          # OAuth handling
+│   └── utils/
+│       └── typeConverters.ts     # API type mapping
+└── package.json
 ```
 
 ---
@@ -1159,9 +1156,9 @@ Week 3-4: Core Pipeline
 
 Week 5: Integration & Dashboard
 ├── End-to-end pipeline integration
-├── Shadow Dashboard (Blazor)
+├── Shadow Dashboard (React 19)
 ├── SMART app fallback
-└── SignalR real-time updates
+└── Polling-based status updates
 
 Week 6: Reliability & Demo Prep
 ├── Cache warming infrastructure
@@ -1184,7 +1181,7 @@ Week 7: Polish & Buffer
 | FHIR Data Aggregator | C#/C++ Devs (2) | .NET, async programming |
 | Intelligence Service | Python Devs (2) | FastAPI, LangChain, LLMs |
 | Database + Caching | Student Devs (2) | PostgreSQL, Redis |
-| Shadow Dashboard | You + C# Dev | Blazor, SignalR |
+| Shadow Dashboard | You + TS Dev | React, TanStack |
 | UX/Visual Design | UX Designer | Figma, CSS |
 | Demo Patient Scenarios | UX Researcher + MBA | Clinical domain knowledge |
 | Demo Script & Recovery | Business Analyst | Presentation skills |
@@ -1280,12 +1277,12 @@ Week 7: Polish & Buffer
 
 ### B. Key Dependencies
 
-**Gateway Service (.NET 8):**
+**Gateway Service (.NET 10):**
 ```xml
-<PackageReference Include="Hl7.Fhir.R4" Version="5.x" />
-<PackageReference Include="itext7" Version="8.x" />
+<PackageReference Include="itext7" Version="9.x" />
 <PackageReference Include="Polly" Version="8.x" />
-<PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="8.x" />
+<PackageReference Include="Aspire.StackExchange.Redis" Version="9.x" />
+<PackageReference Include="Aspire.Npgsql" Version="9.x" />
 ```
 
 **Intelligence Service (Python):**
