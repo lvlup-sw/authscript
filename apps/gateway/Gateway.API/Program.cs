@@ -6,6 +6,7 @@
 using Gateway.API.Contracts;
 using Gateway.API.Endpoints;
 using Gateway.API.Services;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -65,6 +66,11 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference(options =>
+    {
+        options.Title = "AuthScript Gateway API";
+        options.Theme = ScalarTheme.DeepSpace;
+    });
 }
 
 app.UseCors();
