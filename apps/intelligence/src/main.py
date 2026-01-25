@@ -28,9 +28,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(
     title="AuthScript Intelligence Service",
-    description="Clinical reasoning engine for prior authorization",
+    description="""Clinical reasoning engine for prior authorization.
+
+## Features
+- Evidence Extraction: Analyzes clinical data against policy criteria
+- Form Generation: Populates PA form fields with extracted evidence
+- Multi-Provider LLM: Supports GitHub, Azure, Gemini, OpenAI
+    """,
     version=settings.version,
     lifespan=lifespan,
+    openapi_tags=[
+        {"name": "Analysis", "description": "Clinical data analysis and PA form generation"},
+        {"name": "Health", "description": "Service health and status"},
+    ],
 )
 
 # CORS middleware
@@ -46,13 +56,13 @@ app.add_middleware(
 app.include_router(analyze_router, prefix="/analyze", tags=["Analysis"])
 
 
-@app.get("/health")
+@app.get("/health", tags=["Health"])
 async def health_check() -> dict[str, str]:
     """Health check endpoint for Aspire orchestration."""
     return {"status": "healthy", "service": "intelligence"}
 
 
-@app.get("/")
+@app.get("/", tags=["Health"])
 async def root() -> dict[str, str]:
     """Root endpoint with service information."""
     return {
