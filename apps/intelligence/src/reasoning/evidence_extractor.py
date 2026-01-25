@@ -7,8 +7,8 @@ from src.config import settings
 from src.models.clinical_bundle import ClinicalBundle
 from src.models.pa_form import EvidenceItem
 
-
-EVIDENCE_EXTRACTION_PROMPT = """You are a clinical documentation specialist reviewing medical records for prior authorization.
+EVIDENCE_EXTRACTION_PROMPT = """You are a clinical documentation specialist \
+reviewing medical records for prior authorization.
 
 PATIENT CONTEXT (Structured FHIR Data):
 {structured_data}
@@ -43,7 +43,7 @@ async def extract_evidence(
     # Check each criterion
     for criterion in policy.get("criteria", []):
         criterion_id = criterion["id"]
-        description = criterion["description"]
+        # description = criterion["description"]  # Available for future LLM context
 
         # First try pattern matching for quick evidence
         pattern_evidence = _check_patterns(
@@ -163,7 +163,10 @@ def _check_diagnosis(bundle: ClinicalBundle, policy: dict[str, Any]) -> Evidence
         return EvidenceItem(
             criterion_id="diagnosis_present",
             status="NOT_MET",
-            evidence=f"No qualifying diagnosis codes found. Patient codes: {', '.join(patient_codes) or 'None'}",
+            evidence=(
+                f"No qualifying diagnosis codes found. "
+                f"Patient codes: {', '.join(patient_codes) or 'None'}"
+            ),
             source="FHIR Condition resources",
             confidence=0.90,
         )

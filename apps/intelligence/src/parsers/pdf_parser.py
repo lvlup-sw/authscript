@@ -3,8 +3,8 @@
 Extracts text from clinical documents in markdown format optimized for LLM processing.
 """
 
-import tempfile
 import os
+import tempfile
 
 
 async def parse_pdf(pdf_bytes: bytes) -> str:

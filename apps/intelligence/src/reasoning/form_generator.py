@@ -149,8 +149,12 @@ async def _generate_summary_with_llm(
             for item in evidence
         )
 
-        system_prompt = "You are a clinical documentation specialist writing prior authorization justifications."
-        user_prompt = f"""Write a 2-3 sentence clinical justification for medical necessity of an MRI Lumbar Spine.
+        system_prompt = (
+            "You are a clinical documentation specialist "
+            "writing prior authorization justifications."
+        )
+        user_prompt = f"""Write a 2-3 sentence clinical justification for medical necessity \
+of an MRI Lumbar Spine.
 
 Patient Information:
 - Name: {clinical_bundle.patient.name if clinical_bundle.patient else 'Unknown'}

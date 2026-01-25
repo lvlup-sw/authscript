@@ -1,6 +1,5 @@
 """Prior Authorization form response models."""
 
-from datetime import date
 from typing import Literal
 
 from pydantic import BaseModel, Field
