@@ -1,7 +1,7 @@
 {
   "name": "authscript-dashboard",
   "version": "0.1.0",
-  "description": "AuthScript Shadow Dashboard + SMART App",
+  "description": "AuthScript Dashboard + SMART App",
   "type": "module",
   "scripts": {
     "dev": "vite",

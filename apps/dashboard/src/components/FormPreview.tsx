@@ -107,7 +107,7 @@ export function FormPreview({
               data-field={key}
               className={cn(
                 'p-3 rounded-lg border',
-                showHighlights && value && 'bg-green-50 border-green-200'
+                showHighlights && value && 'bg-[hsl(var(--success)/0.1)] border-[hsl(var(--success)/0.3)]'
               )}
             >
               <p className="text-xs font-medium text-muted-foreground mb-1">
@@ -125,7 +125,7 @@ export function FormPreview({
             data-field={key}
             className={cn(
               'p-4 rounded-lg border',
-              showHighlights && value && 'bg-green-50 border-green-200'
+              showHighlights && value && 'bg-[hsl(var(--success)/0.1)] border-[hsl(var(--success)/0.3)]'
             )}
           >
             <p className="text-xs font-medium text-muted-foreground mb-2">
@@ -138,7 +138,7 @@ export function FormPreview({
         {/* Highlight legend */}
         {showHighlights && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground pt-4 border-t">
-            <div className="w-3 h-3 rounded bg-green-200 border border-green-300" />
+            <div className="w-3 h-3 rounded bg-[hsl(var(--success)/0.3)] border border-[hsl(var(--success)/0.5)]" />
             <span>AI-filled fields</span>
           </div>
         )}

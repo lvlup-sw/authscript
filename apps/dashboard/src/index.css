@@ -47,6 +47,10 @@
   --border: 217.2 32.6% 17.5%;
   --input: 217.2 32.6% 17.5%;
   --ring: 224.3 76.3% 48%;
+  --success: 142.1 70.6% 45.3%;
+  --success-foreground: 355.7 100% 97.3%;
+  --warning: 48 96% 53%;
+  --warning-foreground: 38 92% 20%;
 }
 
 * {

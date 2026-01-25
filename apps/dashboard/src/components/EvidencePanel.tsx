@@ -16,7 +16,7 @@ interface EvidencePanelProps {
 function getStatusBadgeClass(status: EvidenceItem['status']): string {
   switch (status) {
     case 'MET':
-      return 'bg-green-500 hover:bg-green-600';
+      return 'bg-[hsl(var(--success))] hover:bg-[hsl(var(--success)/0.8)]';
     case 'NOT_MET':
       return 'bg-red-500 hover:bg-red-600';
     case 'UNCLEAR':
@@ -89,7 +89,7 @@ export function EvidencePanel({ evidence, loading, className }: EvidencePanelPro
         <div className="flex items-center justify-between">
           <CardTitle>Policy Evidence</CardTitle>
           <div className="flex gap-2 text-sm">
-            <span className="text-green-600">{metCount} met</span>
+            <span className="text-[hsl(var(--success))]">{metCount} met</span>
             <span className="text-muted-foreground">|</span>
             <span className="text-red-600">{notMetCount} not met</span>
             <span className="text-muted-foreground">|</span>

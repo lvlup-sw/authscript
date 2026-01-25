@@ -56,7 +56,7 @@ describe('EvidencePanel', () => {
       render(<EvidencePanel evidence={[mockEvidence[0]]} />);
 
       const badge = screen.getByText('MET');
-      expect(badge).toHaveClass('bg-green-500');
+      expect(badge).toHaveClass('bg-[hsl(var(--success))]');
     });
 
     it('EvidencePanel_NotMetStatus_ShowsRedBadge', () => {
