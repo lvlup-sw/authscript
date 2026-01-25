@@ -1,0 +1,29 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["local>lvlup-sw/.github:renovate.json"],
+  "packageRules": [
+    {
+      "matchPackagePrefixes": ["langchain"],
+      "groupName": "langchain"
+    },
+    {
+      "matchPackagePrefixes": ["fastapi", "pydantic"],
+      "groupName": "fastapi"
+    },
+    {
+      "matchPackagePrefixes": ["@tanstack"],
+      "groupName": "tanstack"
+    },
+    {
+      "matchPackagePrefixes": ["@radix-ui"],
+      "groupName": "radix-ui"
+    },
+    {
+      "matchPackagePatterns": ["^Hl7\\.Fhir"],
+      "groupName": "FHIR"
+    }
+  ],
+  "python": {
+    "packageManager": "uv"
+  }
+}

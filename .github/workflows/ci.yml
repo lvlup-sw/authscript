@@ -1,0 +1,203 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  DOTNET_QUALITY: 'preview'
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.11'
+  COVERAGE_THRESHOLD: 80
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      dashboard: ${{ steps.filter.outputs.dashboard }}
+      gateway: ${{ steps.filter.outputs.gateway }}
+      intelligence: ${{ steps.filter.outputs.intelligence }}
+      orchestration: ${{ steps.filter.outputs.orchestration }}
+      shared: ${{ steps.filter.outputs.shared }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            dashboard:
+              - 'apps/dashboard/**'
+            gateway:
+              - 'apps/gateway/**'
+            intelligence:
+              - 'apps/intelligence/**'
+            orchestration:
+              - 'orchestration/**'
+            shared:
+              - 'shared/**'
+              - 'package.json'
+              - 'orval.config.ts'
+
+  schema-check:
+    name: Schema Sync Check
+    needs: changes
+    if: needs.changes.outputs.gateway == 'true' || needs.changes.outputs.intelligence == 'true' || needs.changes.outputs.shared == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          dotnet-quality: ${{ env.DOTNET_QUALITY }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Install npm dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Sync schemas
+        run: npm run sync:schemas
+
+      - name: Check for schema drift
+        run: |
+          if [[ -n $(git status --porcelain apps/gateway/openapi.json apps/intelligence/openapi.json shared/ apps/dashboard/src/api/generated/) ]]; then
+            echo "::error::Schema drift detected! Run 'npm run sync:schemas' and commit the changes."
+            git status --porcelain
+            git diff --stat
+            exit 1
+          fi
+          echo "No schema drift detected"
+
+  gateway-build:
+    name: Gateway Build & Test
+    needs: changes
+    if: needs.changes.outputs.gateway == 'true' || needs.changes.outputs.orchestration == 'true' || needs.changes.outputs.shared == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          dotnet-quality: ${{ env.DOTNET_QUALITY }}
+
+      - name: Restore
+        run: dotnet restore apps/gateway/src/Gateway.sln
+
+      - name: Build
+        run: dotnet build apps/gateway/src/Gateway.sln --no-restore --configuration Release
+
+      - name: Test with coverage
+        if: hashFiles('apps/gateway/tests/**/*.csproj') != ''
+        run: |
+          dotnet test apps/gateway/tests/**/*.csproj \
+            --configuration Release \
+            --no-build \
+            /p:CollectCoverage=true \
+            /p:CoverletOutputFormat=cobertura \
+            /p:CoverletOutput=../../coverage/ \
+            '/p:Include=[Gateway.*]*' \
+            '/p:Exclude=[Gateway.*.Tests]*'
+
+      - name: Upload coverage
+        if: hashFiles('apps/gateway/coverage/*.xml') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: gateway-coverage
+          path: apps/gateway/coverage/*.xml
+          retention-days: 7
+          if-no-files-found: warn
+
+  intelligence-build:
+    name: Intelligence Build & Test
+    needs: changes
+    if: needs.changes.outputs.intelligence == 'true' || needs.changes.outputs.shared == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        working-directory: apps/intelligence
+        run: uv sync
+
+      - name: Lint with ruff
+        working-directory: apps/intelligence
+        run: uv run ruff check .
+
+      - name: Type check with mypy
+        working-directory: apps/intelligence
+        run: uv run mypy src/
+
+      - name: Test with coverage
+        working-directory: apps/intelligence
+        run: |
+          uv run pytest tests/ \
+            --cov=src \
+            --cov-report=xml:coverage.xml \
+            --cov-fail-under=${{ env.COVERAGE_THRESHOLD }}
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: intelligence-coverage
+          path: apps/intelligence/coverage.xml
+          retention-days: 7
+          if-no-files-found: warn
+
+  dashboard-build:
+    name: Dashboard Build & Test
+    needs: changes
+    if: needs.changes.outputs.dashboard == 'true' || needs.changes.outputs.shared == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build shared packages
+        run: |
+          npm run build --workspace=shared/types --if-present
+          npm run build --workspace=shared/validation --if-present
+
+      - name: Lint
+        run: npm run lint --workspace=apps/dashboard
+
+      - name: Type check
+        run: npm run typecheck --workspace=apps/dashboard
+
+      - name: Test
+        run: npm run test:run --workspace=apps/dashboard
+
+      - name: Build
+        run: npm run build --workspace=apps/dashboard

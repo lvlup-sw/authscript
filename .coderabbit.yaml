@@ -1,0 +1,131 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+tone_instructions: Prioritize technical optimality without being nitpicky.
+early_access: true
+
+reviews:
+  request_changes_workflow: true
+  high_level_summary: false
+  auto_apply_labels: true
+  auto_assign_reviewers: true
+
+  path_filters:
+    - "!**/*.lock"
+    - "!**/uv.lock"
+    - "!**/package-lock.json"
+    - "!**/*.generated.*"
+    - "!**/dist/**"
+    - "!**/node_modules/**"
+    - "!**/__pycache__/**"
+    - "!**/.venv/**"
+    - "!**/*.min.js"
+    - "!**/bin/**"
+    - "!**/obj/**"
+    - "!**/*.g.cs"
+
+  path_instructions:
+    # TypeScript paths
+    - path: "apps/dashboard/**/*.ts"
+      instructions: |
+        Apply TypeScript standards:
+        - SOLID: One class/component per file, discriminated unions over type switches
+        - Types: Interfaces for extendable shapes, readonly default, no `any`
+        - Control: Guard clauses first, early return, flatten async/await
+    - path: "apps/dashboard/**/*.tsx"
+      instructions: |
+        Apply React/TypeScript standards:
+        - Components: One component per file, use functional components with hooks
+        - Props: Define interface for props, use destructuring
+        - State: Prefer useState/useReducer, avoid prop drilling
+    - path: "shared/**/*.ts"
+      instructions: |
+        Shared library code - prioritize:
+        - Type safety and explicit exports
+        - No side effects at module level
+        - Clear documentation for public API
+    # C# paths
+    - path: "apps/gateway/**/*.cs"
+      instructions: |
+        Apply C# standards:
+        - SOLID: One public type per file, Strategy over switches, constructor injection
+        - Types: Sealed by default, records for DTOs, nullable enabled
+        - Control: Guard clauses first, early return, no arrow code
+        - FHIR: Use Firely SDK patterns, validate FHIR resources properly
+    - path: "orchestration/**/*.cs"
+      instructions: |
+        .NET Aspire orchestration code:
+        - Focus on configuration correctness
+        - Verify service dependencies are properly declared
+    # Python paths
+    - path: "apps/intelligence/**/*.py"
+      instructions: |
+        Apply Python standards:
+        - Type hints: All functions must have complete type annotations
+        - Pydantic: Use BaseModel for data validation, Field for constraints
+        - Async: Prefer async/await for I/O operations
+        - LangChain: Follow LangChain Expression Language (LCEL) patterns
+        - Error handling: Use specific exceptions, not bare except
+    # Test paths
+    - path: "**/*.test.ts"
+      instructions: |
+        TypeScript tests - verify:
+        - Arrange-Act-Assert pattern
+        - Descriptive test names
+        - Proper mocking of dependencies
+    - path: "**/test_*.py"
+      instructions: |
+        Python tests - verify:
+        - pytest fixtures used appropriately
+        - Async tests use @pytest.mark.asyncio
+        - Proper mocking with unittest.mock or pytest-mock
+    - path: "**/Tests/**/*.cs"
+      instructions: |
+        C# tests - verify:
+        - Method_Scenario_Outcome naming
+        - Proper test isolation
+        - Assertions are awaited (TUnit)
+    # Documentation
+    - path: "docs/**"
+      instructions: "Check for accuracy and completeness. Light review only."
+
+  coding_guidelines:
+    - title: TypeScript Type Safety
+      description: |
+        No `any` types. Use `unknown` with type guards or proper generics.
+        Prefer interfaces over type aliases for extendable shapes.
+        Use `as const` for literal types.
+      file_patterns:
+        - "**/*.ts"
+        - "**/*.tsx"
+    - title: Python Type Hints
+      description: |
+        All functions must have complete type hints including return types.
+        Use Pydantic models for data validation.
+        Prefer Optional[T] over T | None for clarity.
+      file_patterns:
+        - "**/*.py"
+    - title: C# SOLID Principles
+      description: |
+        Enforce SOLID constraints:
+        SRP (one public type per file), OCP (Strategy pattern), LSP (no NotImplementedException),
+        ISP (role-specific interfaces), DIP (constructor injection)
+      file_patterns:
+        - "**/*.cs"
+    - title: HIPAA Security
+      description: |
+        Healthcare platform - HIPAA considerations:
+        - No PII/PHI in logs or error messages
+        - Validate all external input
+        - Use parameterized queries
+        - Maintain audit trails for data access
+      file_patterns:
+        - "**/*.cs"
+        - "**/*.ts"
+        - "**/*.py"
+
+  auto_review:
+    ignore_usernames:
+      - "renovate[bot]"
+
+  pre_merge_checks:
+    issue_assessment:
+      mode: warning

@@ -1,0 +1,82 @@
+# GitHub Labels - Sync with: gh label sync --force
+
+# Type Labels
+- name: "type:bug"
+  color: "d73a4a"
+  description: "Something isn't working"
+
+- name: "type:feature"
+  color: "a2eeef"
+  description: "New feature or enhancement"
+
+- name: "type:docs"
+  color: "0075ca"
+  description: "Documentation improvements"
+
+- name: "type:chore"
+  color: "fef2c0"
+  description: "Maintenance, dependencies, CI"
+
+- name: "type:question"
+  color: "d876e3"
+  description: "Question or discussion"
+
+# Scope Labels
+- name: "scope:dashboard"
+  color: "bfdadc"
+  description: "Dashboard (React frontend)"
+
+- name: "scope:gateway"
+  color: "c5def5"
+  description: "Gateway API (.NET backend)"
+
+- name: "scope:intelligence"
+  color: "c2e0c6"
+  description: "Intelligence (Python AI/ML)"
+
+- name: "scope:fhir"
+  color: "d4c5f9"
+  description: "FHIR resources and integration"
+
+- name: "scope:pdf"
+  color: "f9d0c4"
+  description: "PDF parsing and extraction"
+
+- name: "scope:llm"
+  color: "e99695"
+  description: "LLM and AI model integration"
+
+# Status Labels
+- name: "status:triage"
+  color: "ededed"
+  description: "Needs initial review"
+
+- name: "status:blocked"
+  color: "b60205"
+  description: "Blocked by external factor"
+
+- name: "status:stale"
+  color: "ffffff"
+  description: "No activity, will auto-close"
+
+- name: "status:epic-sandbox"
+  color: "5319e7"
+  description: "Epic sandbox testing required"
+
+# Priority Labels
+- name: "priority:high"
+  color: "d93f0b"
+  description: "Address soon"
+
+- name: "priority:low"
+  color: "0e8a16"
+  description: "Nice to have"
+
+# Source Labels
+- name: "source:jules"
+  color: "1d76db"
+  description: "Created by Jules agent"
+
+- name: "source:coderabbit"
+  color: "7057ff"
+  description: "Created by CodeRabbit"
