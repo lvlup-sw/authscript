@@ -2,7 +2,7 @@
   "version": "1.0",
   "featureId": "authscript-demo-architecture",
   "createdAt": "2026-01-22T07:38:06Z",
-  "updatedAt": "2026-01-25T04:44:03Z",
+  "updatedAt": "2026-01-25T04:44:49Z",
   "phase": "synthesize",
   "artifacts": {
     "design": "docs/designs/2025-01-21-authscript-demo-architecture.md",
@@ -149,11 +149,12 @@
     }
   },
   "synthesis": {
-    "integrationBranch": null,
+    "integrationBranch": "feature/authscript-demo-architecture",
     "mergeOrder": [],
     "mergedBranches": [],
     "prUrl": null,
-    "prFeedback": []
+    "prFeedback": [],
+    "commitHash": "634ce13"
   },
   "updated_at": 1769067701.395172,
   "integration": {
