@@ -139,7 +139,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: apps/intelligence
-        run: uv sync
+        run: uv sync --all-groups
 
       - name: Lint with ruff
         working-directory: apps/intelligence
