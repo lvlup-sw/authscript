@@ -6,6 +6,7 @@ node_modules/
 # Build outputs
 dist/
 build/
+!scripts/build/
 *.js.map
 *.d.ts.map
 
@@ -97,3 +98,6 @@ assets/pdf-templates/*.pdf
 # Cache
 .cache/
 *.tsbuildinfo
+
+# Workflow state (session-specific)
+docs/workflow-state/

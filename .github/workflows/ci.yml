@@ -99,15 +99,15 @@ jobs:
           dotnet-quality: ${{ env.DOTNET_QUALITY }}
 
       - name: Restore
-        run: dotnet restore apps/gateway/src/Gateway.sln
+        run: dotnet restore apps/gateway/Gateway.API/Gateway.API.csproj
 
       - name: Build
-        run: dotnet build apps/gateway/src/Gateway.sln --no-restore --configuration Release
+        run: dotnet build apps/gateway/Gateway.API/Gateway.API.csproj --no-restore --configuration Release
 
       - name: Test with coverage
-        if: hashFiles('apps/gateway/tests/**/*.csproj') != ''
+        if: hashFiles('apps/gateway/Gateway.API.Tests/*.csproj') != ''
         run: |
-          dotnet test apps/gateway/tests/**/*.csproj \
+          dotnet test apps/gateway/Gateway.API.Tests/*.csproj \
             --configuration Release \
             --no-build \
             /p:CollectCoverage=true \
