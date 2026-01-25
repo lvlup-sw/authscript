@@ -82,12 +82,12 @@ class GeminiProvider(LLMProvider):
     async def complete(self, request: CompletionRequest) -> str:
         import google.generativeai as genai
 
-        genai.configure(api_key=settings.google_api_key)
+        genai.configure(api_key=settings.google_api_key)  # type: ignore[attr-defined]
 
-        model = genai.GenerativeModel(
+        model = genai.GenerativeModel(  # type: ignore[attr-defined]
             model_name=settings.gemini_model,
             system_instruction=request.system_prompt,
-            generation_config=genai.GenerationConfig(
+            generation_config=genai.GenerationConfig(  # type: ignore[attr-defined]
                 temperature=request.temperature,
                 max_output_tokens=request.max_tokens,
             ),

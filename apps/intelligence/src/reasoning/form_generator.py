@@ -1,7 +1,7 @@
 """Generate PA form data from extracted evidence."""
 
 from datetime import date
-from typing import Any
+from typing import Any, Literal
 
 from src.config import settings
 from src.models.clinical_bundle import ClinicalBundle
@@ -66,10 +66,13 @@ async def generate_form_data(
     )
 
 
+Recommendation = Literal["APPROVE", "NEED_INFO", "MANUAL_REVIEW"]
+
+
 def _calculate_recommendation(
     evidence: list[EvidenceItem],
     policy: dict[str, Any],
-) -> tuple[str, float]:
+) -> tuple[Recommendation, float]:
     """Calculate recommendation and confidence from evidence."""
     criteria = policy.get("criteria", [])
     required_criteria = [c for c in criteria if c.get("required", False)]

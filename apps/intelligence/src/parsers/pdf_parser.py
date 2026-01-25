@@ -36,7 +36,7 @@ def _extract_markdown(pdf_path: str) -> str:
             write_images=False,  # Skip image extraction
         )
 
-        return md_text
+        return str(md_text)
 
     except Exception as e:
         # Fallback to basic PyMuPDF extraction
