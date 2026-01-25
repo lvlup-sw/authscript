@@ -1,5 +1,6 @@
 import { createRootRouteWithContext, Outlet } from '@tanstack/react-router';
 import type { QueryClient } from '@tanstack/react-query';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface RouterContext {
   queryClient: QueryClient;
@@ -27,6 +28,7 @@ function RootLayout() {
             <a href="/analysis" className="text-sm text-muted-foreground hover:text-foreground">
               Analysis
             </a>
+            <ThemeToggle />
           </nav>
         </div>
       </header>

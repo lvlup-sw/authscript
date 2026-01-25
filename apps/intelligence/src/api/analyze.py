@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from src.models.clinical_bundle import ClinicalBundle
@@ -62,9 +62,13 @@ async def analyze_with_documents(
     """
     Analyze clinical data with attached PDF documents.
 
-    This endpoint handles multipart form data with:
-    - Clinical data (JSON)
-    - PDF documents to parse
+    Processes multipart form data including:
+    - **patient_id**: Unique patient identifier
+    - **procedure_code**: CPT/HCPCS code for the procedure
+    - **clinical_data**: JSON string of clinical data
+    - **documents**: PDF files containing clinical documentation
+
+    Returns the same PA form response as the standard analyze endpoint.
     """
     import json
 

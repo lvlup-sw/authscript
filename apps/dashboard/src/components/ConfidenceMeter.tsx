@@ -20,7 +20,7 @@ const CONFIDENCE_THRESHOLDS = {
  */
 function getConfidenceColor(score: number): string {
   if (score >= CONFIDENCE_THRESHOLDS.high) {
-    return 'bg-green-500';
+    return 'bg-[hsl(var(--success))]';
   }
   if (score >= CONFIDENCE_THRESHOLDS.medium) {
     return 'bg-yellow-500';

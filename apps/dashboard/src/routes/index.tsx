@@ -10,7 +10,7 @@ function DashboardPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Shadow Dashboard</h1>
+        <h1 className="text-3xl font-bold tracking-tight">AuthScript Dashboard</h1>
         <p className="text-muted-foreground mt-2">
           Real-time visibility into AuthScript prior authorization processing
         </p>
@@ -30,7 +30,7 @@ function DashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Auto-Approved</CardDescription>
-            <CardTitle className="text-4xl text-green-600">0</CardTitle>
+            <CardTitle className="text-4xl text-[hsl(var(--success))]">0</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-xs text-muted-foreground">High confidence</p>
@@ -40,7 +40,7 @@ function DashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Manual Review</CardDescription>
-            <CardTitle className="text-4xl text-amber-600">0</CardTitle>
+            <CardTitle className="text-4xl text-[hsl(var(--warning))]">0</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-xs text-muted-foreground">Needs attention</p>

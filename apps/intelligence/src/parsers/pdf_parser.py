@@ -3,8 +3,8 @@
 Extracts text from clinical documents in markdown format optimized for LLM processing.
 """
 
-import tempfile
 import os
+import tempfile
 
 
 async def parse_pdf(pdf_bytes: bytes) -> str:
@@ -36,7 +36,7 @@ def _extract_markdown(pdf_path: str) -> str:
             write_images=False,  # Skip image extraction
         )
 
-        return md_text
+        return str(md_text)
 
     except Exception as e:
         # Fallback to basic PyMuPDF extraction

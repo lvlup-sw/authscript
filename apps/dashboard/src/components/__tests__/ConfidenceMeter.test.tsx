@@ -24,7 +24,7 @@ describe('ConfidenceMeter', () => {
     it('ConfidenceMeter_HighConfidence_ShowsGreen', () => {
       const { container } = render(<ConfidenceMeter score={0.9} />);
       const meter = container.querySelector('[data-testid="confidence-fill"]');
-      expect(meter).toHaveClass('bg-green-500');
+      expect(meter).toHaveClass('bg-[hsl(var(--success))]');
     });
 
     it('ConfidenceMeter_MediumConfidence_ShowsYellow', () => {

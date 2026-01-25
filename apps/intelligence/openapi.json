@@ -1,0 +1,405 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AuthScript Intelligence Service",
+    "description": "Clinical reasoning engine for prior authorization.\n\n## Features\n- Evidence Extraction: Analyzes clinical data against policy criteria\n- Form Generation: Populates PA form fields with extracted evidence\n- Multi-Provider LLM: Supports GitHub, Azure, Gemini, OpenAI\n    ",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/analyze": {
+      "post": {
+        "tags": [
+          "Analysis"
+        ],
+        "summary": "Analyze",
+        "description": "Analyze clinical data and generate PA form response.\n\nThis endpoint:\n1. Validates the procedure code against supported policies\n2. Extracts evidence from clinical data\n3. Evaluates against policy criteria\n4. Generates form field values",
+        "operationId": "analyze_analyze_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyzeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PAFormResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analyze/with-documents": {
+      "post": {
+        "tags": [
+          "Analysis"
+        ],
+        "summary": "Analyze With Documents",
+        "description": "Analyze clinical data with attached PDF documents.\n\nProcesses multipart form data including:\n- **patient_id**: Unique patient identifier\n- **procedure_code**: CPT/HCPCS code for the procedure\n- **clinical_data**: JSON string of clinical data\n- **documents**: PDF files containing clinical documentation\n\nReturns the same PA form response as the standard analyze endpoint.",
+        "operationId": "analyze_with_documents_analyze_with_documents_post",
+        "parameters": [
+          {
+            "name": "patient_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Patient Id"
+            }
+          },
+          {
+            "name": "procedure_code",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Procedure Code"
+            }
+          },
+          {
+            "name": "clinical_data",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Clinical Data"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_analyze_with_documents_analyze_with_documents_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PAFormResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Health Check",
+        "description": "Health check endpoint for Aspire orchestration.",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Check Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Root",
+        "description": "Root endpoint with service information.",
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Root  Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AnalyzeRequest": {
+        "properties": {
+          "patient_id": {
+            "type": "string",
+            "title": "Patient Id"
+          },
+          "procedure_code": {
+            "type": "string",
+            "title": "Procedure Code"
+          },
+          "clinical_data": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Clinical Data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "patient_id",
+          "procedure_code",
+          "clinical_data"
+        ],
+        "title": "AnalyzeRequest",
+        "description": "Request payload for analysis endpoint."
+      },
+      "Body_analyze_with_documents_analyze_with_documents_post": {
+        "properties": {
+          "documents": {
+            "items": {
+              "type": "string",
+              "format": "binary"
+            },
+            "type": "array",
+            "title": "Documents",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "Body_analyze_with_documents_analyze_with_documents_post"
+      },
+      "EvidenceItem": {
+        "properties": {
+          "criterion_id": {
+            "type": "string",
+            "title": "Criterion Id",
+            "description": "ID of the policy criterion"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "MET",
+              "NOT_MET",
+              "UNCLEAR"
+            ],
+            "title": "Status",
+            "description": "Criterion status"
+          },
+          "evidence": {
+            "type": "string",
+            "title": "Evidence",
+            "description": "Extracted evidence text"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "description": "Source of the evidence"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "description": "Confidence score"
+          }
+        },
+        "type": "object",
+        "required": [
+          "criterion_id",
+          "status",
+          "evidence",
+          "source",
+          "confidence"
+        ],
+        "title": "EvidenceItem",
+        "description": "Evidence item supporting a policy criterion."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "PAFormResponse": {
+        "properties": {
+          "patient_name": {
+            "type": "string",
+            "title": "Patient Name",
+            "description": "Patient full name"
+          },
+          "patient_dob": {
+            "type": "string",
+            "title": "Patient Dob",
+            "description": "Patient date of birth (YYYY-MM-DD)"
+          },
+          "member_id": {
+            "type": "string",
+            "title": "Member Id",
+            "description": "Insurance member ID"
+          },
+          "diagnosis_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Diagnosis Codes",
+            "description": "ICD-10 diagnosis codes"
+          },
+          "procedure_code": {
+            "type": "string",
+            "title": "Procedure Code",
+            "description": "CPT procedure code"
+          },
+          "clinical_summary": {
+            "type": "string",
+            "title": "Clinical Summary",
+            "description": "AI-generated medical necessity summary"
+          },
+          "supporting_evidence": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceItem"
+            },
+            "type": "array",
+            "title": "Supporting Evidence",
+            "description": "Evidence items"
+          },
+          "recommendation": {
+            "type": "string",
+            "enum": [
+              "APPROVE",
+              "NEED_INFO",
+              "MANUAL_REVIEW"
+            ],
+            "title": "Recommendation",
+            "description": "AI recommendation"
+          },
+          "confidence_score": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence Score",
+            "description": "Overall confidence"
+          },
+          "field_mappings": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Field Mappings",
+            "description": "PDF field name to value mappings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "patient_name",
+          "patient_dob",
+          "member_id",
+          "diagnosis_codes",
+          "procedure_code",
+          "clinical_summary",
+          "supporting_evidence",
+          "recommendation",
+          "confidence_score",
+          "field_mappings"
+        ],
+        "title": "PAFormResponse",
+        "description": "Complete PA form response from analysis."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Analysis",
+      "description": "Clinical data analysis and PA form generation"
+    },
+    {
+      "name": "Health",
+      "description": "Service health and status"
+    }
+  ]
+}

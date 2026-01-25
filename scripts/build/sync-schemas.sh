@@ -42,7 +42,7 @@ if [ -f "apps/intelligence/pyproject.toml" ]; then
         uv run python -c "
 from src.main import app
 import json
-with open('../intelligence/openapi.json', 'w') as f:
+with open('openapi.json', 'w') as f:
     json.dump(app.openapi(), f, indent=2)
 print('OpenAPI spec generated')
 " 2>/dev/null || echo "      ! Python generation failed"

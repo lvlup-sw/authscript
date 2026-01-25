@@ -52,7 +52,10 @@ MRI_LUMBAR_POLICY: dict[str, Any] = {
         },
         {
             "id": "neurological_symptoms",
-            "description": "Red flag neurological symptoms (bypasses conservative therapy requirement)",
+            "description": (
+                "Red flag neurological symptoms "
+                "(bypasses conservative therapy requirement)"
+            ),
             "evidence_patterns": [
                 r"radiculopathy",
                 r"weakness|numbness|tingling",
