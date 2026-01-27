@@ -33,6 +33,12 @@ fi
 # ---------------------------------------------------------------------------
 info "Configuring user-secrets for AuthScript.AppHost..."
 
+# Guard: Check if AppHost project directory exists
+if [[ ! -d "$APPHOST_PROJECT" ]]; then
+    error "AppHost project not found at: $APPHOST_PROJECT"
+    exit 1
+fi
+
 cd "$APPHOST_PROJECT"
 
 # ---------------------------------------------------------------------------

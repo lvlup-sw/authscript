@@ -40,8 +40,8 @@ public sealed class DocumentUploader : IDocumentUploader
         CancellationToken cancellationToken = default)
     {
         _logger.LogInformation(
-            "Uploading PA form. PatientId={PatientId}, Size={Size} bytes",
-            patientId, pdfBytes.Length);
+            "Uploading PA form. Size={Size} bytes",
+            pdfBytes.Length);
 
         var documentReference = BuildDocumentReference(pdfBytes, patientId, encounterId);
         var json = JsonSerializer.Serialize(documentReference);

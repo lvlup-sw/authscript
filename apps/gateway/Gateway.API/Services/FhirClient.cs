@@ -305,8 +305,7 @@ public sealed class FhirClient : IFhirClient
 
     private static string? ExtractClinicalStatus(JsonElement resource)
     {
-        if (!resource.TryGetProperty("clinicalStatus", out var status)) return null;
-        var coding = ExtractFirstCoding(status, "coding");
+        var coding = ExtractFirstCoding(resource, "clinicalStatus");
         return coding?.code;
     }
 
