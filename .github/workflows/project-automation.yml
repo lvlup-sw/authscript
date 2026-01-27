@@ -206,6 +206,268 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ============================================================
+  # PROJECT: Add PRs to Project #4 with workstream assignment
+  # ============================================================
+  add-pr-to-project:
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout for file detection
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Add PR to project
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PROJECT_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+
+            // Get project and field info
+            const projectResult = await github.graphql(`
+              query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  projectV2(number: $number) {
+                    id
+                    fields(first: 20) {
+                      nodes {
+                        ... on ProjectV2SingleSelectField {
+                          id
+                          name
+                          options { id name }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              number: parseInt(process.env.PROJECT_NUMBER)
+            });
+
+            const project = projectResult.repository.projectV2;
+            if (!project) {
+              console.log(`Project #${process.env.PROJECT_NUMBER} not found`);
+              return;
+            }
+
+            const workstreamField = project.fields.nodes.find(f => f.name === 'Workstream');
+
+            // Add PR to project
+            const addItemMutation = `
+              mutation($projectId: ID!, $contentId: ID!) {
+                addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
+                  item { id }
+                }
+              }
+            `;
+
+            const addResult = await github.graphql(addItemMutation, {
+              projectId: project.id,
+              contentId: pr.node_id
+            });
+
+            const itemId = addResult.addProjectV2ItemById.item.id;
+            console.log(`Added PR #${pr.number} to project, item ID: ${itemId}`);
+
+            // Determine workstream based on changed files
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100
+            });
+
+            const touchesGateway = files.some(f => f.filename.startsWith('apps/gateway/'));
+            const touchesIntelligence = files.some(f => f.filename.startsWith('apps/intelligence/'));
+
+            let workstreamValue = null;
+            if (touchesGateway && !touchesIntelligence) {
+              workstreamValue = 'Gateway (.NET)';
+            } else if (touchesIntelligence && !touchesGateway) {
+              workstreamValue = 'Intelligence (Python)';
+            }
+            // If both or neither, leave unset
+
+            if (workstreamValue && workstreamField) {
+              const option = workstreamField.options.find(o => o.name === workstreamValue);
+              if (option) {
+                const updateFieldMutation = `
+                  mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                    updateProjectV2ItemFieldValue(input: {
+                      projectId: $projectId
+                      itemId: $itemId
+                      fieldId: $fieldId
+                      value: { singleSelectOptionId: $optionId }
+                    }) {
+                      projectV2Item { id }
+                    }
+                  }
+                `;
+
+                await github.graphql(updateFieldMutation, {
+                  projectId: project.id,
+                  itemId: itemId,
+                  fieldId: workstreamField.id,
+                  optionId: option.id
+                });
+
+                console.log(`Set Workstream to: ${workstreamValue}`);
+              }
+            }
+
+  # ============================================================
+  # PROJECT: Add issues to Project #4 with priority and workstream
+  # ============================================================
+  add-issue-to-project:
+    if: github.event_name == 'issues' && github.event.action == 'opened'
+    needs: auto-triage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add issue to project
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PROJECT_TOKEN }}
+          script: |
+            const issue = context.payload.issue;
+
+            // Get project and field info
+            const projectResult = await github.graphql(`
+              query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  projectV2(number: $number) {
+                    id
+                    fields(first: 20) {
+                      nodes {
+                        ... on ProjectV2SingleSelectField {
+                          id
+                          name
+                          options { id name }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              number: parseInt(process.env.PROJECT_NUMBER)
+            });
+
+            const project = projectResult.repository.projectV2;
+            if (!project) {
+              console.log(`Project #${process.env.PROJECT_NUMBER} not found`);
+              return;
+            }
+
+            const priorityField = project.fields.nodes.find(f => f.name === 'Priority');
+            const workstreamField = project.fields.nodes.find(f => f.name === 'Workstream');
+
+            // Add issue to project
+            const addItemMutation = `
+              mutation($projectId: ID!, $contentId: ID!) {
+                addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
+                  item { id }
+                }
+              }
+            `;
+
+            const addResult = await github.graphql(addItemMutation, {
+              projectId: project.id,
+              contentId: issue.node_id
+            });
+
+            const itemId = addResult.addProjectV2ItemById.item.id;
+            console.log(`Added issue #${issue.number} to project, item ID: ${itemId}`);
+
+            // Re-fetch issue to get labels (auto-triage may have added them)
+            const { data: freshIssue } = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number
+            });
+
+            const labels = freshIssue.labels.map(l => l.name);
+
+            // Set Priority based on labels
+            if (priorityField) {
+              let priorityValue = 'Medium'; // Default
+              if (labels.includes('priority:high')) {
+                priorityValue = 'High';
+              } else if (labels.includes('priority:low')) {
+                priorityValue = 'Low';
+              }
+
+              const option = priorityField.options.find(o => o.name === priorityValue);
+              if (option) {
+                const updateFieldMutation = `
+                  mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                    updateProjectV2ItemFieldValue(input: {
+                      projectId: $projectId
+                      itemId: $itemId
+                      fieldId: $fieldId
+                      value: { singleSelectOptionId: $optionId }
+                    }) {
+                      projectV2Item { id }
+                    }
+                  }
+                `;
+
+                await github.graphql(updateFieldMutation, {
+                  projectId: project.id,
+                  itemId: itemId,
+                  fieldId: priorityField.id,
+                  optionId: option.id
+                });
+
+                console.log(`Set Priority to: ${priorityValue}`);
+              }
+            }
+
+            // Set Workstream based on scope labels
+            if (workstreamField) {
+              let workstreamValue = null;
+              if (labels.includes('scope:gateway')) {
+                workstreamValue = 'Gateway (.NET)';
+              } else if (labels.includes('scope:intelligence')) {
+                workstreamValue = 'Intelligence (Python)';
+              }
+
+              if (workstreamValue) {
+                const option = workstreamField.options.find(o => o.name === workstreamValue);
+                if (option) {
+                  const updateFieldMutation = `
+                    mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                      updateProjectV2ItemFieldValue(input: {
+                        projectId: $projectId
+                        itemId: $itemId
+                        fieldId: $fieldId
+                        value: { singleSelectOptionId: $optionId }
+                      }) {
+                        projectV2Item { id }
+                      }
+                    }
+                  `;
+
+                  await github.graphql(updateFieldMutation, {
+                    projectId: project.id,
+                    itemId: itemId,
+                    fieldId: workstreamField.id,
+                    optionId: option.id
+                  });
+
+                  console.log(`Set Workstream to: ${workstreamValue}`);
+                }
+              }
+            }
+
+  # ============================================================
   # RELEASE AUTOMATION: Generate changelog and release
   # ============================================================
   release:
