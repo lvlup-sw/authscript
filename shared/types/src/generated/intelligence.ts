@@ -132,11 +132,8 @@ export type RootGet200 = {[key: string]: string};
 /**
  * Analyze clinical data and generate PA form response.
 
-This endpoint:
-1. Validates the procedure code against supported policies
-2. Extracts evidence from clinical data
-3. Evaluates against policy criteria
-4. Generates form field values
+STUB IMPLEMENTATION: Always returns APPROVE with 1.0 confidence.
+Production version would evaluate clinical data against payer policies.
  * @summary Analyze
  */
 export type analyzeAnalyzePostResponse200 = {
@@ -189,13 +186,8 @@ export const analyzeAnalyzePost = async (analyzeRequest: AnalyzeRequest, options
 /**
  * Analyze clinical data with attached PDF documents.
 
-Processes multipart form data including:
-- **patient_id**: Unique patient identifier
-- **procedure_code**: CPT/HCPCS code for the procedure
-- **clinical_data**: JSON string of clinical data
-- **documents**: PDF files containing clinical documentation
-
-Returns the same PA form response as the standard analyze endpoint.
+STUB IMPLEMENTATION: Documents are acknowledged but not processed.
+Production version would extract text and analyze documents.
  * @summary Analyze With Documents
  */
 export type analyzeWithDocumentsAnalyzeWithDocumentsPostResponse200 = {
