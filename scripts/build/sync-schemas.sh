@@ -14,30 +14,43 @@ cd "$ROOT_DIR"
 echo "=== AuthScript Schema Synchronization ==="
 echo ""
 
+# Restore .NET local tools (NSwag, Swashbuckle CLI)
+if [ -f ".config/dotnet-tools.json" ]; then
+    dotnet tool restore --verbosity quiet 2>/dev/null || true
+fi
+
+# Ensure uv is in PATH (common locations)
+if ! command -v uv &> /dev/null; then
+    if [ -f "$HOME/.local/bin/uv" ]; then
+        export PATH="$HOME/.local/bin:$PATH"
+    elif [ -f "$HOME/.cargo/bin/uv" ]; then
+        export PATH="$HOME/.cargo/bin:$PATH"
+    fi
+fi
+
 # Ensure shared schemas directory exists
 mkdir -p shared/schemas
 
 # Step 1: Build Gateway API and extract OpenAPI spec
-echo "[1/7] Building Gateway API and extracting OpenAPI..."
+echo "[1/7] Building Gateway API..."
 if [ -f "apps/gateway/Gateway.API/Gateway.API.csproj" ]; then
     dotnet build apps/gateway/Gateway.API/Gateway.API.csproj --configuration Release --verbosity quiet
+    echo "      ✓ Gateway build complete"
 
-    # Generate OpenAPI spec using dotnet swagger
-    # Note: Requires Swashbuckle.AspNetCore.Cli installed
-    if command -v swagger &> /dev/null; then
-        # Output to both app directory (for Orval) and shared/schemas (for cross-service)
-        dotnet swagger tofile --output apps/gateway/openapi.json \
-            apps/gateway/Gateway.API/bin/Release/net10.0/Gateway.API.dll v1
+    # Gateway uses Microsoft.AspNetCore.OpenApi (not Swashbuckle)
+    # OpenAPI spec is served at runtime via /openapi/v1.json endpoint
+    # To extract: run the Gateway and fetch from http://localhost:5000/openapi/v1.json
+    if [ -f "apps/gateway/openapi.json" ]; then
         cp apps/gateway/openapi.json shared/schemas/gateway.openapi.json
-        echo "      ✓ Gateway OpenAPI spec extracted to shared/schemas/"
+        echo "      ✓ Gateway OpenAPI spec copied to shared/schemas/"
     else
-        echo "      ! swagger CLI not installed, skipping OpenAPI generation"
-        echo "      Install with: dotnet tool install -g Swashbuckle.AspNetCore.Cli"
+        echo "      ! apps/gateway/openapi.json not found"
+        echo "      Gateway uses runtime OpenAPI generation (Microsoft.AspNetCore.OpenApi)"
+        echo "      To extract: run Gateway and fetch from /openapi/v1.json"
     fi
 else
     echo "      ! Gateway project not found, skipping"
 fi
-echo "      ✓ Gateway build complete"
 echo ""
 
 # Step 2: Generate Intelligence OpenAPI spec
