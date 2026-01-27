@@ -9,6 +9,8 @@ body:
 
         **Tip:** Good investigation issues define clear questions to answer, decision criteria, and expected deliverables.
 
+        > **Note for investigators:** The questions and criteria outlined here are a *starting point*. Feel free to refine scope or pivot direction as you learn more. Document any significant changes in the issue comments.
+
   - type: textarea
     id: summary
     attributes:

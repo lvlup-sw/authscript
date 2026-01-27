@@ -9,6 +9,8 @@ body:
 
         **Tip:** Good issues provide enough context for an engineer to start working without asking questions. Include inputs/outputs, dependencies, and links to all relevant design doc sections.
 
+        > **Note for implementers:** The design outlined here is a *guideline*, not a strict specification. Feel free to pivot from the suggested approach if you discover a better solution during implementation. Update the issue with your rationale when deviating significantly.
+
   - type: textarea
     id: summary
     attributes:
