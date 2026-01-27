@@ -3,9 +3,10 @@ using Gateway.API.Models;
 namespace Gateway.API.Contracts;
 
 /// <summary>
-/// Client for interacting with Epic's FHIR R4 API to retrieve clinical data.
+/// High-level client for FHIR R4 API operations.
+/// Provides domain-specific methods for retrieving clinical data.
 /// </summary>
-public interface IEpicFhirClient
+public interface IFhirClient
 {
     /// <summary>
     /// Retrieves patient demographic information.

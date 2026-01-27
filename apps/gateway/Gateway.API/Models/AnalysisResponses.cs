@@ -63,7 +63,7 @@ public sealed record StatusResponse
 }
 
 /// <summary>
-/// Response for the SubmitToEpic endpoint.
+/// Response for the SubmitToFhir endpoint.
 /// </summary>
 public sealed record SubmitResponse
 {
@@ -78,7 +78,7 @@ public sealed record SubmitResponse
     public required bool Submitted { get; init; }
 
     /// <summary>
-    /// Gets the Epic DocumentReference ID when submitted successfully.
+    /// Gets the FHIR DocumentReference ID when submitted successfully.
     /// </summary>
     public string? DocumentId { get; init; }
 
@@ -110,9 +110,9 @@ public sealed record ErrorResponse
 }
 
 /// <summary>
-/// Request body for the SubmitToEpic endpoint.
+/// Request body for the SubmitToFhir endpoint.
 /// </summary>
-public sealed record SubmitToEpicRequest
+public sealed record SubmitToFhirRequest
 {
     /// <summary>
     /// Gets the FHIR Patient resource ID.
@@ -125,7 +125,7 @@ public sealed record SubmitToEpicRequest
     public string? EncounterId { get; init; }
 
     /// <summary>
-    /// Gets the OAuth access token for Epic authentication.
+    /// Gets the OAuth access token for FHIR authentication.
     /// </summary>
     public required string AccessToken { get; init; }
 }

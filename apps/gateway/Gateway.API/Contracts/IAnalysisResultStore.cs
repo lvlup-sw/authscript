@@ -3,9 +3,10 @@ using Gateway.API.Models;
 namespace Gateway.API.Contracts;
 
 /// <summary>
-/// Caching service for demo mode to reduce redundant Intelligence service calls.
+/// Stores and retrieves completed analysis results.
+/// Used for caching analysis responses and generated PDFs by transaction ID.
 /// </summary>
-public interface IDemoCacheService
+public interface IAnalysisResultStore
 {
     /// <summary>
     /// Retrieves a cached PA form data response.

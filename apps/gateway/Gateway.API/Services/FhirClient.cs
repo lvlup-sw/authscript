@@ -1,4 +1,3 @@
-using System.Net.Http.Headers;
 using System.Text.Json;
 using Gateway.API.Contracts;
 using Gateway.API.Models;
@@ -6,20 +5,20 @@ using Gateway.API.Models;
 namespace Gateway.API.Services;
 
 /// <summary>
-/// HTTP client implementation for Epic's FHIR R4 API.
-/// Handles authentication, request formatting, and response parsing.
+/// High-level FHIR client implementation.
+/// Delegates HTTP operations to IFhirHttpClient and maps responses to domain DTOs.
 /// </summary>
-public sealed class EpicFhirClient : IEpicFhirClient
+public sealed class FhirClient : IFhirClient
 {
-    private readonly HttpClient _httpClient;
-    private readonly ILogger<EpicFhirClient> _logger;
+    private readonly IFhirHttpClient _httpClient;
+    private readonly ILogger<FhirClient> _logger;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="EpicFhirClient"/> class.
+    /// Initializes a new instance of the <see cref="FhirClient"/> class.
     /// </summary>
-    /// <param name="httpClient">HTTP client configured with Epic's FHIR base URL.</param>
+    /// <param name="httpClient">Low-level FHIR HTTP client.</param>
     /// <param name="logger">Logger for diagnostic output.</param>
-    public EpicFhirClient(HttpClient httpClient, ILogger<EpicFhirClient> logger)
+    public FhirClient(IFhirHttpClient httpClient, ILogger<FhirClient> logger)
     {
         _httpClient = httpClient;
         _logger = logger;
@@ -31,20 +30,18 @@ public sealed class EpicFhirClient : IEpicFhirClient
         string accessToken,
         CancellationToken cancellationToken = default)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"Patient/{patientId}");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/fhir+json"));
+        var result = await _httpClient.ReadAsync("Patient", patientId, accessToken, cancellationToken);
 
-        var response = await _httpClient.SendAsync(request, cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
+        if (result.IsFailure)
         {
-            _logger.LogWarning("Failed to fetch patient {PatientId}: {Status}", patientId, response.StatusCode);
+            _logger.LogWarning(
+                "Failed to fetch patient {PatientId}: {Error}",
+                patientId,
+                result.Error?.Message);
             return null;
         }
 
-        var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cancellationToken);
-
+        var json = result.Value!;
         return new PatientInfo
         {
             Id = patientId,
@@ -62,23 +59,22 @@ public sealed class EpicFhirClient : IEpicFhirClient
         CancellationToken cancellationToken = default)
     {
         var results = new List<ConditionInfo>();
+        var result = await _httpClient.SearchAsync(
+            "Condition",
+            $"patient={patientId}&clinical-status=active",
+            accessToken,
+            cancellationToken);
 
-        using var request = new HttpRequestMessage(
-            HttpMethod.Get,
-            $"Condition?patient={patientId}&clinical-status=active");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/fhir+json"));
-
-        var response = await _httpClient.SendAsync(request, cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
+        if (result.IsFailure)
         {
-            _logger.LogWarning("Failed to search conditions for {PatientId}: {Status}", patientId, response.StatusCode);
+            _logger.LogWarning(
+                "Failed to search conditions for {PatientId}: {Error}",
+                patientId,
+                result.Error?.Message);
             return results;
         }
 
-        var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cancellationToken);
-
+        var json = result.Value!;
         if (json.TryGetProperty("entry", out var entries))
         {
             foreach (var entry in entries.EnumerateArray())
@@ -112,23 +108,22 @@ public sealed class EpicFhirClient : IEpicFhirClient
         CancellationToken cancellationToken = default)
     {
         var results = new List<ObservationInfo>();
+        var result = await _httpClient.SearchAsync(
+            "Observation",
+            $"patient={patientId}&category=laboratory&date=ge{since:yyyy-MM-dd}",
+            accessToken,
+            cancellationToken);
 
-        using var request = new HttpRequestMessage(
-            HttpMethod.Get,
-            $"Observation?patient={patientId}&category=laboratory&date=ge{since:yyyy-MM-dd}");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/fhir+json"));
-
-        var response = await _httpClient.SendAsync(request, cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
+        if (result.IsFailure)
         {
-            _logger.LogWarning("Failed to search observations for {PatientId}: {Status}", patientId, response.StatusCode);
+            _logger.LogWarning(
+                "Failed to search observations for {PatientId}: {Error}",
+                patientId,
+                result.Error?.Message);
             return results;
         }
 
-        var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cancellationToken);
-
+        var json = result.Value!;
         if (json.TryGetProperty("entry", out var entries))
         {
             foreach (var entry in entries.EnumerateArray())
@@ -163,23 +158,22 @@ public sealed class EpicFhirClient : IEpicFhirClient
         CancellationToken cancellationToken = default)
     {
         var results = new List<ProcedureInfo>();
+        var result = await _httpClient.SearchAsync(
+            "Procedure",
+            $"patient={patientId}&date=ge{since:yyyy-MM-dd}",
+            accessToken,
+            cancellationToken);
 
-        using var request = new HttpRequestMessage(
-            HttpMethod.Get,
-            $"Procedure?patient={patientId}&date=ge{since:yyyy-MM-dd}");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/fhir+json"));
-
-        var response = await _httpClient.SendAsync(request, cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
+        if (result.IsFailure)
         {
-            _logger.LogWarning("Failed to search procedures for {PatientId}: {Status}", patientId, response.StatusCode);
+            _logger.LogWarning(
+                "Failed to search procedures for {PatientId}: {Error}",
+                patientId,
+                result.Error?.Message);
             return results;
         }
 
-        var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cancellationToken);
-
+        var json = result.Value!;
         if (json.TryGetProperty("entry", out var entries))
         {
             foreach (var entry in entries.EnumerateArray())
@@ -212,23 +206,22 @@ public sealed class EpicFhirClient : IEpicFhirClient
         CancellationToken cancellationToken = default)
     {
         var results = new List<DocumentInfo>();
+        var result = await _httpClient.SearchAsync(
+            "DocumentReference",
+            $"patient={patientId}&status=current",
+            accessToken,
+            cancellationToken);
 
-        using var request = new HttpRequestMessage(
-            HttpMethod.Get,
-            $"DocumentReference?patient={patientId}&status=current");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/fhir+json"));
-
-        var response = await _httpClient.SendAsync(request, cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
+        if (result.IsFailure)
         {
-            _logger.LogWarning("Failed to search documents for {PatientId}: {Status}", patientId, response.StatusCode);
+            _logger.LogWarning(
+                "Failed to search documents for {PatientId}: {Error}",
+                patientId,
+                result.Error?.Message);
             return results;
         }
 
-        var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cancellationToken);
-
+        var json = result.Value!;
         if (json.TryGetProperty("entry", out var entries))
         {
             foreach (var entry in entries.EnumerateArray())
@@ -258,18 +251,18 @@ public sealed class EpicFhirClient : IEpicFhirClient
         string accessToken,
         CancellationToken cancellationToken = default)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"Binary/{documentId}");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        var result = await _httpClient.ReadBinaryAsync(documentId, accessToken, cancellationToken);
 
-        var response = await _httpClient.SendAsync(request, cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
+        if (result.IsFailure)
         {
-            _logger.LogWarning("Failed to fetch document content {DocumentId}: {Status}", documentId, response.StatusCode);
+            _logger.LogWarning(
+                "Failed to fetch document content {DocumentId}: {Error}",
+                documentId,
+                result.Error?.Message);
             return null;
         }
 
-        return await response.Content.ReadAsByteArrayAsync(cancellationToken);
+        return result.Value;
     }
 
     private static string? ExtractName(JsonElement json, string part)

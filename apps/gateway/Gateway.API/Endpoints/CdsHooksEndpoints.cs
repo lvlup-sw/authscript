@@ -78,8 +78,8 @@ public static class CdsHooksEndpoints
         [FromServices] IFhirDataAggregator fhirAggregator,
         [FromServices] IIntelligenceClient intelligenceClient,
         [FromServices] IPdfFormStamper pdfStamper,
-        [FromServices] IEpicUploader epicUploader,
-        [FromServices] IDemoCacheService cacheService,
+        [FromServices] IDocumentUploader documentUploader,
+        [FromServices] IAnalysisResultStore resultStore,
         [FromServices] IConfiguration config,
         [FromServices] ILogger<CdsRequest> logger,
         CancellationToken cancellationToken)
@@ -106,7 +106,7 @@ public static class CdsHooksEndpoints
         {
             // Check cache first (for demo scenarios)
             var cacheKey = $"{request.Context.PatientId}:{procedureCode}";
-            var cachedResponse = await cacheService.GetCachedResponseAsync(cacheKey, cts.Token);
+            var cachedResponse = await resultStore.GetCachedResponseAsync(cacheKey, cts.Token);
             if (cachedResponse is not null)
             {
                 logger.LogInformation("Cache hit for {CacheKey}", cacheKey);
@@ -136,16 +136,24 @@ public static class CdsHooksEndpoints
             // 3. Stamp PDF form
             var pdfBytes = await pdfStamper.StampFormAsync(formData, cts.Token);
 
-            // 4. Upload to Epic
-            var documentId = await epicUploader.UploadDocumentAsync(
+            // 4. Upload to FHIR server
+            var uploadResult = await documentUploader.UploadDocumentAsync(
                 pdfBytes,
                 request.Context.PatientId,
                 request.Context.EncounterId,
                 accessToken,
                 cts.Token);
 
-            // Cache the successful response for demo purposes
-            await cacheService.SetCachedResponseAsync(cacheKey, formData, cts.Token);
+            if (uploadResult.IsFailure)
+            {
+                logger.LogError("Failed to upload document: {Error}", uploadResult.Error?.Message);
+                return Results.Ok(BuildFallbackCard(transactionId, config));
+            }
+
+            var documentId = uploadResult.Value!;
+
+            // Store the successful response
+            await resultStore.SetCachedResponseAsync(cacheKey, formData, cts.Token);
 
             logger.LogInformation(
                 "PA form generated successfully. TransactionId={TransactionId}, DocumentId={DocumentId}",
