@@ -1,8 +1,10 @@
 namespace Gateway.API.Extensions;
 
 using Gateway.API.Configuration;
+using Gateway.API.Contracts;
 using Gateway.API.Contracts.Fhir;
 using Gateway.API.Contracts.Http;
+using Gateway.API.Services;
 using Gateway.API.Services.Fhir;
 using Gateway.API.Services.Http;
 using Microsoft.Extensions.Http.Resilience;
@@ -31,6 +33,13 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IFhirSerializer, FhirSerializer>();
         services.AddSingleton<IHttpClientProvider, HttpClientProvider>();
 
+        // Business services
+        services.AddScoped<IEpicFhirClient, EpicFhirClient>();
+        services.AddScoped<IFhirDataAggregator, FhirDataAggregator>();
+        services.AddScoped<IEpicUploader, EpicUploader>();
+        services.AddScoped<IPdfFormStamper, PdfFormStamper>();
+        services.AddSingleton<IDemoCacheService, DemoCacheService>();
+
         // Epic FHIR HttpClient with resilience
         services.AddHttpClient("EpicFhir", (sp, client) =>
         {
@@ -40,7 +49,7 @@ public static class ServiceCollectionExtensions
         })
         .AddStandardResilienceHandler();
 
-        // Intelligence HttpClient with resilience
+        // Intelligence HttpClient with resilience (named client)
         services.AddHttpClient("Intelligence", (sp, client) =>
         {
             var options = configuration.GetSection(IntelligenceOptions.SectionName).Get<IntelligenceOptions>();
@@ -48,6 +57,10 @@ public static class ServiceCollectionExtensions
             client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
         })
         .AddStandardResilienceHandler();
+
+        // Register IntelligenceClient using the named client
+        services.AddHttpClient<IIntelligenceClient, IntelligenceClient>("Intelligence")
+            .AddStandardResilienceHandler();
 
         return services;
     }
