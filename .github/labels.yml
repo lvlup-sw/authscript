@@ -22,10 +22,6 @@
   description: "Question or discussion"
 
 # Scope Labels
-- name: "scope:dashboard"
-  color: "bfdadc"
-  description: "Dashboard (React frontend)"
-
 - name: "scope:gateway"
   color: "c5def5"
   description: "Gateway API (.NET backend)"
@@ -47,10 +43,6 @@
   description: "LLM and AI model integration"
 
 # Status Labels
-- name: "status:triage"
-  color: "ededed"
-  description: "Needs initial review"
-
 - name: "status:blocked"
   color: "b60205"
   description: "Blocked by external factor"

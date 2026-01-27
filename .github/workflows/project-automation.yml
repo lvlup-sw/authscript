@@ -101,9 +101,9 @@ jobs:
             console.log('Label sync complete');
 
   # ============================================================
-  # AUTO-TRIAGE: Label new issues based on content
+  # AUTO-LABEL: Label new issues based on content (skips pre-labeled)
   # ============================================================
-  auto-triage:
+  auto-label:
     if: github.event_name == 'issues' && github.event.action == 'opened'
     runs-on: ubuntu-latest
     permissions:
@@ -114,34 +114,48 @@ jobs:
         with:
           script: |
             const issue = context.payload.issue;
-            const text = `${issue.title} ${issue.body}`.toLowerCase();
-            const labels = ['status:triage'];
 
-            // Type detection
-            if (text.match(/bug|error|fail|broken|crash|issue/)) {
-              labels.push('type:bug');
-            } else if (text.match(/feature|add|implement|support|enhance/)) {
-              labels.push('type:feature');
-            } else if (text.match(/doc|readme|typo|clarif/)) {
-              labels.push('type:docs');
-            } else if (text.match(/\?|how|what|why|question/)) {
-              labels.push('type:question');
+            // Skip if issue already has meaningful labels (was pre-triaged)
+            const existingLabels = issue.labels.map(l => l.name);
+            const hasTypeLabel = existingLabels.some(l => l.startsWith('type:'));
+            const hasScopeLabel = existingLabels.some(l => l.startsWith('scope:'));
+            const hasPriorityLabel = existingLabels.some(l => l.startsWith('priority:'));
+
+            if (hasTypeLabel || hasScopeLabel || hasPriorityLabel) {
+              console.log('Issue already has labels, skipping auto-label');
+              return;
             }
 
-            // Scope detection
-            if (text.match(/dashboard|frontend|react|vite|component|ui/)) labels.push('scope:dashboard');
-            if (text.match(/gateway|backend|api|\.net|dotnet/)) labels.push('scope:gateway');
-            if (text.match(/intelligence|python|ai|ml|langchain|llm|openai/)) labels.push('scope:intelligence');
-            if (text.match(/fhir|hl7|epic|cerner|health/)) labels.push('scope:fhir');
-            if (text.match(/pdf|document|parse|extract/)) labels.push('scope:pdf');
-            if (text.match(/llm|gpt|claude|model|embedding|vector/)) labels.push('scope:llm');
+            const text = `${issue.title} ${issue.body}`.toLowerCase();
+            const labels = [];
 
-            await github.rest.issues.addLabels({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: issue.number,
-              labels: labels
-            });
+            // Type detection - use word boundaries for precision
+            if (text.match(/\b(bug|error|fail(ed|ing|ure)?|broken|crash)\b/)) {
+              labels.push('type:bug');
+            } else if (text.match(/^feat[:(]/) || text.match(/\b(feature|enhancement)\b/)) {
+              labels.push('type:feature');
+            } else if (text.match(/\b(documentation|readme|typo)\b/)) {
+              labels.push('type:docs');
+            }
+
+            // Scope detection - more specific patterns
+            if (text.match(/\bgateway\b/i)) labels.push('scope:gateway');
+            if (text.match(/\bintelligence\b/i)) labels.push('scope:intelligence');
+            if (text.match(/\b(fhir|hl7|epic)\b/i)) labels.push('scope:fhir');
+            if (text.match(/\bpdf\b/i)) labels.push('scope:pdf');
+            if (text.match(/\b(llm|gpt-?\d|claude|openai|embedding)\b/i)) labels.push('scope:llm');
+
+            if (labels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: labels
+              });
+              console.log(`Added labels: ${labels.join(', ')}`);
+            } else {
+              console.log('No labels matched');
+            }
 
   # ============================================================
   # AUTO-ASSIGN: Assign PR author as assignee
@@ -326,7 +340,7 @@ jobs:
   # ============================================================
   add-issue-to-project:
     if: github.event_name == 'issues' && github.event.action == 'opened'
-    needs: auto-triage
+    needs: auto-label
     runs-on: ubuntu-latest
     steps:
       - name: Add issue to project
