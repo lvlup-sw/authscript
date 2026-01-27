@@ -102,7 +102,11 @@ def _build_field_mappings(bundle: ClinicalBundle, procedure_code: str) -> dict[s
         if bundle.patient and bundle.patient.birth_date
         else "Unknown"
     )
-    member_id = bundle.patient.member_id if bundle.patient and bundle.patient.member_id else "Unknown"
+    member_id = (
+        bundle.patient.member_id
+        if bundle.patient and bundle.patient.member_id
+        else "Unknown"
+    )
     diagnosis_codes = ", ".join(c.code for c in bundle.conditions) if bundle.conditions else ""
 
     return {
