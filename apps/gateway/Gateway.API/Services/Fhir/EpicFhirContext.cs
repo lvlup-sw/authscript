@@ -1,8 +1,8 @@
 using System.Net;
 using System.Net.Http.Headers;
-using System.Text.Json;
 using Gateway.API.Contracts;
 using Gateway.API.Contracts.Fhir;
+using Hl7.Fhir.Model;
 
 namespace Gateway.API.Services.Fhir;
 
@@ -11,9 +11,10 @@ namespace Gateway.API.Services.Fhir;
 /// Provides low-level CRUD operations with Result-based error handling.
 /// </summary>
 /// <typeparam name="TResource">The FHIR resource type.</typeparam>
-public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResource : class
+public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResource : Resource
 {
     private readonly HttpClient _httpClient;
+    private readonly IFhirSerializer _fhirSerializer;
     private readonly ILogger<EpicFhirContext<TResource>> _logger;
     private readonly string _resourceType;
 
@@ -21,10 +22,15 @@ public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResourc
     /// Initializes a new instance of the <see cref="EpicFhirContext{TResource}"/> class.
     /// </summary>
     /// <param name="httpClient">HTTP client configured with Epic FHIR base URL.</param>
+    /// <param name="fhirSerializer">FHIR JSON serializer.</param>
     /// <param name="logger">Logger for diagnostic output.</param>
-    public EpicFhirContext(HttpClient httpClient, ILogger<EpicFhirContext<TResource>> logger)
+    public EpicFhirContext(
+        HttpClient httpClient,
+        IFhirSerializer fhirSerializer,
+        ILogger<EpicFhirContext<TResource>> logger)
     {
         _httpClient = httpClient;
+        _fhirSerializer = fhirSerializer;
         _logger = logger;
         _resourceType = typeof(TResource).Name;
     }
@@ -51,7 +57,8 @@ public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResourc
 
             response.EnsureSuccessStatusCode();
 
-            var resource = await response.Content.ReadFromJsonAsync<TResource>(cancellationToken: ct);
+            var json = await response.Content.ReadAsStringAsync(ct);
+            var resource = _fhirSerializer.Deserialize<TResource>(json);
 
             if (resource is null)
             {
@@ -88,7 +95,8 @@ public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResourc
 
             response.EnsureSuccessStatusCode();
 
-            var bundle = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
+            var json = await response.Content.ReadAsStringAsync(ct);
+            var bundle = _fhirSerializer.DeserializeBundle(json);
             var resources = ExtractResourcesFromBundle(bundle);
 
             return Result<IReadOnlyList<TResource>>.Success(resources);
@@ -110,7 +118,9 @@ public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResourc
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, _resourceType);
             ConfigureRequest(request, accessToken);
-            request.Content = JsonContent.Create(resource);
+
+            var jsonContent = _fhirSerializer.Serialize(resource);
+            request.Content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/fhir+json");
 
             var response = await _httpClient.SendAsync(request, ct);
 
@@ -127,7 +137,8 @@ public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResourc
 
             response.EnsureSuccessStatusCode();
 
-            var created = await response.Content.ReadFromJsonAsync<TResource>(cancellationToken: ct);
+            var json = await response.Content.ReadAsStringAsync(ct);
+            var created = _fhirSerializer.Deserialize<TResource>(json);
 
             if (created is null)
             {
@@ -150,34 +161,16 @@ public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResourc
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/fhir+json"));
     }
 
-    private IReadOnlyList<TResource> ExtractResourcesFromBundle(JsonElement bundle)
+    private IReadOnlyList<TResource> ExtractResourcesFromBundle(Bundle? bundle)
     {
-        var results = new List<TResource>();
-
-        if (!bundle.TryGetProperty("entry", out var entries))
+        if (bundle?.Entry is null)
         {
-            return results;
+            return [];
         }
 
-        foreach (var entry in entries.EnumerateArray())
-        {
-            if (entry.TryGetProperty("resource", out var resource))
-            {
-                try
-                {
-                    var parsed = JsonSerializer.Deserialize<TResource>(resource.GetRawText());
-                    if (parsed is not null)
-                    {
-                        results.Add(parsed);
-                    }
-                }
-                catch (JsonException ex)
-                {
-                    _logger.LogWarning(ex, "Failed to deserialize resource in bundle");
-                }
-            }
-        }
-
-        return results;
+        return bundle.Entry
+            .Where(e => e.Resource is TResource)
+            .Select(e => (TResource)e.Resource)
+            .ToList();
     }
 }
