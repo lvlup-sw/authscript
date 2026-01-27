@@ -11,15 +11,6 @@ import type {
   PAFormResponse,
   EvidenceItem,
   StatusUpdate,
-  // CDS types
-  FhirAuthorization,
-  CdsContext,
-  CdsRequest,
-  CdsResponse,
-  CdsCard,
-  CdsSuggestion,
-  CdsAction,
-  CdsLink,
 } from '../index';
 
 describe('Index Exports', () => {
@@ -96,64 +87,6 @@ describe('Index Exports', () => {
         status: 'in_progress',
       };
       expect(update.status).toBe('in_progress');
-    });
-  });
-
-  describe('CDS Types Export', () => {
-    it('FhirAuthorization_ExportedFromIndex', () => {
-      const auth: FhirAuthorization = {
-        accessToken: 'token',
-        tokenType: 'Bearer',
-        expiresIn: 3600,
-      };
-      expect(auth.tokenType).toBe('Bearer');
-    });
-
-    it('CdsContext_ExportedFromIndex', () => {
-      const context: CdsContext = { patientId: 'P123' };
-      expect(context.patientId).toBe('P123');
-    });
-
-    it('CdsRequest_ExportedFromIndex', () => {
-      const request: CdsRequest = {
-        hookInstance: 'uuid',
-        hook: 'order-select',
-        context: { patientId: 'P123' },
-      };
-      expect(request.hook).toBe('order-select');
-    });
-
-    it('CdsResponse_ExportedFromIndex', () => {
-      const response: CdsResponse = { cards: [] };
-      expect(response.cards).toHaveLength(0);
-    });
-
-    it('CdsCard_ExportedFromIndex', () => {
-      const card: CdsCard = {
-        summary: 'Test',
-        indicator: 'info',
-        source: { label: 'Test' },
-      };
-      expect(card.indicator).toBe('info');
-    });
-
-    it('CdsSuggestion_ExportedFromIndex', () => {
-      const suggestion: CdsSuggestion = { label: 'Test' };
-      expect(suggestion.label).toBe('Test');
-    });
-
-    it('CdsAction_ExportedFromIndex', () => {
-      const action: CdsAction = { type: 'create' };
-      expect(action.type).toBe('create');
-    });
-
-    it('CdsLink_ExportedFromIndex', () => {
-      const link: CdsLink = {
-        label: 'Test',
-        url: 'https://example.com',
-        type: 'absolute',
-      };
-      expect(link.type).toBe('absolute');
     });
   });
 });

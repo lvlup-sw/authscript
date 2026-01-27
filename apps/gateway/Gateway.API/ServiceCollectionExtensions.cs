@@ -85,6 +85,10 @@ public static class ServiceCollectionExtensions
     /// Adds the Intelligence client to the dependency injection container.
     /// Optionally wraps with caching decorator based on configuration.
     /// </summary>
+    /// <remarks>
+    /// STUB: Currently registers a stub implementation that returns mock data.
+    /// Production will add HttpClient configuration for the Intelligence service.
+    /// </remarks>
     /// <param name="services">The service collection.</param>
     /// <param name="configuration">The configuration.</param>
     /// <returns>The service collection for chaining.</returns>
@@ -92,13 +96,9 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var baseUrl = configuration["Intelligence:BaseUrl"] ?? "http://localhost:8000";
-
-        services.AddHttpClient<IIntelligenceClient, IntelligenceClient>(client =>
-        {
-            client.BaseAddress = new Uri(baseUrl);
-            client.Timeout = TimeSpan.FromSeconds(30);
-        });
+        // STUB: Register stub implementation without HTTP client
+        // Production will use: services.AddHttpClient<IIntelligenceClient, IntelligenceClient>(...)
+        services.AddScoped<IIntelligenceClient, IntelligenceClient>();
 
         // Apply caching decorator if enabled
         var cachingSettings = configuration.GetSection(CachingSettings.SectionName).Get<CachingSettings>();

@@ -1,6 +1,6 @@
 // ===========================================================================
 // AuthScript Gateway Service
-// Handles CDS Hooks, FHIR data aggregation, and PDF generation
+// Handles FHIR data aggregation, PA analysis, and PDF generation
 // ===========================================================================
 
 using Gateway.API;
@@ -62,7 +62,6 @@ app.UseHealthChecks("/health");
 // ---------------------------------------------------------------------------
 // Endpoint Mapping
 // ---------------------------------------------------------------------------
-app.MapCdsHooksEndpoints();
 app.MapAnalysisEndpoints();
 
 app.Run();

@@ -1,21 +1,34 @@
-"""MRI Lumbar Spine policy definition for Blue Cross."""
+"""Example policy definition for prior authorization.
+
+This module demonstrates the policy structure used by the PA system.
+Each policy defines:
+- Procedure codes (CPT) that trigger the policy
+- Diagnosis codes (ICD-10) that qualify for coverage
+- Criteria that must be met for approval
+- Form field mappings for PDF generation
+
+Production implementations will load policies from a database or
+configuration service based on payer and procedure.
+"""
 
 from typing import Any
 
-# MRI Lumbar Spine - Blue Cross Prior Authorization Policy
-# This is a hardcoded policy definition for the demo
-MRI_LUMBAR_POLICY: dict[str, Any] = {
-    "policy_id": "bcbs-mri-lumbar-2024",
+# Example Policy - MRI Lumbar Spine
+# This structure documents the expected policy format for future implementations
+EXAMPLE_POLICY: dict[str, Any] = {
+    "policy_id": "example-mri-lumbar-2024",
     "policy_name": "MRI Lumbar Spine Prior Authorization",
-    "payer": "Blue Cross Blue Shield",
+    "payer": "Example Payer",
     "procedure_codes": ["72148", "72149", "72158"],  # CPT codes for lumbar MRI
     "diagnosis_codes": {
+        # Primary diagnosis codes that directly qualify
         "primary": [
             "M54.5",   # Low back pain
             "M54.50",  # Low back pain, site unspecified
             "M54.51",  # Vertebrogenic low back pain
             "M54.52",  # Low back pain due to muscle strain
         ],
+        # Supporting diagnosis codes that may qualify with additional criteria
         "supporting": [
             "M51.16",  # Intervertebral disc disorders with radiculopathy, lumbar
             "M51.17",  # Intervertebral disc disorders with radiculopathy, lumbosacral
@@ -74,6 +87,7 @@ MRI_LUMBAR_POLICY: dict[str, Any] = {
             "required": True,
         },
     ],
+    # PDF form field mappings (field name in PDF -> data field)
     "form_field_mappings": {
         "patient_name": "PatientName",
         "patient_dob": "PatientDOB",

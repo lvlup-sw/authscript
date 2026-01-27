@@ -5,4 +5,3 @@
 
 export * from './common';
 export * from './authscript';
-export * from './cds';
