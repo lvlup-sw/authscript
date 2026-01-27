@@ -6,43 +6,100 @@ body:
     attributes:
       value: |
         Use this template for tracked implementation work.
-        Link to the relevant design document section below.
+
+        **Tip:** Good issues provide enough context for an engineer to start working without asking questions. Include inputs/outputs, dependencies, and links to all relevant design doc sections.
 
   - type: textarea
     id: summary
     attributes:
       label: Summary
-      description: What needs to be implemented?
+      description: What needs to be implemented? (1-2 sentences)
     validations:
       required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: |
+        Where does this fit in the system? What are the inputs/outputs?
+        Include any business logic, rules, or algorithms that need to be implemented.
+      placeholder: |
+        ### What This Component Does
+
+        Brief explanation of the component's role in the pipeline.
+
+        **Inputs:**
+        - Input 1 - description
+        - Input 2 - description
+
+        **Outputs:**
+        - Output 1 - description
+
+        ### Business Logic (if applicable)
+
+        Any rules, algorithms, or decision logic.
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: What issues block this, or are blocked by this?
+      placeholder: |
+        | Issue | Relationship |
+        |-------|--------------|
+        | #N | Blocked by - needs X from this issue |
+        | #M | Blocks - provides Y for this issue |
 
   - type: textarea
     id: tasks
     attributes:
       label: Tasks
-      description: Checklist of implementation steps
+      description: Detailed checklist of implementation steps
       placeholder: |
-        - [ ] First task
-        - [ ] Second task
+        ### Phase 1: Core Implementation
+        - [ ] Task 1
+        - [ ] Task 2
 
-  - type: input
-    id: design-link
-    attributes:
-      label: Design Reference
-      description: Link to architecture/design doc section
-      placeholder: "docs/ARCHITECTURE.md#request-flow"
+        ### Phase 2: Error Handling
+        - [ ] Handle edge case X
+        - [ ] Handle error Y
+
+        ### Phase 3: Testing
+        - [ ] Unit tests for happy path
+        - [ ] Unit tests for error cases
 
   - type: textarea
     id: files
     attributes:
-      label: Files to Modify
-      description: Key files that will be changed
+      label: Files
+      description: Which files to modify, create, or reference?
+      placeholder: |
+        | File | Action |
+        |------|--------|
+        | `path/to/file.cs` | Modify - implement X |
+        | `path/to/new.cs` | Create - new component |
+        | `path/to/reference.cs` | Reference - use existing Y |
+
+  - type: textarea
+    id: design-references
+    attributes:
+      label: Design References
+      description: Links to ALL relevant design doc sections (use full GitHub URLs)
+      placeholder: |
+        - [Section Name](https://github.com/lvlup-sw/authscript/blob/main/docs/designs/2025-01-21-authscript-demo-architecture.md#section-anchor) - What this section provides
+        - [Another Section](URL) - What this section provides
 
   - type: textarea
     id: acceptance
     attributes:
       label: Acceptance Criteria
-      description: How do we know this is done?
+      description: Specific, testable outcomes. How do we know this is done?
+      placeholder: |
+        - [ ] Criterion 1 (specific and testable)
+        - [ ] Criterion 2
+        - [ ] Unit tests achieve >90% coverage
+        - [ ] No hardcoded stub values
     validations:
       required: true
 

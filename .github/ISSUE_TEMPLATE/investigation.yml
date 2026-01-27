@@ -2,25 +2,89 @@ name: Investigation
 description: Research or discovery task
 labels: ["type:chore"]
 body:
-  - type: textarea
-    id: question
+  - type: markdown
     attributes:
-      label: Question to Answer
-      description: What do we need to find out?
+      value: |
+        Use this template for research, discovery, or decision-making tasks.
+
+        **Tip:** Good investigation issues define clear questions to answer, decision criteria, and expected deliverables.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What decision or discovery needs to be made? Why is it important?
     validations:
       required: true
 
   - type: textarea
-    id: context
+    id: questions
     attributes:
-      label: Context
-      description: Why is this important? What does it unblock?
+      label: Research Questions
+      description: What specific questions need to be answered?
+      placeholder: |
+        ### Question 1: [Topic]
+
+        | Question | Considerations |
+        |----------|----------------|
+        | What are the options? | Factor A, Factor B |
+        | What are the tradeoffs? | Pros/cons of each |
+
+        ### Question 2: [Topic]
+
+        ...
+
+  - type: textarea
+    id: criteria
+    attributes:
+      label: Decision Criteria
+      description: How should we evaluate options?
+      placeholder: |
+        | Criterion | Weight | Description |
+        |-----------|--------|-------------|
+        | Criterion 1 | High | Why this matters |
+        | Criterion 2 | Medium | Why this matters |
 
   - type: textarea
     id: deliverables
     attributes:
       label: Deliverables
-      description: What should be produced?
+      description: What artifacts should be produced?
       placeholder: |
-        - Decision documented in docs/decisions/
-        - Updated architecture diagram
+        1. **Decision Document** - Rationale and selection
+        2. **Updated Design Doc** - Sections X, Y, Z updated
+        3. **Configuration/Assets** - Any files to add
+    validations:
+      required: true
+
+  - type: textarea
+    id: downstream
+    attributes:
+      label: Downstream Dependencies
+      description: What issues are blocked waiting for this decision?
+      placeholder: |
+        | Issue | What It Needs |
+        |-------|---------------|
+        | #N | Needs X decision to proceed |
+        | #M | Needs Y artifact |
+
+  - type: textarea
+    id: design-references
+    attributes:
+      label: Design References
+      description: Links to relevant design doc sections (use full GitHub URLs)
+      placeholder: |
+        - [Section Name](https://github.com/lvlup-sw/authscript/blob/main/docs/designs/2025-01-21-authscript-demo-architecture.md#section-anchor) - What this section provides
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: How do we know the investigation is complete?
+      placeholder: |
+        - [ ] Question 1 answered with rationale
+        - [ ] Question 2 answered with rationale
+        - [ ] Decision documented in docs/
+        - [ ] Downstream issues unblocked
+    validations:
+      required: true
