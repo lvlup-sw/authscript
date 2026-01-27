@@ -1,7 +1,8 @@
 using System.Net;
 using System.Net.Http.Headers;
-using Gateway.API.Contracts;
+using Gateway.API.Abstractions;
 using Gateway.API.Contracts.Fhir;
+using Gateway.API.Errors;
 using Hl7.Fhir.Model;
 
 namespace Gateway.API.Services.Fhir;
@@ -47,12 +48,12 @@ public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResourc
 
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
-                return Result<TResource>.Failure(FhirError.NotFound(_resourceType, id));
+                return FhirErrors.NotFound(_resourceType, id);
             }
 
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
-                return Result<TResource>.Failure(FhirError.Unauthorized());
+                return FhirErrors.AuthenticationFailed;
             }
 
             response.EnsureSuccessStatusCode();
@@ -62,16 +63,15 @@ public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResourc
 
             if (resource is null)
             {
-                return Result<TResource>.Failure(
-                    FhirError.Validation($"Failed to deserialize {_resourceType}/{id}"));
+                return FhirErrors.InvalidResponse($"Failed to deserialize {_resourceType}/{id}");
             }
 
-            return Result<TResource>.Success(resource);
+            return resource;
         }
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Network error reading {ResourceType}/{Id}", _resourceType, id);
-            return Result<TResource>.Failure(FhirError.Network(ex.Message, ex));
+            return FhirErrors.NetworkError(ex.Message, ex);
         }
     }
 
@@ -90,7 +90,7 @@ public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResourc
 
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
-                return Result<IReadOnlyList<TResource>>.Failure(FhirError.Unauthorized());
+                return Result<IReadOnlyList<TResource>>.Failure(FhirErrors.AuthenticationFailed);
             }
 
             response.EnsureSuccessStatusCode();
@@ -104,7 +104,7 @@ public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResourc
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Network error searching {ResourceType}", _resourceType);
-            return Result<IReadOnlyList<TResource>>.Failure(FhirError.Network(ex.Message, ex));
+            return Result<IReadOnlyList<TResource>>.Failure(FhirErrors.NetworkError(ex.Message, ex));
         }
     }
 
@@ -126,13 +126,13 @@ public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResourc
 
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
-                return Result<TResource>.Failure(FhirError.Unauthorized());
+                return FhirErrors.AuthenticationFailed;
             }
 
             if (response.StatusCode == HttpStatusCode.UnprocessableEntity)
             {
                 var error = await response.Content.ReadAsStringAsync(ct);
-                return Result<TResource>.Failure(FhirError.Validation(error));
+                return ErrorFactory.Validation(error);
             }
 
             response.EnsureSuccessStatusCode();
@@ -142,16 +142,15 @@ public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResourc
 
             if (created is null)
             {
-                return Result<TResource>.Failure(
-                    FhirError.Validation($"Failed to deserialize created {_resourceType}"));
+                return FhirErrors.InvalidResponse($"Failed to deserialize created {_resourceType}");
             }
 
-            return Result<TResource>.Success(created);
+            return created;
         }
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Network error creating {ResourceType}", _resourceType);
-            return Result<TResource>.Failure(FhirError.Network(ex.Message, ex));
+            return FhirErrors.NetworkError(ex.Message, ex);
         }
     }
 

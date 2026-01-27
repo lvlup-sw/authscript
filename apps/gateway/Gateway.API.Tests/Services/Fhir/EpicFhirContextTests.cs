@@ -1,7 +1,7 @@
 namespace Gateway.API.Tests.Services.Fhir;
 
 using System.Net;
-using Gateway.API.Contracts;
+using Gateway.API.Abstractions;
 using Gateway.API.Contracts.Fhir;
 using Gateway.API.Services.Fhir;
 using Hl7.Fhir.Model;
@@ -84,7 +84,7 @@ public class EpicFhirContextTests
         var result = await context.ReadAsync("999", "token");
 
         await Assert.That(result.IsFailure).IsTrue();
-        await Assert.That(result.Error!.Code).IsEqualTo("NOT_FOUND");
+        await Assert.That(result.Error!.Type).IsEqualTo(ErrorType.NotFound);
     }
 
     [Test]
@@ -98,7 +98,7 @@ public class EpicFhirContextTests
         var result = await context.ReadAsync("123", "invalid-token");
 
         await Assert.That(result.IsFailure).IsTrue();
-        await Assert.That(result.Error!.Code).IsEqualTo("UNAUTHORIZED");
+        await Assert.That(result.Error!.Type).IsEqualTo(ErrorType.Unauthorized);
     }
 
     [Test]
@@ -114,7 +114,7 @@ public class EpicFhirContextTests
         var result = await context.ReadAsync("123", "token");
 
         await Assert.That(result.IsFailure).IsTrue();
-        await Assert.That(result.Error!.Code).IsEqualTo("VALIDATION_ERROR");
+        await Assert.That(result.Error!.Type).IsEqualTo(ErrorType.Infrastructure);
     }
 
     [Test]

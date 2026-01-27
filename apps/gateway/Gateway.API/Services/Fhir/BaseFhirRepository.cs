@@ -1,4 +1,4 @@
-using Gateway.API.Contracts;
+using Gateway.API.Abstractions;
 using Gateway.API.Contracts.Fhir;
 using Hl7.Fhir.Model;
 
