@@ -23,7 +23,7 @@ public class EpicFhirOptionsTests
 
         var services = new ServiceCollection();
         services.Configure<EpicFhirOptions>(config.GetSection("Epic"));
-        var provider = services.BuildServiceProvider();
+        using var provider = services.BuildServiceProvider();
 
         // Act
         var options = provider.GetRequiredService<IOptions<EpicFhirOptions>>().Value;

@@ -21,7 +21,7 @@ public class IntelligenceOptionsTests
 
         var services = new ServiceCollection();
         services.Configure<IntelligenceOptions>(config.GetSection("Intelligence"));
-        var provider = services.BuildServiceProvider();
+        using var provider = services.BuildServiceProvider();
 
         // Act
         var options = provider.GetRequiredService<IOptions<IntelligenceOptions>>().Value;

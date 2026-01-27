@@ -57,9 +57,16 @@ public sealed class DocumentUploader : IDocumentUploader
         }
 
         var responseJson = result.Value!;
-        var documentId = responseJson.TryGetProperty("id", out var id)
-            ? id.GetString() ?? Guid.NewGuid().ToString()
-            : Guid.NewGuid().ToString();
+        string documentId;
+        if (!responseJson.TryGetProperty("id", out var id) || string.IsNullOrEmpty(id.GetString()))
+        {
+            _logger.LogWarning("FHIR server response missing document ID, generating synthetic ID");
+            documentId = Guid.NewGuid().ToString();
+        }
+        else
+        {
+            documentId = id.GetString()!;
+        }
 
         _logger.LogInformation("Document uploaded successfully. DocumentId={DocumentId}", documentId);
 

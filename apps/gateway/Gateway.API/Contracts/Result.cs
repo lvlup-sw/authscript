@@ -104,4 +104,12 @@ public record FhirError(string Code, string Message, Exception? Inner = null)
     /// <returns>A validation error.</returns>
     public static FhirError Validation(string message)
         => new("VALIDATION_ERROR", message);
+
+    /// <summary>
+    /// Creates an invalid response error.
+    /// </summary>
+    /// <param name="message">The error message describing the invalid response.</param>
+    /// <returns>An invalid response error.</returns>
+    public static FhirError InvalidResponse(string message)
+        => new("INVALID_RESPONSE", message);
 }

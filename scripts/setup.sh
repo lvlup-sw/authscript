@@ -100,7 +100,7 @@ fi
 # ---------------------------------------------------------------------------
 echo ""
 info "Setup complete! Current configuration:"
-dotnet user-secrets list | grep -E "llm-provider|github-token|azure-openai|google-api" | while read -r line; do
+while read -r line; do
     # Mask secret values in output (but show provider)
     key=$(echo "$line" | cut -d'=' -f1)
     value=$(echo "$line" | cut -d'=' -f2- | xargs)
@@ -111,7 +111,7 @@ dotnet user-secrets list | grep -E "llm-provider|github-token|azure-openai|googl
     else
         echo "  $key = (not configured)"
     fi
-done
+done < <(dotnet user-secrets list | grep -E "llm-provider|github-token|azure-openai|google-api" || true)
 
 echo ""
 info "To switch LLM providers:"

@@ -27,8 +27,8 @@ public sealed class IntelligenceClient : IIntelligenceClient
         CancellationToken cancellationToken = default)
     {
         _logger.LogInformation(
-            "STUB: Returning mock analysis for PatientId={PatientId}, ProcedureCode={ProcedureCode}",
-            clinicalBundle.PatientId, procedureCode);
+            "STUB: Returning mock analysis for ProcedureCode={ProcedureCode}",
+            procedureCode);
 
         var patientName = clinicalBundle.Patient?.FullName ?? "Unknown Patient";
         var patientDob = clinicalBundle.Patient?.BirthDate?.ToString("yyyy-MM-dd") ?? "Unknown";

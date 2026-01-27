@@ -46,7 +46,8 @@ async def generate_form_data(
     if not diagnosis_codes:
         diagnosis_codes = ["Unknown"]
 
-    procedure_code = policy.get("procedure_codes", ["72148"])[0]
+    procedure_codes = policy.get("procedure_codes") or ["72148"]
+    procedure_code = procedure_codes[0]
 
     return PAFormResponse(
         patient_name=patient_name,

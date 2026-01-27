@@ -28,9 +28,7 @@ public sealed class PdfFormStamper : IPdfFormStamper
         PAFormData formData,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation(
-            "STUB: PDF stamping requested for patient {PatientName}",
-            formData.PatientName);
+        _logger.LogInformation("STUB: PDF stamping requested");
 
         // STUB: Return empty array for now
         // Production will use iText to:

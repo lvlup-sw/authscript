@@ -60,8 +60,11 @@ public static class DependencyExtensions
         /// <returns>The service collection for chaining.</returns>
         public IServiceCollection AddFhirClients(IConfiguration configuration)
         {
-            var fhirBaseUrl = configuration["Epic:FhirBaseUrl"]
-                              ?? "https://fhir.epic.com/interconnect-fhir-oauth/api/FHIR/R4";
+            var fhirBaseUrl = configuration["Epic:FhirBaseUrl"];
+            if (string.IsNullOrWhiteSpace(fhirBaseUrl))
+            {
+                fhirBaseUrl = "https://fhir.epic.com/interconnect-fhir-oauth/api/FHIR/R4";
+            }
 
             // Low-level FHIR HTTP client
             services.AddHttpClient<IFhirHttpClient, FhirHttpClient>(client =>

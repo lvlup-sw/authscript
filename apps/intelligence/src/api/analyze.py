@@ -44,15 +44,19 @@ async def analyze(request: AnalyzeRequest) -> PAFormResponse:
     # Parse clinical data into structured format
     bundle = ClinicalBundle.from_dict(request.patient_id, request.clinical_data)
 
+    # Validate required patient data
+    patient = bundle.patient
+    if not patient or not patient.birth_date:
+        raise HTTPException(
+            status_code=400,
+            detail="patient.birth_date is required",
+        )
+
     # Build stub response
     return PAFormResponse(
-        patient_name=bundle.patient.name if bundle.patient else "Unknown",
-        patient_dob=(
-            bundle.patient.birth_date.isoformat()
-            if bundle.patient and bundle.patient.birth_date
-            else "Unknown"
-        ),
-        member_id=bundle.patient.member_id if bundle.patient else "Unknown",
+        patient_name=patient.name,
+        patient_dob=patient.birth_date.isoformat(),
+        member_id=patient.member_id if patient.member_id else "Unknown",
         diagnosis_codes=[c.code for c in bundle.conditions] if bundle.conditions else [],
         procedure_code=request.procedure_code,
         clinical_summary="Awaiting production configuration",

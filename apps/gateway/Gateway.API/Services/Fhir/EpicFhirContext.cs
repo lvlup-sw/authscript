@@ -81,6 +81,12 @@ public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResourc
 
             var response = await _httpClient.SendAsync(request, ct);
 
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return Result<IReadOnlyList<TResource>>.Failure(
+                    FhirError.InvalidResponse($"FHIR {_resourceType} search endpoint not found"));
+            }
+
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 return Result<IReadOnlyList<TResource>>.Failure(FhirError.Unauthorized());

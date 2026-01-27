@@ -60,6 +60,11 @@ public sealed class FhirHttpClient : IFhirHttpClient
             _logger.LogError(ex, "Network error reading {ResourceType}/{Id}", resourceType, id);
             return Result<JsonElement>.Failure(FhirError.Network(ex.Message, ex));
         }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Invalid JSON response reading {ResourceType}/{Id}", resourceType, id);
+            return Result<JsonElement>.Failure(FhirError.Validation($"Invalid JSON response: {ex.Message}"));
+        }
     }
 
     /// <inheritdoc />
@@ -76,6 +81,12 @@ public sealed class FhirHttpClient : IFhirHttpClient
 
             var response = await _httpClient.SendAsync(request, ct);
 
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return Result<JsonElement>.Failure(
+                    FhirError.InvalidResponse($"FHIR {resourceType} search endpoint not found"));
+            }
+
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 return Result<JsonElement>.Failure(FhirError.Unauthorized());
@@ -90,6 +101,11 @@ public sealed class FhirHttpClient : IFhirHttpClient
         {
             _logger.LogError(ex, "Network error searching {ResourceType}", resourceType);
             return Result<JsonElement>.Failure(FhirError.Network(ex.Message, ex));
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Invalid JSON response searching {ResourceType}", resourceType);
+            return Result<JsonElement>.Failure(FhirError.Validation($"Invalid JSON response: {ex.Message}"));
         }
     }
 
@@ -128,6 +144,11 @@ public sealed class FhirHttpClient : IFhirHttpClient
         {
             _logger.LogError(ex, "Network error creating {ResourceType}", resourceType);
             return Result<JsonElement>.Failure(FhirError.Network(ex.Message, ex));
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Invalid JSON response creating {ResourceType}", resourceType);
+            return Result<JsonElement>.Failure(FhirError.Validation($"Invalid JSON response: {ex.Message}"));
         }
     }
 
