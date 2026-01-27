@@ -1,0 +1,50 @@
+# ===========================================================================
+# Root .dockerignore for monorepo Docker builds
+# ===========================================================================
+
+# Git
+.git/
+.gitignore
+
+# Node modules (will be installed fresh in container)
+**/node_modules/
+
+# Python virtual environments
+**/.venv/
+**/__pycache__/
+**/*.pyc
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test artifacts
+**/coverage/
+**/.vitest/
+**/.pytest_cache/
+
+# Build artifacts we don't need
+**/*.log
+**/npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation (not needed in containers)
+docs/
+
+# Orchestration (not needed in app containers)
+orchestration/
+
+# Temp files
+*.txt
+*.tmp
+
+# Keep these (explicitly)
+!apps/dashboard/dist/
+!apps/dashboard/nginx.conf
+!shared/types/dist/
+!shared/validation/dist/

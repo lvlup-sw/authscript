@@ -1,7 +1,7 @@
 namespace Gateway.API.Configuration;
 
 /// <summary>
-/// Configuration for Epic FHIR API connectivity.
+/// Configuration options for Epic FHIR integration.
 /// </summary>
 public sealed class EpicFhirOptions
 {
@@ -11,22 +11,22 @@ public sealed class EpicFhirOptions
     public const string SectionName = "Epic";
 
     /// <summary>
-    /// Base URL for Epic FHIR R4 API.
+    /// Base URL for the Epic FHIR R4 API.
     /// </summary>
     public required string FhirBaseUrl { get; init; }
 
     /// <summary>
-    /// OAuth client ID for Epic.
+    /// OAuth client ID for authentication.
     /// </summary>
     public required string ClientId { get; init; }
 
     /// <summary>
-    /// OAuth client secret (from user-secrets in dev).
+    /// OAuth client secret for authentication.
     /// </summary>
     public string? ClientSecret { get; init; }
 
     /// <summary>
-    /// Token endpoint for client credentials flow.
+    /// OAuth token endpoint URL. If null, no authentication is performed.
     /// </summary>
     public string? TokenEndpoint { get; init; }
 }

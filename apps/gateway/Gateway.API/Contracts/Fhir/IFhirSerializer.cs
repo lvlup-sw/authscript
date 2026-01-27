@@ -3,30 +3,23 @@ namespace Gateway.API.Contracts.Fhir;
 using Hl7.Fhir.Model;
 
 /// <summary>
-/// Abstraction for FHIR JSON serialization.
+/// Serializes and deserializes FHIR resources.
 /// </summary>
 public interface IFhirSerializer
 {
     /// <summary>
-    /// Serialize a FHIR resource to JSON string.
+    /// Serializes a FHIR resource to JSON.
     /// </summary>
     /// <typeparam name="T">The FHIR resource type.</typeparam>
     /// <param name="resource">The resource to serialize.</param>
-    /// <returns>JSON string representation of the resource.</returns>
-    string Serialize<T>(T resource) where T : Resource;
+    /// <returns>JSON string representation.</returns>
+    string Serialize<T>(T resource) where T : Base;
 
     /// <summary>
-    /// Deserialize JSON string to FHIR resource.
+    /// Deserializes JSON to a FHIR resource.
     /// </summary>
     /// <typeparam name="T">The FHIR resource type.</typeparam>
-    /// <param name="json">The JSON string to deserialize.</param>
-    /// <returns>The deserialized resource, or null if deserialization fails.</returns>
-    T? Deserialize<T>(string json) where T : Resource;
-
-    /// <summary>
-    /// Deserialize JSON to a Bundle resource.
-    /// </summary>
-    /// <param name="json">The JSON string to deserialize.</param>
-    /// <returns>The deserialized Bundle, or null if deserialization fails.</returns>
-    Bundle? DeserializeBundle(string json);
+    /// <param name="json">The JSON string.</param>
+    /// <returns>The deserialized resource.</returns>
+    T Deserialize<T>(string json) where T : Base;
 }

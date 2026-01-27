@@ -1,7 +1,7 @@
 namespace Gateway.API.Configuration;
 
 /// <summary>
-/// Configuration for Intelligence service connectivity.
+/// Configuration options for the Intelligence service.
 /// </summary>
 public sealed class IntelligenceOptions
 {
@@ -11,7 +11,7 @@ public sealed class IntelligenceOptions
     public const string SectionName = "Intelligence";
 
     /// <summary>
-    /// Base URL for Intelligence API.
+    /// Base URL for the Intelligence service.
     /// </summary>
     public required string BaseUrl { get; init; }
 

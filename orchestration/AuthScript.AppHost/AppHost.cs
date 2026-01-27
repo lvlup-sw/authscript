@@ -70,9 +70,10 @@ var gateway = builder
 // ---------------------------------------------------------------------------
 // Dashboard (React/Vite + nginx in container)
 // Containerized for production-like SPA serving with nginx
+// Uses Dockerfile.build from monorepo root to access shared packages
 // ---------------------------------------------------------------------------
 var dashboard = builder
-    .AddDockerfile("dashboard", "../../apps/dashboard")
+    .AddDockerfile("dashboard", "../..", "apps/dashboard/Dockerfile.build")
     .WithHttpEndpoint(port: 3000, targetPort: 80, name: "dashboard-ui")
     .WaitFor(gateway)
     .WithExternalHttpEndpoints();

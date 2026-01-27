@@ -1,0 +1,36 @@
+2026-01-27T00:24:22.4112231Z Waiting for resource 'gateway' to enter the 'Running' state.
+2026-01-27T00:24:32.2657776Z Waiting for resource ready to execute for 'gateway'.
+2026-01-27T00:24:32.2658542Z Finished waiting for resource 'gateway'.
+2026-01-27T00:24:32.2850000Z [1/2] STEP 1/6: FROM node:22-alpine AS builder
+2026-01-27T00:24:32.2980000Z [1/2] STEP 2/6: WORKDIR /app
+2026-01-27T00:24:32.3120000Z --> Using cache 67e7ca38d42169c174db16b2e751499cc11a6bb52411eae4690e381644c0d8a6
+2026-01-27T00:24:32.3120000Z --> 67e7ca38d421
+2026-01-27T00:24:32.3150000Z [1/2] STEP 3/6: COPY package.json package-lock.json* ./
+2026-01-27T00:24:32.3770000Z --> Using cache 280d08c8594cd2be2626a253b361376a4d2f1f3a71ed8b03ccd8afeede76fbd7
+2026-01-27T00:24:32.3770000Z --> 280d08c8594c
+2026-01-27T00:24:32.3790000Z [1/2] STEP 4/6: RUN npm ci
+2026-01-27T00:24:32.8570000Z npm error code EUSAGE
+2026-01-27T00:24:32.8570000Z npm error
+2026-01-27T00:24:32.8570000Z npm error The `npm ci` command can only install with an existing package-lock.json or
+2026-01-27T00:24:32.8570000Z npm error npm-shrinkwrap.json with lockfileVersion >= 1. Run an install with npm@5 or
+2026-01-27T00:24:32.8570000Z npm error later to generate a package-lock.json file, then try again.
+2026-01-27T00:24:32.8570000Z npm error
+2026-01-27T00:24:32.8570000Z npm error Clean install a project
+2026-01-27T00:24:32.8570000Z npm error
+2026-01-27T00:24:32.8570000Z npm error Usage:
+2026-01-27T00:24:32.8570000Z npm error npm ci
+2026-01-27T00:24:32.8570000Z npm error
+2026-01-27T00:24:32.8570000Z npm error Options:
+2026-01-27T00:24:32.8570000Z npm error [--install-strategy <hoisted|nested|shallow|linked>] [--legacy-bundling]
+2026-01-27T00:24:32.8570000Z npm error [--global-style] [--omit <dev|optional|peer> [--omit <dev|optional|peer> ...]]
+2026-01-27T00:24:32.8570000Z npm error [--include <prod|dev|optional|peer> [--include <prod|dev|optional|peer> ...]]
+2026-01-27T00:24:32.8570000Z npm error [--strict-peer-deps] [--foreground-scripts] [--ignore-scripts] [--no-audit]
+2026-01-27T00:24:32.8570000Z npm error [--no-bin-links] [--no-fund] [--dry-run]
+2026-01-27T00:24:32.8570000Z npm error [-w|--workspace <workspace-name> [-w|--workspace <workspace-name> ...]]
+2026-01-27T00:24:32.8570000Z npm error [-ws|--workspaces] [--include-workspace-root] [--install-links]
+2026-01-27T00:24:32.8570000Z npm error
+2026-01-27T00:24:32.8570000Z npm error aliases: clean-install, ic, install-clean, isntall-clean
+2026-01-27T00:24:32.8570000Z npm error
+2026-01-27T00:24:32.8570000Z npm error Run "npm help ci" for more info
+2026-01-27T00:24:32.8570000Z npm error A complete log of this run can be found in: /root/.npm/_logs/2026-01-27T00_24_32_620Z-debug-0.log
+2026-01-27T00:24:35.4240000Z Error: building at STEP "RUN npm ci": while running runtime: exit status 1
