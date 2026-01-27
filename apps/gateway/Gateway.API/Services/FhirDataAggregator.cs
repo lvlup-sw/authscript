@@ -1,69 +1,64 @@
-using Gateway.API.Abstractions;
+using Gateway.API.Configuration;
 using Gateway.API.Contracts;
 using Gateway.API.Models;
+using Microsoft.Extensions.Options;
 
 namespace Gateway.API.Services;
 
 /// <summary>
-/// Aggregates clinical data from Epic FHIR API by performing parallel queries
+/// Aggregates clinical data from FHIR API by performing parallel queries
 /// for patient demographics, conditions, observations, procedures, and documents.
 /// </summary>
 public sealed class FhirDataAggregator : IFhirDataAggregator
 {
-    private readonly IEpicFhirClient _fhirClient;
+    private readonly IFhirClient _fhirClient;
+    private readonly ClinicalQueryOptions _options;
     private readonly ILogger<FhirDataAggregator> _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FhirDataAggregator"/> class.
     /// </summary>
-    /// <param name="fhirClient">The Epic FHIR client for making API calls.</param>
+    /// <param name="fhirClient">The FHIR client for making API calls.</param>
+    /// <param name="options">Clinical query configuration options.</param>
     /// <param name="logger">Logger for diagnostic output.</param>
-    public FhirDataAggregator(IEpicFhirClient fhirClient, ILogger<FhirDataAggregator> logger)
+    public FhirDataAggregator(
+        IFhirClient fhirClient,
+        IOptions<ClinicalQueryOptions> options,
+        ILogger<FhirDataAggregator> logger)
     {
         _fhirClient = fhirClient;
+        _options = options.Value;
         _logger = logger;
     }
 
     /// <inheritdoc />
-    public async Task<Result<ClinicalBundle>> AggregateClinicalDataAsync(
+    public async Task<ClinicalBundle> AggregateClinicalDataAsync(
         string patientId,
-        CancellationToken ct = default)
+        string accessToken,
+        CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Aggregating clinical data for patient {PatientId}", patientId);
 
-        var sixMonthsAgo = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(-6));
-        var oneYearAgo = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1));
+        var observationSince = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(-_options.ObservationLookbackMonths));
+        var procedureSince = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(-_options.ProcedureLookbackMonths));
 
         // Parallel FHIR fetches for performance
-        var patientTask = _fhirClient.GetPatientAsync(patientId, ct);
-        var conditionsTask = _fhirClient.SearchConditionsAsync(patientId, ct);
-        var observationsTask = _fhirClient.SearchObservationsAsync(patientId, sixMonthsAgo, ct);
-        var proceduresTask = _fhirClient.SearchProceduresAsync(patientId, oneYearAgo, ct);
-        var documentsTask = _fhirClient.SearchDocumentsAsync(patientId, ct);
+        var patientTask = _fhirClient.GetPatientAsync(patientId, accessToken, cancellationToken);
+        var conditionsTask = _fhirClient.SearchConditionsAsync(patientId, accessToken, cancellationToken);
+        var observationsTask = _fhirClient.SearchObservationsAsync(patientId, observationSince, accessToken, cancellationToken);
+        var proceduresTask = _fhirClient.SearchProceduresAsync(patientId, procedureSince, accessToken, cancellationToken);
+        var documentsTask = _fhirClient.SearchDocumentsAsync(patientId, accessToken, cancellationToken);
 
         await Task.WhenAll(patientTask, conditionsTask, observationsTask, proceduresTask, documentsTask);
 
-        var patientResult = await patientTask;
-        var conditionsResult = await conditionsTask;
-        var observationsResult = await observationsTask;
-        var proceduresResult = await proceduresTask;
-        var documentsResult = await documentsTask;
-
-        // Patient is required - if it fails, propagate the error
-        if (patientResult.IsFailure)
-        {
-            return patientResult.Error!;
-        }
-
-        // Other resources use default empty lists on failure (partial success)
         var bundle = new ClinicalBundle
         {
             PatientId = patientId,
-            Patient = patientResult.Value,
-            Conditions = conditionsResult.IsSuccess ? conditionsResult.Value!.ToList() : [],
-            Observations = observationsResult.IsSuccess ? observationsResult.Value!.ToList() : [],
-            Procedures = proceduresResult.IsSuccess ? proceduresResult.Value!.ToList() : [],
-            Documents = documentsResult.IsSuccess ? documentsResult.Value!.ToList() : []
+            Patient = await patientTask,
+            Conditions = await conditionsTask,
+            Observations = await observationsTask,
+            Procedures = await proceduresTask,
+            Documents = await documentsTask
         };
 
         _logger.LogInformation(

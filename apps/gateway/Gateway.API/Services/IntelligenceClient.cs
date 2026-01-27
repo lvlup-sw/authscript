@@ -1,5 +1,4 @@
 using System.Net.Http.Json;
-using Gateway.API.Abstractions;
 using Gateway.API.Contracts;
 using Gateway.API.Models;
 
@@ -26,10 +25,10 @@ public sealed class IntelligenceClient : IIntelligenceClient
     }
 
     /// <inheritdoc />
-    public async Task<Result<PAFormData>> AnalyzeAsync(
+    public async Task<PAFormData> AnalyzeAsync(
         ClinicalBundle clinicalBundle,
         string procedureCode,
-        CancellationToken ct = default)
+        CancellationToken cancellationToken = default)
     {
         _logger.LogInformation(
             "Sending analysis request. PatientId={PatientId}, ProcedureCode={ProcedureCode}",
@@ -75,34 +74,26 @@ public sealed class IntelligenceClient : IIntelligenceClient
             }
         };
 
-        try
+        var response = await _httpClient.PostAsJsonAsync("/analyze", request, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
         {
-            var response = await _httpClient.PostAsJsonAsync("/analyze", request, ct);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var error = await response.Content.ReadAsStringAsync(ct);
-                _logger.LogError("Intelligence service error: {Status} - {Error}", response.StatusCode, error);
-                return ErrorFactory.Infrastructure($"Intelligence service returned {response.StatusCode}: {error}");
-            }
-
-            var result = await response.Content.ReadFromJsonAsync<PAFormData>(cancellationToken: ct);
-
-            if (result is null)
-            {
-                return ErrorFactory.Infrastructure("Intelligence service returned null response");
-            }
-
-            _logger.LogInformation(
-                "Analysis complete. Recommendation={Recommendation}, Confidence={Confidence}",
-                result.Recommendation, result.ConfidenceScore);
-
-            return result;
+            var error = await response.Content.ReadAsStringAsync(cancellationToken);
+            _logger.LogError("Intelligence service error: {Status} - {Error}", response.StatusCode, error);
+            throw new HttpRequestException($"Intelligence service returned {response.StatusCode}");
         }
-        catch (HttpRequestException ex)
+
+        var result = await response.Content.ReadFromJsonAsync<PAFormData>(cancellationToken: cancellationToken);
+
+        if (result is null)
         {
-            _logger.LogError(ex, "Network error calling Intelligence service");
-            return ErrorFactory.Infrastructure($"Intelligence service unavailable: {ex.Message}", ex);
+            throw new InvalidOperationException("Intelligence service returned null response");
         }
+
+        _logger.LogInformation(
+            "Analysis complete. Recommendation={Recommendation}, Confidence={Confidence}",
+            result.Recommendation, result.ConfidenceScore);
+
+        return result;
     }
 }

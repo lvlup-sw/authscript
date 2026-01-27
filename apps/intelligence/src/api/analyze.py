@@ -1,4 +1,8 @@
-"""Analysis endpoint for processing clinical data and generating PA form."""
+"""Analysis endpoint for processing clinical data and generating PA form.
+
+This is a stub implementation that returns APPROVE for all requests.
+Production implementation would include policy evaluation and LLM reasoning.
+"""
 
 from typing import Any
 
@@ -7,11 +11,11 @@ from pydantic import BaseModel
 
 from src.models.clinical_bundle import ClinicalBundle
 from src.models.pa_form import PAFormResponse
-from src.policies.mri_lumbar import MRI_LUMBAR_POLICY
-from src.reasoning.evidence_extractor import extract_evidence
-from src.reasoning.form_generator import generate_form_data
 
 router = APIRouter()
+
+# Supported procedure codes (MRI Lumbar Spine)
+SUPPORTED_PROCEDURE_CODES = {"72148", "72149", "72158"}
 
 
 class AnalyzeRequest(BaseModel):
@@ -27,29 +31,36 @@ async def analyze(request: AnalyzeRequest) -> PAFormResponse:
     """
     Analyze clinical data and generate PA form response.
 
-    This endpoint:
-    1. Validates the procedure code against supported policies
-    2. Extracts evidence from clinical data
-    3. Evaluates against policy criteria
-    4. Generates form field values
+    STUB IMPLEMENTATION: Always returns APPROVE with 1.0 confidence.
+    Production version would evaluate clinical data against payer policies.
     """
     # Check if procedure is supported
-    if request.procedure_code not in MRI_LUMBAR_POLICY["procedure_codes"]:
+    if request.procedure_code not in SUPPORTED_PROCEDURE_CODES:
         raise HTTPException(
             status_code=400,
             detail=f"Procedure code {request.procedure_code} not supported",
         )
 
     # Parse clinical data into structured format
-    clinical_bundle = ClinicalBundle.from_dict(request.patient_id, request.clinical_data)
+    bundle = ClinicalBundle.from_dict(request.patient_id, request.clinical_data)
 
-    # Extract evidence from clinical data
-    evidence = await extract_evidence(clinical_bundle, MRI_LUMBAR_POLICY)
-
-    # Generate form data based on evidence
-    form_response = await generate_form_data(clinical_bundle, evidence, MRI_LUMBAR_POLICY)
-
-    return form_response
+    # Build stub response
+    return PAFormResponse(
+        patient_name=bundle.patient.name if bundle.patient else "Unknown",
+        patient_dob=(
+            bundle.patient.birth_date.isoformat()
+            if bundle.patient and bundle.patient.birth_date
+            else "Unknown"
+        ),
+        member_id=bundle.patient.member_id if bundle.patient else "Unknown",
+        diagnosis_codes=[c.code for c in bundle.conditions] if bundle.conditions else [],
+        procedure_code=request.procedure_code,
+        clinical_summary="Awaiting production configuration",
+        supporting_evidence=[],
+        recommendation="APPROVE",
+        confidence_score=1.0,
+        field_mappings=_build_field_mappings(bundle, request.procedure_code),
+    )
 
 
 @router.post("/with-documents", response_model=PAFormResponse)
@@ -62,13 +73,8 @@ async def analyze_with_documents(
     """
     Analyze clinical data with attached PDF documents.
 
-    Processes multipart form data including:
-    - **patient_id**: Unique patient identifier
-    - **procedure_code**: CPT/HCPCS code for the procedure
-    - **clinical_data**: JSON string of clinical data
-    - **documents**: PDF files containing clinical documentation
-
-    Returns the same PA form response as the standard analyze endpoint.
+    STUB IMPLEMENTATION: Documents are acknowledged but not processed.
+    Production version would extract text and analyze documents.
     """
     import json
 
@@ -78,15 +84,7 @@ async def analyze_with_documents(
     except json.JSONDecodeError as e:
         raise HTTPException(status_code=400, detail=f"Invalid clinical data JSON: {e}")
 
-    # Process documents if provided
-    document_texts: list[str] = []
-    for doc in documents:
-        if doc.content_type == "application/pdf":
-            # In production, use LlamaParse here
-            content = await doc.read()
-            document_texts.append(f"[Document: {doc.filename}, {len(content)} bytes]")
-
-    # Build request and process
+    # Build request and process (documents ignored in stub)
     request = AnalyzeRequest(
         patient_id=patient_id,
         procedure_code=procedure_code,
@@ -94,3 +92,26 @@ async def analyze_with_documents(
     )
 
     return await analyze(request)
+
+
+def _build_field_mappings(bundle: ClinicalBundle, procedure_code: str) -> dict[str, str]:
+    """Build PDF field mappings from clinical bundle."""
+    patient_name = bundle.patient.name if bundle.patient else "Unknown"
+    patient_dob = (
+        bundle.patient.birth_date.isoformat()
+        if bundle.patient and bundle.patient.birth_date
+        else "Unknown"
+    )
+    member_id = bundle.patient.member_id if bundle.patient and bundle.patient.member_id else "Unknown"
+    diagnosis_codes = ", ".join(c.code for c in bundle.conditions) if bundle.conditions else ""
+
+    return {
+        "PatientName": patient_name,
+        "PatientDOB": patient_dob,
+        "MemberID": member_id,
+        "DiagnosisCodes": diagnosis_codes,
+        "ProcedureCode": procedure_code,
+        "ClinicalSummary": "Awaiting production configuration",
+        "ProviderSignature": "",
+        "Date": "",
+    }

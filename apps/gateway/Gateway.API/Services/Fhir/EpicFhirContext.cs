@@ -1,9 +1,8 @@
 using System.Net;
 using System.Net.Http.Headers;
-using Gateway.API.Abstractions;
+using System.Text.Json;
+using Gateway.API.Contracts;
 using Gateway.API.Contracts.Fhir;
-using Gateway.API.Errors;
-using Hl7.Fhir.Model;
 
 namespace Gateway.API.Services.Fhir;
 
@@ -12,10 +11,9 @@ namespace Gateway.API.Services.Fhir;
 /// Provides low-level CRUD operations with Result-based error handling.
 /// </summary>
 /// <typeparam name="TResource">The FHIR resource type.</typeparam>
-public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResource : Resource
+public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResource : class
 {
     private readonly HttpClient _httpClient;
-    private readonly IFhirSerializer _fhirSerializer;
     private readonly ILogger<EpicFhirContext<TResource>> _logger;
     private readonly string _resourceType;
 
@@ -23,15 +21,10 @@ public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResourc
     /// Initializes a new instance of the <see cref="EpicFhirContext{TResource}"/> class.
     /// </summary>
     /// <param name="httpClient">HTTP client configured with Epic FHIR base URL.</param>
-    /// <param name="fhirSerializer">FHIR JSON serializer.</param>
     /// <param name="logger">Logger for diagnostic output.</param>
-    public EpicFhirContext(
-        HttpClient httpClient,
-        IFhirSerializer fhirSerializer,
-        ILogger<EpicFhirContext<TResource>> logger)
+    public EpicFhirContext(HttpClient httpClient, ILogger<EpicFhirContext<TResource>> logger)
     {
         _httpClient = httpClient;
-        _fhirSerializer = fhirSerializer;
         _logger = logger;
         _resourceType = typeof(TResource).Name;
     }
@@ -48,30 +41,30 @@ public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResourc
 
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
-                return FhirErrors.NotFound(_resourceType, id);
+                return Result<TResource>.Failure(FhirError.NotFound(_resourceType, id));
             }
 
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
-                return FhirErrors.AuthenticationFailed;
+                return Result<TResource>.Failure(FhirError.Unauthorized());
             }
 
             response.EnsureSuccessStatusCode();
 
-            var json = await response.Content.ReadAsStringAsync(ct);
-            var resource = _fhirSerializer.Deserialize<TResource>(json);
+            var resource = await response.Content.ReadFromJsonAsync<TResource>(cancellationToken: ct);
 
             if (resource is null)
             {
-                return FhirErrors.InvalidResponse($"Failed to deserialize {_resourceType}/{id}");
+                return Result<TResource>.Failure(
+                    FhirError.Validation($"Failed to deserialize {_resourceType}/{id}"));
             }
 
-            return resource;
+            return Result<TResource>.Success(resource);
         }
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Network error reading {ResourceType}/{Id}", _resourceType, id);
-            return FhirErrors.NetworkError(ex.Message, ex);
+            return Result<TResource>.Failure(FhirError.Network(ex.Message, ex));
         }
     }
 
@@ -90,13 +83,12 @@ public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResourc
 
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
-                return Result<IReadOnlyList<TResource>>.Failure(FhirErrors.AuthenticationFailed);
+                return Result<IReadOnlyList<TResource>>.Failure(FhirError.Unauthorized());
             }
 
             response.EnsureSuccessStatusCode();
 
-            var json = await response.Content.ReadAsStringAsync(ct);
-            var bundle = _fhirSerializer.DeserializeBundle(json);
+            var bundle = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
             var resources = ExtractResourcesFromBundle(bundle);
 
             return Result<IReadOnlyList<TResource>>.Success(resources);
@@ -104,7 +96,7 @@ public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResourc
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Network error searching {ResourceType}", _resourceType);
-            return Result<IReadOnlyList<TResource>>.Failure(FhirErrors.NetworkError(ex.Message, ex));
+            return Result<IReadOnlyList<TResource>>.Failure(FhirError.Network(ex.Message, ex));
         }
     }
 
@@ -118,39 +110,37 @@ public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResourc
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, _resourceType);
             ConfigureRequest(request, accessToken);
-
-            var jsonContent = _fhirSerializer.Serialize(resource);
-            request.Content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/fhir+json");
+            request.Content = JsonContent.Create(resource);
 
             var response = await _httpClient.SendAsync(request, ct);
 
             if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
-                return FhirErrors.AuthenticationFailed;
+                return Result<TResource>.Failure(FhirError.Unauthorized());
             }
 
             if (response.StatusCode == HttpStatusCode.UnprocessableEntity)
             {
                 var error = await response.Content.ReadAsStringAsync(ct);
-                return ErrorFactory.Validation(error);
+                return Result<TResource>.Failure(FhirError.Validation(error));
             }
 
             response.EnsureSuccessStatusCode();
 
-            var json = await response.Content.ReadAsStringAsync(ct);
-            var created = _fhirSerializer.Deserialize<TResource>(json);
+            var created = await response.Content.ReadFromJsonAsync<TResource>(cancellationToken: ct);
 
             if (created is null)
             {
-                return FhirErrors.InvalidResponse($"Failed to deserialize created {_resourceType}");
+                return Result<TResource>.Failure(
+                    FhirError.Validation($"Failed to deserialize created {_resourceType}"));
             }
 
-            return created;
+            return Result<TResource>.Success(created);
         }
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Network error creating {ResourceType}", _resourceType);
-            return FhirErrors.NetworkError(ex.Message, ex);
+            return Result<TResource>.Failure(FhirError.Network(ex.Message, ex));
         }
     }
 
@@ -160,16 +150,34 @@ public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResourc
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/fhir+json"));
     }
 
-    private IReadOnlyList<TResource> ExtractResourcesFromBundle(Bundle? bundle)
+    private IReadOnlyList<TResource> ExtractResourcesFromBundle(JsonElement bundle)
     {
-        if (bundle?.Entry is null)
+        var results = new List<TResource>();
+
+        if (!bundle.TryGetProperty("entry", out var entries))
         {
-            return [];
+            return results;
         }
 
-        return bundle.Entry
-            .Where(e => e.Resource is TResource)
-            .Select(e => (TResource)e.Resource)
-            .ToList();
+        foreach (var entry in entries.EnumerateArray())
+        {
+            if (entry.TryGetProperty("resource", out var resource))
+            {
+                try
+                {
+                    var parsed = JsonSerializer.Deserialize<TResource>(resource.GetRawText());
+                    if (parsed is not null)
+                    {
+                        results.Add(parsed);
+                    }
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogWarning(ex, "Failed to deserialize resource in bundle");
+                }
+            }
+        }
+
+        return results;
     }
 }

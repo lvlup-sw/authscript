@@ -1,6 +1,6 @@
-using Gateway.API.Abstractions;
 using Gateway.API.Contracts;
 using Gateway.API.Models;
+using Gateway.API.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Gateway.API.Endpoints;
@@ -36,9 +36,9 @@ public static class AnalysisEndpoints
             .Produces(StatusCodes.Status200OK, contentType: "application/pdf")
             .Produces<ErrorResponse>(StatusCodes.Status404NotFound);
 
-        group.MapPost("/{transactionId}/submit", SubmitToEpic)
-            .WithName("SubmitToEpic")
-            .WithSummary("Submit the PA form to Epic (manual fallback)")
+        group.MapPost("/{transactionId}/submit", SubmitToFhir)
+            .WithName("SubmitToFhir")
+            .WithSummary("Submit the PA form to FHIR server (manual fallback)")
             .Produces<SubmitResponse>(StatusCodes.Status200OK)
             .Produces<ErrorResponse>(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status500InternalServerError);
@@ -50,25 +50,25 @@ public static class AnalysisEndpoints
 
     private static async Task<IResult> GetAnalysis(
         string transactionId,
-        [FromServices] IDemoCacheService cacheService,
+        [FromServices] IAnalysisResultStore resultStore,
         CancellationToken cancellationToken)
     {
-        return await GetAnalysisAsync(transactionId, cacheService, cancellationToken);
+        return await GetAnalysisAsync(transactionId, resultStore, cancellationToken);
     }
 
     /// <summary>
     /// Gets the analysis result for a given transaction ID.
     /// </summary>
     /// <param name="transactionId">The transaction identifier.</param>
-    /// <param name="cacheService">The cache service.</param>
+    /// <param name="resultStore">The analysis result store.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The analysis response or 404 if not found.</returns>
     public static async Task<IResult> GetAnalysisAsync(
         string transactionId,
-        IDemoCacheService cacheService,
+        IAnalysisResultStore resultStore,
         CancellationToken cancellationToken)
     {
-        var formData = await cacheService.GetCachedResponseAsync(transactionId, cancellationToken);
+        var formData = await resultStore.GetCachedResponseAsync(transactionId, cancellationToken);
 
         if (formData is null)
         {
@@ -90,25 +90,25 @@ public static class AnalysisEndpoints
 
     private static async Task<IResult> GetAnalysisStatus(
         string transactionId,
-        [FromServices] IDemoCacheService cacheService,
+        [FromServices] IAnalysisResultStore resultStore,
         CancellationToken cancellationToken)
     {
-        return await GetAnalysisStatusAsync(transactionId, cacheService, cancellationToken);
+        return await GetAnalysisStatusAsync(transactionId, resultStore, cancellationToken);
     }
 
     /// <summary>
     /// Gets the current status of an analysis.
     /// </summary>
     /// <param name="transactionId">The transaction identifier.</param>
-    /// <param name="cacheService">The cache service.</param>
+    /// <param name="resultStore">The analysis result store.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The status response.</returns>
     public static async Task<IResult> GetAnalysisStatusAsync(
         string transactionId,
-        IDemoCacheService cacheService,
+        IAnalysisResultStore resultStore,
         CancellationToken cancellationToken)
     {
-        var formData = await cacheService.GetCachedResponseAsync(transactionId, cancellationToken);
+        var formData = await resultStore.GetCachedResponseAsync(transactionId, cancellationToken);
 
         if (formData is not null)
         {
@@ -133,29 +133,29 @@ public static class AnalysisEndpoints
 
     private static async Task<IResult> DownloadForm(
         string transactionId,
-        [FromServices] IDemoCacheService cacheService,
+        [FromServices] IAnalysisResultStore resultStore,
         [FromServices] IPdfFormStamper pdfStamper,
         CancellationToken cancellationToken)
     {
-        return await DownloadFormAsync(transactionId, cacheService, pdfStamper, cancellationToken);
+        return await DownloadFormAsync(transactionId, resultStore, pdfStamper, cancellationToken);
     }
 
     /// <summary>
     /// Downloads the generated PA form PDF.
     /// </summary>
     /// <param name="transactionId">The transaction identifier.</param>
-    /// <param name="cacheService">The cache service.</param>
+    /// <param name="resultStore">The analysis result store.</param>
     /// <param name="pdfStamper">The PDF stamper service.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The PDF file or 404 if not found.</returns>
     public static async Task<IResult> DownloadFormAsync(
         string transactionId,
-        IDemoCacheService cacheService,
+        IAnalysisResultStore resultStore,
         IPdfFormStamper pdfStamper,
         CancellationToken cancellationToken)
     {
         // First, try to get cached PDF
-        var cachedPdf = await cacheService.GetCachedPdfAsync(transactionId, cancellationToken);
+        var cachedPdf = await resultStore.GetCachedPdfAsync(transactionId, cancellationToken);
 
         if (cachedPdf is not null)
         {
@@ -166,7 +166,7 @@ public static class AnalysisEndpoints
         }
 
         // No cached PDF, try to generate from form data
-        var formData = await cacheService.GetCachedResponseAsync(transactionId, cancellationToken);
+        var formData = await resultStore.GetCachedResponseAsync(transactionId, cancellationToken);
 
         if (formData is null)
         {
@@ -179,7 +179,7 @@ public static class AnalysisEndpoints
 
         // Generate PDF and cache it
         var pdfBytes = await pdfStamper.StampFormAsync(formData, cancellationToken);
-        await cacheService.SetCachedPdfAsync(transactionId, pdfBytes, cancellationToken);
+        await resultStore.SetCachedPdfAsync(transactionId, pdfBytes, cancellationToken);
 
         return Results.File(
             pdfBytes,
@@ -187,47 +187,47 @@ public static class AnalysisEndpoints
             $"pa-form-{transactionId}.pdf");
     }
 
-    private static async Task<IResult> SubmitToEpic(
+    private static async Task<IResult> SubmitToFhir(
         string transactionId,
-        [FromBody] SubmitToEpicRequest request,
-        [FromServices] IEpicUploader epicUploader,
-        [FromServices] IDemoCacheService cacheService,
+        [FromBody] SubmitToFhirRequest request,
+        [FromServices] IDocumentUploader documentUploader,
+        [FromServices] IAnalysisResultStore resultStore,
         [FromServices] IPdfFormStamper pdfStamper,
         CancellationToken cancellationToken)
     {
-        return await SubmitToEpicAsync(
+        return await SubmitToFhirAsync(
             transactionId,
             request,
-            epicUploader,
-            cacheService,
+            documentUploader,
+            resultStore,
             pdfStamper,
             cancellationToken);
     }
 
     /// <summary>
-    /// Submits the PA form to Epic as a DocumentReference.
+    /// Submits the PA form to FHIR server as a DocumentReference.
     /// </summary>
     /// <param name="transactionId">The transaction identifier.</param>
-    /// <param name="request">The submission request with Epic credentials.</param>
-    /// <param name="epicUploader">The Epic uploader service.</param>
-    /// <param name="cacheService">The cache service.</param>
+    /// <param name="request">The submission request with credentials.</param>
+    /// <param name="documentUploader">The document uploader service.</param>
+    /// <param name="resultStore">The analysis result store.</param>
     /// <param name="pdfStamper">The PDF stamper service.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The submission response.</returns>
-    public static async Task<IResult> SubmitToEpicAsync(
+    public static async Task<IResult> SubmitToFhirAsync(
         string transactionId,
-        SubmitToEpicRequest request,
-        IEpicUploader epicUploader,
-        IDemoCacheService cacheService,
+        SubmitToFhirRequest request,
+        IDocumentUploader documentUploader,
+        IAnalysisResultStore resultStore,
         IPdfFormStamper pdfStamper,
         CancellationToken cancellationToken)
     {
         // Get the PDF (from cache or generate)
-        var pdfBytes = await cacheService.GetCachedPdfAsync(transactionId, cancellationToken);
+        var pdfBytes = await resultStore.GetCachedPdfAsync(transactionId, cancellationToken);
 
         if (pdfBytes is null)
         {
-            var formData = await cacheService.GetCachedResponseAsync(transactionId, cancellationToken);
+            var formData = await resultStore.GetCachedResponseAsync(transactionId, cancellationToken);
 
             if (formData is null)
             {
@@ -239,27 +239,31 @@ public static class AnalysisEndpoints
             }
 
             pdfBytes = await pdfStamper.StampFormAsync(formData, cancellationToken);
-            await cacheService.SetCachedPdfAsync(transactionId, pdfBytes, cancellationToken);
+            await resultStore.SetCachedPdfAsync(transactionId, pdfBytes, cancellationToken);
         }
 
-        var uploadResult = await epicUploader.UploadDocumentAsync(
+        var result = await documentUploader.UploadDocumentAsync(
             pdfBytes,
             request.PatientId,
             request.EncounterId,
+            request.AccessToken,
             cancellationToken);
 
-        return uploadResult.Match<IResult>(
-            documentId => Results.Ok(new SubmitResponse
-            {
-                TransactionId = transactionId,
-                Submitted = true,
-                DocumentId = documentId,
-                Message = "PA form successfully submitted to Epic"
-            }),
-            error => Results.Problem(
-                detail: error.Message,
-                title: "Epic Submission Failed",
-                statusCode: (int)error.Type));
+        if (result.IsFailure)
+        {
+            return Results.Problem(
+                detail: result.Error?.Message,
+                title: "FHIR Submission Failed",
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+
+        return Results.Ok(new SubmitResponse
+        {
+            TransactionId = transactionId,
+            Submitted = true,
+            DocumentId = result.Value!,
+            Message = "PA form successfully submitted to FHIR server"
+        });
     }
 
     private static async Task<IResult> TriggerAnalysis(

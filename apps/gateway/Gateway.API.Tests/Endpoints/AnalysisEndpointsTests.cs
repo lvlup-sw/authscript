@@ -1,9 +1,10 @@
-using Gateway.API.Abstractions;
 using Gateway.API.Contracts;
 using Gateway.API.Models;
+using Gateway.API.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 
 namespace Gateway.API.Tests.Endpoints;
 
@@ -12,15 +13,15 @@ namespace Gateway.API.Tests.Endpoints;
 /// </summary>
 public class AnalysisEndpointsTests
 {
-    private readonly IDemoCacheService _cacheService;
+    private readonly IAnalysisResultStore _resultStore;
     private readonly IPdfFormStamper _pdfStamper;
-    private readonly IEpicUploader _epicUploader;
+    private readonly IDocumentUploader _documentUploader;
 
     public AnalysisEndpointsTests()
     {
-        _cacheService = Substitute.For<IDemoCacheService>();
+        _resultStore = Substitute.For<IAnalysisResultStore>();
         _pdfStamper = Substitute.For<IPdfFormStamper>();
-        _epicUploader = Substitute.For<IEpicUploader>();
+        _documentUploader = Substitute.For<IDocumentUploader>();
     }
 
     private static PAFormData CreateTestFormData(string patientName = "John Doe")
@@ -63,7 +64,7 @@ public class AnalysisEndpointsTests
         const string transactionId = "txn-12345";
         var expectedFormData = CreateTestFormData();
 
-        _cacheService
+        _resultStore
             .GetCachedResponseAsync(transactionId, Arg.Any<CancellationToken>())
             .Returns(expectedFormData);
 
@@ -87,7 +88,7 @@ public class AnalysisEndpointsTests
         // Arrange
         const string transactionId = "txn-nonexistent";
 
-        _cacheService
+        _resultStore
             .GetCachedResponseAsync(transactionId, Arg.Any<CancellationToken>())
             .Returns((PAFormData?)null);
 
@@ -106,7 +107,7 @@ public class AnalysisEndpointsTests
     {
         return await Gateway.API.Endpoints.AnalysisEndpoints.GetAnalysisAsync(
             transactionId,
-            _cacheService,
+            _resultStore,
             CancellationToken.None);
     }
 
@@ -121,7 +122,7 @@ public class AnalysisEndpointsTests
         const string transactionId = "txn-12345";
         var formData = CreateTestFormData();
 
-        _cacheService
+        _resultStore
             .GetCachedResponseAsync(transactionId, Arg.Any<CancellationToken>())
             .Returns(formData);
 
@@ -144,7 +145,7 @@ public class AnalysisEndpointsTests
         // Arrange
         const string transactionId = "txn-pending";
 
-        _cacheService
+        _resultStore
             .GetCachedResponseAsync(transactionId, Arg.Any<CancellationToken>())
             .Returns((PAFormData?)null);
 
@@ -164,7 +165,7 @@ public class AnalysisEndpointsTests
     {
         return await Gateway.API.Endpoints.AnalysisEndpoints.GetAnalysisStatusAsync(
             transactionId,
-            _cacheService,
+            _resultStore,
             CancellationToken.None);
     }
 
@@ -179,7 +180,7 @@ public class AnalysisEndpointsTests
         const string transactionId = "txn-12345";
         var expectedPdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 }; // PDF magic bytes
 
-        _cacheService
+        _resultStore
             .GetCachedPdfAsync(transactionId, Arg.Any<CancellationToken>())
             .Returns(expectedPdfBytes);
 
@@ -201,11 +202,11 @@ public class AnalysisEndpointsTests
         var formData = CreateTestFormData();
         var generatedPdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46, 0x2D }; // PDF magic bytes
 
-        _cacheService
+        _resultStore
             .GetCachedPdfAsync(transactionId, Arg.Any<CancellationToken>())
             .Returns((byte[]?)null);
 
-        _cacheService
+        _resultStore
             .GetCachedResponseAsync(transactionId, Arg.Any<CancellationToken>())
             .Returns(formData);
 
@@ -222,7 +223,7 @@ public class AnalysisEndpointsTests
         await Assert.That(fileResult).IsNotNull();
 
         // Verify PDF was cached
-        await _cacheService.Received(1).SetCachedPdfAsync(
+        await _resultStore.Received(1).SetCachedPdfAsync(
             transactionId,
             generatedPdfBytes,
             Arg.Any<CancellationToken>());
@@ -234,11 +235,11 @@ public class AnalysisEndpointsTests
         // Arrange
         const string transactionId = "txn-nonexistent";
 
-        _cacheService
+        _resultStore
             .GetCachedPdfAsync(transactionId, Arg.Any<CancellationToken>())
             .Returns((byte[]?)null);
 
-        _cacheService
+        _resultStore
             .GetCachedResponseAsync(transactionId, Arg.Any<CancellationToken>())
             .Returns((PAFormData?)null);
 
@@ -256,47 +257,49 @@ public class AnalysisEndpointsTests
     {
         return await Gateway.API.Endpoints.AnalysisEndpoints.DownloadFormAsync(
             transactionId,
-            _cacheService,
+            _resultStore,
             _pdfStamper,
             CancellationToken.None);
     }
 
     #endregion
 
-    #region SubmitToEpic Tests
+    #region SubmitToFhir Tests
 
     [Test]
-    public async Task SubmitToEpic_WhenAnalysisExists_CallsUploaderAndReturnsSuccess()
+    public async Task SubmitToFhir_WhenAnalysisExists_CallsUploaderAndReturnsSuccess()
     {
         // Arrange
         const string transactionId = "txn-12345";
         const string documentId = "doc-uploaded-123";
         var formData = CreateTestFormData();
         var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
-        var request = new SubmitToEpicRequest
+        var request = new SubmitToFhirRequest
         {
             PatientId = "patient-123",
-            EncounterId = "encounter-456"
+            EncounterId = "encounter-456",
+            AccessToken = "bearer-token-xyz"
         };
 
-        _cacheService
+        _resultStore
             .GetCachedResponseAsync(transactionId, Arg.Any<CancellationToken>())
             .Returns(formData);
 
-        _cacheService
+        _resultStore
             .GetCachedPdfAsync(transactionId, Arg.Any<CancellationToken>())
             .Returns(pdfBytes);
 
-        _epicUploader
+        _documentUploader
             .UploadDocumentAsync(
                 pdfBytes,
                 request.PatientId,
                 request.EncounterId,
+                request.AccessToken,
                 Arg.Any<CancellationToken>())
             .Returns(Result<string>.Success(documentId));
 
         // Act
-        var result = await InvokeSubmitToEpic(transactionId, request);
+        var result = await InvokeSubmitToFhir(transactionId, request);
 
         // Assert
         await Assert.That(result).IsNotNull();
@@ -307,33 +310,35 @@ public class AnalysisEndpointsTests
         await Assert.That(okResult.Value.DocumentId).IsEqualTo(documentId);
 
         // Verify uploader was called
-        await _epicUploader.Received(1).UploadDocumentAsync(
+        await _documentUploader.Received(1).UploadDocumentAsync(
             pdfBytes,
             request.PatientId,
             request.EncounterId,
+            request.AccessToken,
             Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task SubmitToEpic_WhenNoPdfAvailable_Returns404()
+    public async Task SubmitToFhir_WhenNoPdfAvailable_Returns404()
     {
         // Arrange
         const string transactionId = "txn-nonexistent";
-        var request = new SubmitToEpicRequest
+        var request = new SubmitToFhirRequest
         {
-            PatientId = "patient-123"
+            PatientId = "patient-123",
+            AccessToken = "bearer-token-xyz"
         };
 
-        _cacheService
+        _resultStore
             .GetCachedPdfAsync(transactionId, Arg.Any<CancellationToken>())
             .Returns((byte[]?)null);
 
-        _cacheService
+        _resultStore
             .GetCachedResponseAsync(transactionId, Arg.Any<CancellationToken>())
             .Returns((PAFormData?)null);
 
         // Act
-        var result = await InvokeSubmitToEpic(transactionId, request);
+        var result = await InvokeSubmitToFhir(transactionId, request);
 
         // Assert
         await Assert.That(result).IsNotNull();
@@ -342,35 +347,37 @@ public class AnalysisEndpointsTests
     }
 
     [Test]
-    public async Task SubmitToEpic_WhenUploadFails_ReturnsError()
+    public async Task SubmitToFhir_WhenUploadFails_ReturnsError()
     {
         // Arrange
         const string transactionId = "txn-12345";
         var formData = CreateTestFormData();
         var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
-        var request = new SubmitToEpicRequest
+        var request = new SubmitToFhirRequest
         {
-            PatientId = "patient-123"
+            PatientId = "patient-123",
+            AccessToken = "bearer-token-xyz"
         };
 
-        _cacheService
+        _resultStore
             .GetCachedResponseAsync(transactionId, Arg.Any<CancellationToken>())
             .Returns(formData);
 
-        _cacheService
+        _resultStore
             .GetCachedPdfAsync(transactionId, Arg.Any<CancellationToken>())
             .Returns(pdfBytes);
 
-        _epicUploader
+        _documentUploader
             .UploadDocumentAsync(
                 Arg.Any<byte[]>(),
                 Arg.Any<string>(),
                 Arg.Any<string?>(),
+                Arg.Any<string>(),
                 Arg.Any<CancellationToken>())
-            .Returns(Result<string>.Failure(ErrorFactory.Infrastructure("Epic returned 401")));
+            .Returns(Result<string>.Failure(FhirError.Unauthorized("FHIR returned 401")));
 
         // Act
-        var result = await InvokeSubmitToEpic(transactionId, request);
+        var result = await InvokeSubmitToFhir(transactionId, request);
 
         // Assert
         await Assert.That(result).IsNotNull();
@@ -378,13 +385,13 @@ public class AnalysisEndpointsTests
         await Assert.That(problemResult).IsNotNull();
     }
 
-    private async Task<IResult> InvokeSubmitToEpic(string transactionId, SubmitToEpicRequest request)
+    private async Task<IResult> InvokeSubmitToFhir(string transactionId, SubmitToFhirRequest request)
     {
-        return await Gateway.API.Endpoints.AnalysisEndpoints.SubmitToEpicAsync(
+        return await Gateway.API.Endpoints.AnalysisEndpoints.SubmitToFhirAsync(
             transactionId,
             request,
-            _epicUploader,
-            _cacheService,
+            _documentUploader,
+            _resultStore,
             _pdfStamper,
             CancellationToken.None);
     }

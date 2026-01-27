@@ -3,8 +3,8 @@
 // Handles CDS Hooks, FHIR data aggregation, and PDF generation
 // ===========================================================================
 
+using Gateway.API;
 using Gateway.API.Endpoints;
-using Gateway.API.Extensions;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -23,8 +23,10 @@ builder.AddRedisClient("redis");
 // PostgreSQL
 builder.AddNpgsqlDataSource("authscript");
 
-// Gateway services (FHIR, Intelligence, PDF stamping, etc.)
+// Gateway services
 builder.Services.AddGatewayServices(builder.Configuration);
+builder.Services.AddFhirClients(builder.Configuration);
+builder.Services.AddIntelligenceClient(builder.Configuration);
 
 // CORS for dashboard
 builder.Services.AddCors(options =>
