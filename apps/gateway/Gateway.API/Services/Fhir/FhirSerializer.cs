@@ -5,31 +5,58 @@ using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
 
 /// <summary>
-/// Serializes and deserializes FHIR resources using Firely SDK.
+/// FHIR JSON serialization using Hl7.Fhir library.
 /// </summary>
 public sealed class FhirSerializer : IFhirSerializer
 {
-    private readonly FhirJsonSerializer _serializer;
-    private readonly FhirJsonParser _parser;
+    private static readonly FhirJsonSerializer s_serializer = new();
+    private static readonly FhirJsonParser s_parser = new();
+    private readonly ILogger<FhirSerializer> _logger;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="FhirSerializer"/> class.
-    /// </summary>
-    public FhirSerializer()
+    public FhirSerializer(ILogger<FhirSerializer> logger)
     {
-        _serializer = new FhirJsonSerializer(new SerializerSettings { Pretty = false });
-        _parser = new FhirJsonParser(new ParserSettings { PermissiveParsing = true });
+        _logger = logger;
     }
 
-    /// <inheritdoc />
-    public string Serialize<T>(T resource) where T : Base
+    public string Serialize<T>(T resource) where T : Resource
     {
-        return _serializer.SerializeToString(resource);
+        ArgumentNullException.ThrowIfNull(resource);
+        try
+        {
+            return s_serializer.SerializeToString(resource);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to serialize {ResourceType}", typeof(T).Name);
+            throw;
+        }
     }
 
-    /// <inheritdoc />
-    public T Deserialize<T>(string json) where T : Base
+    public T? Deserialize<T>(string json) where T : Resource
     {
-        return _parser.Parse<T>(json);
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            return s_parser.Parse<T>(json);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to deserialize {ResourceType}", typeof(T).Name);
+            return null;
+        }
+    }
+
+    public Bundle? DeserializeBundle(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            return s_parser.Parse<Bundle>(json);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to deserialize Bundle");
+            return null;
+        }
     }
 }
