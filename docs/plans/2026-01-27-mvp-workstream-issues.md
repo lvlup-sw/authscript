@@ -4,15 +4,15 @@
 
 Audit of architecture documents against current implementation state with prioritized issue list for Gateway (.NET) and Intelligence (Python) workstreams.
 
-**Purpose:** Reference document for creating GitHub issues on-demand with proper labels for project automation.
+**Purpose:** Reference document for creating GitHub issues. Issues should follow the comprehensive format defined in `.github/ISSUE_TEMPLATE/implementation.yml`.
 
 ---
 
 ## Part 1: Architecture Audit
 
 ### MVP Demo Scope (March 11, 2026)
-- **Procedure:** TBD
-- **Payer:** TBD
+- **Procedure:** TBD (see #5)
+- **Payer:** TBD (see #5)
 - **CDS Hook:** `ServiceRequest.C/R/U/D`
 - **Philosophy:** "Bulletproof Happy Path" - pre-validated scenarios, aggressive caching
 
@@ -23,18 +23,18 @@ Audit of architecture documents against current implementation state with priori
 | **GATEWAY SERVICE** ||||
 | CdsHookController | Receives ServiceRequest.C/R/U/D, validates JWT | NOT IMPLEMENTED | ❌ Critical Gap |
 | FhirDataAggregator | Parallel FHIR fetch | COMPLETE | ✅ |
-| FhirClient/FhirHttpClient | FHIR R4 with Result<T> | COMPLETE | ✅ |
-| IntelligenceClient | HTTP client to Python | STUB (mock APPROVE) | ⚠️ |
-| PdfFormStamper | iText7 AcroForm stamping | STUB (empty array) | ⚠️ |
+| FhirClient/FhirHttpClient | FHIR R4 with Result<T> | COMPLETE (needs validation) | ⚠️ #12 |
+| IntelligenceClient | HTTP client to Python | STUB (mock APPROVE) | ⚠️ #10 |
+| PdfFormStamper | iText7 AcroForm stamping | STUB (empty array) | ⚠️ #11 |
 | DocumentUploader | POST DocumentReference | COMPLETE | ✅ |
 | DemoCacheService | Redis-backed cache | NOT IMPLEMENTED | ❌ |
 | **INTELLIGENCE SERVICE** ||||
 | FastAPI Application | /analyze endpoint | COMPLETE | ✅ |
 | LLM Client | Multi-provider (GitHub, Azure, Gemini, OpenAI) | COMPLETE | ✅ |
-| PDF Parser | Document extraction | PARTIAL (PyMuPDF, no LlamaParse) | ⚠️ |
-| Evidence Extractor | LLM policy evaluation | STUB (returns MET) | ⚠️ |
-| Form Generator | Recommendation + summary | STUB (returns APPROVE) | ⚠️ |
-| Policy Matcher | Procedure → Policy | STUB (example policy only) | ⚠️ |
+| PDF Parser | Document extraction | COMPLETE (PyMuPDF4LLM) | ✅ |
+| Evidence Extractor | LLM policy evaluation | STUB (returns MET) | ⚠️ #6 |
+| Form Generator | Recommendation + summary | STUB (returns APPROVE) | ⚠️ #7 |
+| Policy Matcher | Procedure → Policy | STUB (example policy only) | ⚠️ #8 |
 | **EPIC INTEGRATION** ||||
 | OAuth JWT Validation | JWKS validation | NOT IMPLEMENTED | ❌ |
 | CDS Discovery Endpoint | GET /cds-services | NOT IMPLEMENTED | ❌ |
@@ -42,15 +42,30 @@ Audit of architecture documents against current implementation state with priori
 
 ### Summary
 - **Gateway:** ~60% complete (infrastructure done, integrations stubbed)
-- **Intelligence:** ~45% complete (infrastructure done, reasoning stubbed)
+- **Intelligence:** ~50% complete (infrastructure done, reasoning stubbed)
 - **Epic Integration:** ~30% complete (FHIR works, CDS Hooks missing)
 - **Demo Infrastructure:** 0% complete (no Redis, no cache warming)
 
 ---
 
-## Part 2: Workstream Issues
+## Part 2: Issue Format Guidelines
+
+### Required Sections for Implementation Issues
+
+Per `.github/ISSUE_TEMPLATE/implementation.yml`:
+
+| Section | Purpose |
+|---------|---------|
+| **Summary** | What needs to be implemented (1-2 sentences) |
+| **Context** | Where it fits, inputs/outputs, business logic |
+| **Dependencies** | Table of blocking/blocked issues with #N links |
+| **Tasks** | Phased checklist (Core → Error Handling → Testing) |
+| **Files** | Table with Action column (Modify/Create/Reference) |
+| **Design References** | Multiple full GitHub URLs to relevant sections |
+| **Acceptance Criteria** | Specific, testable outcomes |
 
 ### Label Reference
+
 Per `.github/workflows/project-automation.yml`:
 - `scope:gateway` → Gateway (.NET) workstream
 - `scope:intelligence` → Intelligence (Python) workstream
@@ -59,140 +74,126 @@ Per `.github/workflows/project-automation.yml`:
 
 ---
 
-### GATEWAY WORKSTREAM Issues
+## Part 3: Existing Issues (Created)
+
+These issues have been created with comprehensive context:
+
+| Issue | Title | Workstream | Status |
+|-------|-------|------------|--------|
+| #5 | Demo procedure/payer selection | Cross-cutting | Open |
+| #6 | Evidence extraction with LLM | Intelligence | Open |
+| #7 | Form generation with LLM | Intelligence | Open |
+| #8 | Policy matching | Intelligence | Open |
+| #9 | Wire analysis endpoint | Intelligence | Open |
+| #10 | IntelligenceClient HTTP | Gateway | Open |
+| #11 | PDF form stamping with iText | Gateway | Open |
+| #12 | FHIR sandbox validation | Gateway | Open |
+
+---
+
+## Part 4: Remaining Issues to Create
+
+### GATEWAY WORKSTREAM
 
 #### GW-001: CDS Hooks Controller [P0 CRITICAL]
 **Labels:** `scope:gateway`, `scope:fhir`, `priority:high`, `type:feature`
 
-Create CDS Hooks integration for Epic:
+**Summary:** Create CDS Hooks integration endpoints for Epic ServiceRequest.C/R/U/D hooks.
+
+**Context:**
+- Discovery endpoint returns service metadata for Epic registration
+- Hook endpoint receives clinical context and returns CDS Cards
+- Must parse prefetch data and fhirAuthorization token
+
+**Dependencies:**
+| Issue | Relationship |
+|-------|--------------|
+| GW-002 | Blocked by - needs JWT validation |
+| #10 | Blocks - CDS controller calls IntelligenceClient |
+
+**Tasks:**
 - [ ] Discovery endpoint: `GET /cds-services/authscript`
 - [ ] Hook endpoint: `POST /cds-services/authscript/ServiceRequest`
 - [ ] Parse CDS Hook request (context, prefetch, fhirAuthorization)
 - [ ] Build CDS Card response format
 - [ ] Handle `ServiceRequest.C/R/U/D` hook events
 
-**Files:** Create `Endpoints/CdsHooksEndpoints.cs`, `Models/CdsHook*.cs`
+**Files:**
+| File | Action |
+|------|--------|
+| `Endpoints/CdsHooksEndpoints.cs` | Create |
+| `Models/CdsHookRequest.cs` | Create |
+| `Models/CdsCard.cs` | Create |
+
+**Design References:**
+- [§3.1 Registration & Configuration](https://github.com/lvlup-sw/authscript/blob/main/docs/designs/2025-01-21-authscript-demo-architecture.md#31-registration--configuration)
+- [§3.2 Hook Selection](https://github.com/lvlup-sw/authscript/blob/main/docs/designs/2025-01-21-authscript-demo-architecture.md#32-hook-selection-servicerequest-crud)
 
 ---
 
 #### GW-002: JWT Validation for CDS Hooks [P0 CRITICAL]
 **Labels:** `scope:gateway`, `priority:high`, `type:feature`
 
-Validate Epic JWT signatures:
-- [ ] Fetch JWKS from Epic endpoint
-- [ ] Validate hook JWT signature and claims
+**Summary:** Validate Epic JWT signatures on CDS Hook requests using JWKS.
+
+**Context:**
+- Epic signs CDS Hook requests with JWT
+- Must validate signature against Epic's JWKS endpoint
+- Extract fhirAuthorization.access_token for subsequent FHIR calls
+
+**Dependencies:**
+| Issue | Relationship |
+|-------|--------------|
+| GW-001 | Unblocks - CDS controller needs JWT validation |
+
+**Tasks:**
+- [ ] Fetch JWKS from Epic endpoint (with caching)
+- [ ] Validate JWT signature and claims (iss, aud, exp)
 - [ ] Cache JWKS with TTL refresh
 - [ ] Extract fhirAuthorization token for API calls
 
-**Files:** Create `Services/JwtValidator.cs`, `Configuration/JwksOptions.cs`
+**Files:**
+| File | Action |
+|------|--------|
+| `Services/JwtValidator.cs` | Create |
+| `Configuration/JwksOptions.cs` | Create |
 
----
-
-#### GW-003: IntelligenceClient HTTP Implementation [P0 CRITICAL]
-**Labels:** `scope:gateway`, `scope:llm`, `priority:high`, `type:feature`
-
-Replace stub with actual HTTP calls:
-- [ ] POST clinical bundle to Intelligence `/analyze` endpoint
-- [ ] Deserialize PAFormResponse
-- [ ] Handle timeout/error scenarios
-- [ ] Add resilience with Polly
-
-**Files:** Modify `Services/IntelligenceClient.cs`
-
----
-
-#### GW-004: PdfFormStamper iText Implementation [P0 CRITICAL]
-**Labels:** `scope:gateway`, `scope:pdf`, `priority:high`, `type:feature`
-
-Implement PDF form stamping:
-- [ ] Load PA form template from assets (procedure-specific)
-- [ ] Map PAFormData.FieldMappings to AcroForm fields
-- [ ] Flatten form after filling
-- [ ] Return stamped PDF bytes
-
-**Files:** Modify `Services/PdfFormStamper.cs`, add PA form template to `Assets/`
+**Design References:**
+- [§3.3 Authentication Flow](https://github.com/lvlup-sw/authscript/blob/main/docs/designs/2025-01-21-authscript-demo-architecture.md#33-authentication-flow)
+- [Appendix A: Epic URLs](https://github.com/lvlup-sw/authscript/blob/main/docs/designs/2025-01-21-authscript-demo-architecture.md#a-epic-sandbox-urls)
 
 ---
 
 #### GW-005: Redis Caching Integration [P1]
 **Labels:** `scope:gateway`, `priority:low`, `type:feature`
 
-Add demo response caching:
+**Summary:** Add Redis-backed caching for demo response speedup.
+
+**Context:**
+- Pre-computed responses served in <100ms for demo reliability
+- Cache key pattern: `authscript:demo:{patient_id}:{procedure_code}`
+- 24-hour TTL for demo stability
+
+**Dependencies:**
+| Issue | Relationship |
+|-------|--------------|
+| XC-003 | Unblocks - cache warming script needs this |
+
+**Tasks:**
 - [ ] Add Aspire Redis dependency
 - [ ] Implement IAnalysisResultStore with Redis backend
-- [ ] Cache key pattern: `authscript:demo:{patient_id}:{procedure_code}`
-- [ ] TTL: 24 hours for demo stability
+- [ ] Configure cache key pattern and TTL
+- [ ] Add cache check in CDS Hook controller
 
-**Files:** Modify `Services/AnalysisResultStore.cs`, update `Program.cs`
+**Files:**
+| File | Action |
+|------|--------|
+| `Services/AnalysisResultStore.cs` | Modify |
+| `Program.cs` | Modify - add Redis |
 
----
-
-### INTELLIGENCE WORKSTREAM Issues
-
-#### INT-001: Evidence Extraction with LLM [P0 CRITICAL]
-**Labels:** `scope:intelligence`, `scope:llm`, `priority:high`, `type:feature`
-
-Implement policy-based evidence extraction:
-- [ ] Create prompt template for evidence extraction
-- [ ] Call LLM via `llm_client.chat_completion()`
-- [ ] Parse structured JSON response (criterion_id, status, evidence, confidence)
-- [ ] Map to EvidenceItem list
-- [ ] Handle partial matches (MET, NOT_MET, UNCLEAR)
-
-**Files:** Modify `reasoning/evidence_extractor.py`
-
----
-
-#### INT-002: Form Generation with LLM [P0 CRITICAL]
-**Labels:** `scope:intelligence`, `scope:llm`, `priority:high`, `type:feature`
-
-Generate PA form data from evidence:
-- [ ] Create prompt template for clinical summary
-- [ ] Calculate recommendation based on evidence (APPROVE/NEED_INFO/MANUAL_REVIEW)
-- [ ] Generate field_mappings from clinical bundle + policy
-- [ ] Return complete PAFormResponse
-
-**Files:** Modify `reasoning/form_generator.py`
-
----
-
-#### INT-003: Policy Matching Implementation [P0 CRITICAL]
-**Labels:** `scope:intelligence`, `priority:high`, `type:feature`
-
-Match procedures to payer policies:
-- [ ] Create policy definition for demo procedure/payer combination
-- [ ] Match CPT codes to policy
-- [ ] Load policy criteria and field mappings
-- [ ] Return policy for evidence extraction
-
-**Files:** Create policy module in `policies/`, modify `api/analyze.py`
-
----
-
-#### INT-004: LlamaParse Integration [P1]
-**Labels:** `scope:intelligence`, `scope:pdf`, `priority:low`, `type:feature`
-
-Add LlamaParse for better document extraction:
-- [ ] Add LlamaParse API client
-- [ ] Fallback to PyMuPDF4LLM on error
-- [ ] Process documents in `/analyze/with-documents`
-- [ ] Include extracted text in evidence context
-
-**Files:** Modify `parsers/pdf_parser.py`, add `parsers/llamaparse_client.py`
-
----
-
-#### INT-005: Wire Analysis Endpoint [P0 CRITICAL]
-**Labels:** `scope:intelligence`, `priority:high`, `type:feature`
-
-Connect all components in analyze endpoint:
-- [ ] Load policy based on procedure_code
-- [ ] Call evidence_extractor with clinical bundle + policy
-- [ ] Call form_generator with evidence + policy
-- [ ] Process documents if provided
-- [ ] Return complete PAFormResponse
-
-**Files:** Modify `api/analyze.py`
+**Design References:**
+- [§2.4 Redis Cache](https://github.com/lvlup-sw/authscript/blob/main/docs/designs/2025-01-21-authscript-demo-architecture.md#24-redis-cache)
+- [§6.1 Bulletproof Philosophy](https://github.com/lvlup-sw/authscript/blob/main/docs/designs/2025-01-21-authscript-demo-architecture.md#61-the-bulletproof-philosophy)
 
 ---
 
@@ -201,77 +202,117 @@ Connect all components in analyze endpoint:
 #### XC-001: End-to-End Integration Test [P1]
 **Labels:** `scope:gateway`, `scope:intelligence`, `priority:high`, `type:feature`
 
-Test full pipeline:
+**Summary:** Create integration test verifying full CDS Hook → PDF upload pipeline.
+
+**Context:**
+- Tests full flow with mocked Epic FHIR responses
+- Uses Synthea-generated test data
+- Validates CDS Card response format
+
+**Dependencies:**
+| Issue | Relationship |
+|-------|--------------|
+| GW-001 | Blocked by - needs CDS Hook controller |
+| #9 | Blocked by - needs wired analysis endpoint |
+
+**Tasks:**
 - [ ] Create integration test project
 - [ ] Mock Epic FHIR responses with Synthea data
 - [ ] Verify CDS Hook → FHIR → Intelligence → PDF → Upload flow
 - [ ] Assert CDS Card response format
+
+**Design References:**
+- [§1.2 Request Flow Sequence](https://github.com/lvlup-sw/authscript/blob/main/docs/designs/2025-01-21-authscript-demo-architecture.md#12-request-flow-sequence)
 
 ---
 
 #### XC-002: Demo Patient Data [P1]
 **Labels:** `scope:fhir`, `priority:low`, `type:chore`
 
-Generate demo patients with Synthea:
-- [ ] demo-001: Perfect candidate for demo procedure (all criteria MET)
-- [ ] demo-002: Missing criteria (edge case scenario)
+**Summary:** Generate Synthea patients for demo scenarios.
+
+**Context:**
+- demo-001: Perfect candidate (all criteria MET) - guaranteed happy path
+- demo-002 through demo-005: Edge cases per §5.1
+
+**Dependencies:**
+| Issue | Relationship |
+|-------|--------------|
+| #5 | Blocked by - need procedure/payer to define scenarios |
+
+**Tasks:**
+- [ ] Configure Synthea for demo procedure conditions
+- [ ] Generate demo-001 through demo-005 patients
 - [ ] Store as FHIR bundles in `test-data/`
+- [ ] Document each scenario's expected outcome
+
+**Design References:**
+- [§5.1 Synthetic Patient Generation](https://github.com/lvlup-sw/authscript/blob/main/docs/designs/2025-01-21-authscript-demo-architecture.md#51-synthetic-patient-generation)
 
 ---
 
 #### XC-003: Cache Warming Script [P1]
 **Labels:** `scope:gateway`, `scope:intelligence`, `priority:low`, `type:chore`
 
-Pre-compute demo responses:
+**Summary:** Pre-compute demo responses for guaranteed fast demo.
+
+**Context:**
+- Run night before demo to populate Redis cache
+- Ensures <100ms response for demo patients
+
+**Dependencies:**
+| Issue | Relationship |
+|-------|--------------|
+| GW-005 | Blocked by - needs Redis integration |
+| XC-002 | Blocked by - needs demo patient data |
+
+**Tasks:**
 - [ ] Create `scripts/warm_demo_cache.py`
-- [ ] Run analysis for demo patients
-- [ ] Store in Redis cache
-- [ ] Run as part of demo setup
+- [ ] Run full analysis pipeline for each demo patient
+- [ ] Store results in Redis with demo key pattern
+- [ ] Add to demo day checklist
+
+**Design References:**
+- [§5.2 Pre-Computation Strategy](https://github.com/lvlup-sw/authscript/blob/main/docs/designs/2025-01-21-authscript-demo-architecture.md#52-pre-computation-strategy)
+- [§6.4 Demo Day Checklist](https://github.com/lvlup-sw/authscript/blob/main/docs/designs/2025-01-21-authscript-demo-architecture.md#64-demo-day-checklist)
 
 ---
 
-## Part 3: Priority Order for MVP
+## Part 5: Priority Order for MVP
 
-### Week 1: Core Reasoning
-| Issue | Workstream | Description |
-|-------|------------|-------------|
-| INT-001 | Intelligence | Evidence Extraction with LLM |
-| INT-002 | Intelligence | Form Generation with LLM |
-| INT-003 | Intelligence | Policy Matching |
-| INT-005 | Intelligence | Wire Analysis Endpoint |
+### Week 1: Core Reasoning (Intelligence)
+| Issue | Description |
+|-------|-------------|
+| #5 | Demo procedure/payer selection (UNBLOCKS ALL) |
+| #6 | Evidence Extraction with LLM |
+| #7 | Form Generation with LLM |
+| #8 | Policy Matching |
+| #9 | Wire Analysis Endpoint |
 
-### Week 2: Epic Integration
-| Issue | Workstream | Description |
-|-------|------------|-------------|
-| GW-001 | Gateway | CDS Hooks Controller |
-| GW-002 | Gateway | JWT Validation |
-| GW-003 | Gateway | IntelligenceClient HTTP |
+### Week 2: Epic Integration (Gateway)
+| Issue | Description |
+|-------|-------------|
+| GW-001 | CDS Hooks Controller |
+| GW-002 | JWT Validation |
+| #10 | IntelligenceClient HTTP |
+| #12 | FHIR Sandbox Validation |
 
 ### Week 3: PDF & Polish
-| Issue | Workstream | Description |
-|-------|------------|-------------|
-| GW-004 | Gateway | PdfFormStamper iText |
-| XC-001 | Both | End-to-End Integration Test |
-| XC-002 | Both | Demo Patient Data |
+| Issue | Description |
+|-------|-------------|
+| #11 | PdfFormStamper iText |
+| XC-001 | End-to-End Integration Test |
+| XC-002 | Demo Patient Data |
 
 ### Week 4: Demo Reliability
-| Issue | Workstream | Description |
-|-------|------------|-------------|
-| GW-005 | Gateway | Redis Caching |
-| XC-003 | Both | Cache Warming Script |
-| INT-004 | Intelligence | LlamaParse (stretch) |
+| Issue | Description |
+|-------|-------------|
+| GW-005 | Redis Caching |
+| XC-003 | Cache Warming Script |
 
 ---
 
-## Part 4: Architecture Doc Updates Needed
-
-1. **Section 11.3 Status Table** - Mark FHIR data fetching as COMPLETE (done in refactor)
-2. **Add note** - CDS Hooks JWT ≠ OAuth token (different auth mechanisms)
-3. **Update policy reference** - `example_policy.py` should become demo-specific policy module
-
----
-
-## Verification
+## Part 6: Verification
 
 After implementation:
 ```bash
@@ -287,19 +328,20 @@ curl -X POST http://localhost:5000/cds-services/authscript/ServiceRequest \
   -H "Content-Type: application/json" \
   -d @test-data/cds-hook-request.json
 
-# 4. Verify Dashboard shows live status
-open http://localhost:3000
+# 4. Verify response format
+# Should return CDS Card with "PA Form Ready" or similar
 ```
 
 ---
 
-## Critical Files
+## Critical Files Reference
 
-| File | Purpose |
-|------|---------|
-| `docs/designs/2025-01-21-authscript-demo-architecture.md` | Source of truth |
-| `apps/gateway/Gateway.API/Services/IntelligenceClient.cs` | STUB → HTTP |
-| `apps/gateway/Gateway.API/Services/PdfFormStamper.cs` | STUB → iText |
-| `apps/intelligence/src/reasoning/evidence_extractor.py` | STUB → LLM |
-| `apps/intelligence/src/reasoning/form_generator.py` | STUB → LLM |
-| `apps/intelligence/src/api/analyze.py` | Wire components |
+| File | Purpose | Issue |
+|------|---------|-------|
+| `apps/gateway/Gateway.API/Services/IntelligenceClient.cs` | STUB → HTTP | #10 |
+| `apps/gateway/Gateway.API/Services/PdfFormStamper.cs` | STUB → iText | #11 |
+| `apps/gateway/Gateway.API/Services/FhirClient.cs` | Validate against Epic | #12 |
+| `apps/intelligence/src/reasoning/evidence_extractor.py` | STUB → LLM | #6 |
+| `apps/intelligence/src/reasoning/form_generator.py` | STUB → LLM | #7 |
+| `apps/intelligence/src/policies/` | Example → Demo policy | #8 |
+| `apps/intelligence/src/api/analyze.py` | Wire components | #9 |
