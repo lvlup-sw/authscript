@@ -7,6 +7,8 @@
 
 ---
 
+> **Disclaimer:** This document was AI-generated and has been copyedited for accuracy. Some implementation details may be outdated or incorrect. Please verify technical specifics against actual code and current requirements when implementing.
+
 ## Executive Summary
 
 AuthScript is an AI-native prior authorization solution that integrates directly into Epic's clinical workflow via CDS Hooks. For the March 11, 2026 VC pitch at Pioneer Square Labs, we will demonstrate a **live, end-to-end** workflow where a physician creates a ServiceRequest in Epic Hyperdrive, and AuthScript automatically:
@@ -42,49 +44,15 @@ The architecture follows a **"Bulletproof Happy Path"** philosophy: narrow scope
 ### 1.1 System Context Diagram
 
 ```mermaid
-graph TB
-    subgraph Epic["EPIC ECOSYSTEM"]
-        Hyperdrive["Hyperdrive<br/>(Clinician)"]
-        FhirApi["FHIR R4 API<br/>(Data Access)"]
-        OAuth["OAuth 2.0<br/>(Auth)"]
-    end
-
-    subgraph AuthScript["AUTHSCRIPT SYSTEM (.NET Aspire)"]
-        subgraph Gateway["GATEWAY SERVICE (.NET 10)"]
-            CdsController["CDS Hook<br/>Controller"]
-            FhirAggregator["FHIR Data<br/>Aggregator"]
-            PdfStamper["PDF Form<br/>Stamper"]
-            ResponseBuilder["Response<br/>Builder"]
-            CdsController --> FhirAggregator --> PdfStamper --> ResponseBuilder
-        end
-
-        subgraph Intelligence["INTELLIGENCE SERVICE (Python/FastAPI)"]
-            PdfParser["PDF Parser<br/>(LlamaParse)"]
-            PolicyMatcher["Policy<br/>Matcher"]
-            LlmReasoner["LLM<br/>Reasoner"]
-            EvidenceExtractor["Evidence<br/>Extractor"]
-            PdfParser --> PolicyMatcher --> LlmReasoner --> EvidenceExtractor
-        end
-
-        subgraph Storage["Storage Layer"]
-            Postgres[("PostgreSQL<br/>(Audit + Vector)")]
-            Redis[("Redis Cache<br/>(Demo Speedup)")]
-            Blob[("Blob Storage<br/>(PDF Templates)")]
-        end
-
-        subgraph SmartApp["SMART APP / SHADOW DASHBOARD (React 19)"]
-            LiveStatus["Live Status<br/>Feed"]
-            AiAnalysis["AI Analysis<br/>Display"]
-            FormPreview["Form<br/>Preview"]
-            ManualSubmit["Manual<br/>Submit"]
-        end
-
-        FhirAggregator --> Intelligence
-    end
-
-    Hyperdrive -->|"CDS Hook<br/>(ServiceRequest)"| CdsController
-    FhirApi -->|"FHIR Queries"| FhirAggregator
-    OAuth -->|"Token Exchange"| Gateway
+graph LR
+    Epic[Epic Hyperdrive] -->|CDS Hook| Gateway[.NET Gateway]
+    Gateway -->|FHIR queries| Epic
+    Gateway -->|clinical data| Intelligence[Python Intelligence]
+    Intelligence -->|PA form data| Gateway
+    Gateway -->|upload PDF| Epic
+    Gateway -.->|status| Dashboard[React Dashboard]
+    Dashboard -.->|manual submit| Gateway
+    Gateway -->|audit| Storage[(PostgreSQL + Redis)]
 ```
 
 ### 1.2 Request Flow Sequence
@@ -187,7 +155,7 @@ GET /health
 **Technology Stack:**
 - Python 3.11+
 - FastAPI + Uvicorn
-- LlamaParse (PDF extraction)
+- PyMuPDF4LLM (PDF extraction)
 - LangChain (LLM orchestration)
 - OpenAI GPT-4o
 - Pydantic (structured outputs)
@@ -198,7 +166,7 @@ GET /health
 | Module | Responsibility |
 |--------|---------------|
 | `api/analyze.py` | FastAPI endpoint accepting clinical bundle + documents |
-| `parsers/pdf_parser.py` | LlamaParse wrapper for medical document extraction |
+| `parsers/pdf_parser.py` | PyMuPDF4LLM wrapper for medical document extraction |
 | `policies/` | Payer policy definitions (procedure/payer TBD) |
 | `reasoning/evidence_extractor.py` | LLM chain that finds policy-relevant evidence |
 | `reasoning/form_generator.py` | LLM chain that produces structured form JSON |
@@ -301,6 +269,8 @@ python scripts/warm_demo_cache.py --patients demo_patients.json
 ```
 
 ### 2.5 Shadow Dashboard (React 19)
+
+> **Note:** The Shadow Dashboard is optional for MVP. The core demo can run without it.
 
 **Responsibility:** Real-time visibility into AuthScript processing AND manual fallback interface.
 
@@ -523,10 +493,10 @@ graph TB
         Endpoint["/analyze endpoint"]
 
         subgraph DocProcessing["DOCUMENT PROCESSING LAYER"]
-            LlamaParse["LlamaParse<br/>PDF→Text"]
+            PyMuPDF4LLM["PyMuPDF4LLM<br/>PDF→Text"]
             TextCleaner["Text<br/>Cleaner"]
             SectionId["Section<br/>Identifier"]
-            LlamaParse --> TextCleaner --> SectionId
+            PyMuPDF4LLM --> TextCleaner --> SectionId
         end
 
         subgraph PolicyLayer["POLICY MATCHING LAYER"]
@@ -552,8 +522,7 @@ graph TB
 **PDF Parsing Configuration:**
 
 ```python
-# Primary: PyMuPDF4LLM (local, fast)
-# Future: LlamaParse for complex documents
+# Primary: PyMuPDF4LLM (local, fast, no external API dependency)
 
 import pymupdf4llm
 
@@ -917,6 +886,8 @@ graph TD
 
 ## 7. Fallback Architecture (SMART App)
 
+> **Note:** The SMART App fallback is optional for MVP and can be deferred post-demo.
+
 ### 7.1 SMART on FHIR Launch Flow
 
 ```mermaid
@@ -1050,7 +1021,7 @@ Week 1-2: Foundation
 
 Week 3-4: Core Pipeline
 ├── Full FHIR data aggregation
-├── PDF parsing with LlamaParse
+├── PDF parsing with PyMuPDF4LLM
 ├── LLM reasoning chain (evidence + form generation)
 ├── PDF stamping with iText7
 └── DocumentReference upload
@@ -1121,47 +1092,7 @@ Week 7: Polish & Buffer
 
 ## 11. Implementation Status & Strategic Recommendations
 
-### 11.1 Current Implementation Status (as of 2026-01-25)
-
-| Layer | Status | Completion | Notes |
-|-------|--------|------------|-------|
-| **Types & Validation** | Complete | 100% | 65 tests (shared/types + shared/validation) |
-| **Dashboard UI** | Complete | 100% | 284 tests, all 4 key views implemented |
-| **Backend Structure** | Scaffolded | 40% | Endpoints exist, need FHIR integration |
-| **Intelligence Logic** | Complete | 60% | 22 tests, needs LLM connection |
-| **Epic Integration** | Not Started | 5% | OAuth, FHIR queries pending |
-| **Demo Infrastructure** | Not Started | 0% | Redis cache, warming scripts |
-
-### 11.2 Architecture Decisions
-
-**Dashboard Technology:** React 19 + TanStack Router/Query (instead of Blazor)
-- Better ecosystem for real-time UI
-- TanStack Query provides excellent caching
-- Polling-based status updates (SignalR upgrade deferred)
-
-**Directory Structure:** Flattened apps layout (adopted from ares-elite-platform)
-- `apps/gateway/Gateway.API/` (not nested `src/`)
-- Interfaces in `Contracts/` subdirectory
-
-### 11.3 Remaining Work (Priority Order)
-
-| Priority | Task | Effort | Demo-Critical |
-|----------|------|--------|---------------|
-| P0 | Epic OAuth + JWT validation | 2-3 days | Yes |
-| P0 | FHIR data fetching | 3-4 days | Yes |
-| P0 | LlamaParse integration | 2-3 days | Yes |
-| P0 | GPT-4o reasoning chains | 3-4 days | Yes |
-| P1 | Redis cache + warming | 2 days | Yes |
-| P1 | End-to-end pipeline test | 2 days | Yes |
-| P2 | SignalR upgrade | 1-2 days | No |
-| P2 | SMART app fallback | 3-4 days | No |
-
-### 11.4 Strategic Recommendations
-
-1. **Prioritize Happy Path**: Focus on demo-001 patient (procedure/payer TBD)
-2. **Use Cached Responses**: Pre-compute LLM responses for demo patients
-3. **Build Integration Tests First**: Mock Epic responses for development
-4. **Prepare Recovery Scripts**: Dashboard fallback if CDS Hook fails
+Implementation status is tracked in GitHub Issues. See the [Project Board](https://github.com/orgs/lvlup-sw/projects/4) for current progress.
 
 ---
 
@@ -1190,7 +1121,7 @@ Week 7: Polish & Buffer
 ```
 fastapi>=0.109.0
 uvicorn>=0.27.0
-llama-parse>=0.4.0
+pymupdf4llm>=0.0.17
 langchain>=0.1.0
 langchain-openai>=0.0.5
 pydantic>=2.6.0
