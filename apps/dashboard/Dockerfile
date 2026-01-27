@@ -11,10 +11,13 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 
 # Copy package files first for layer caching
-COPY package.json package-lock.json* ./
+COPY package.json ./
 
 # Install dependencies
-RUN npm ci
+# Note: Using npm install since this Dockerfile builds in isolation without
+# the monorepo's package-lock.json. For reproducible CI/CD builds, use
+# Dockerfile.build from the monorepo root instead.
+RUN npm install
 
 # Copy source and build
 COPY . ./

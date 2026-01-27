@@ -101,3 +101,4 @@ assets/pdf-templates/*.pdf
 
 # Workflow state (session-specific)
 docs/workflow-state/
+.worktrees/

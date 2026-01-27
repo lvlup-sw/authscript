@@ -1,11 +1,14 @@
 namespace Gateway.API.Contracts.Fhir;
 
+using Gateway.API.Abstractions;
+using Hl7.Fhir.Model;
+
 /// <summary>
 /// Low-level CRUD interface for FHIR resources.
 /// Provides direct access to FHIR server operations.
 /// </summary>
 /// <typeparam name="TResource">The FHIR resource type.</typeparam>
-public interface IFhirContext<TResource> where TResource : class
+public interface IFhirContext<TResource> where TResource : Resource
 {
     /// <summary>
     /// Reads a single FHIR resource by ID.

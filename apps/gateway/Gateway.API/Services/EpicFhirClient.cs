@@ -1,382 +1,373 @@
-using System.Net.Http.Headers;
-using System.Text.Json;
+using System.Net;
+using Gateway.API.Abstractions;
 using Gateway.API.Contracts;
+using Gateway.API.Contracts.Fhir;
+using Gateway.API.Contracts.Http;
+using Gateway.API.Errors;
 using Gateway.API.Models;
+using Hl7.Fhir.Model;
 
 namespace Gateway.API.Services;
 
 /// <summary>
 /// HTTP client implementation for Epic's FHIR R4 API.
-/// Handles authentication, request formatting, and response parsing.
+/// Uses IHttpClientProvider for authentication and IFhirSerializer for parsing.
 /// </summary>
 public sealed class EpicFhirClient : IEpicFhirClient
 {
-    private readonly HttpClient _httpClient;
+    private const string ClientName = "EpicFhir";
+
+    private readonly IHttpClientProvider _httpClientProvider;
+    private readonly IFhirSerializer _fhirSerializer;
     private readonly ILogger<EpicFhirClient> _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="EpicFhirClient"/> class.
     /// </summary>
-    /// <param name="httpClient">HTTP client configured with Epic's FHIR base URL.</param>
+    /// <param name="httpClientProvider">Provider for authenticated HTTP clients.</param>
+    /// <param name="fhirSerializer">FHIR JSON serializer.</param>
     /// <param name="logger">Logger for diagnostic output.</param>
-    public EpicFhirClient(HttpClient httpClient, ILogger<EpicFhirClient> logger)
+    public EpicFhirClient(
+        IHttpClientProvider httpClientProvider,
+        IFhirSerializer fhirSerializer,
+        ILogger<EpicFhirClient> logger)
     {
-        _httpClient = httpClient;
+        _httpClientProvider = httpClientProvider;
+        _fhirSerializer = fhirSerializer;
         _logger = logger;
     }
 
     /// <inheritdoc />
-    public async Task<PatientInfo?> GetPatientAsync(
+    public async Task<Result<PatientInfo>> GetPatientAsync(
         string patientId,
-        string accessToken,
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"Patient/{patientId}");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/fhir+json"));
-
-        var response = await _httpClient.SendAsync(request, cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
+        var httpClient = await _httpClientProvider.GetAuthenticatedClientAsync(ClientName, ct);
+        if (httpClient is null)
         {
-            _logger.LogWarning("Failed to fetch patient {PatientId}: {Status}", patientId, response.StatusCode);
-            return null;
+            return FhirErrors.AuthenticationFailed;
         }
 
-        var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cancellationToken);
+        var response = await httpClient.GetAsync($"Patient/{patientId}", ct);
 
-        return new PatientInfo
+        return response.StatusCode switch
         {
-            Id = patientId,
-            GivenName = ExtractName(json, "given"),
-            FamilyName = ExtractName(json, "family"),
-            BirthDate = ExtractDate(json, "birthDate"),
-            Gender = json.TryGetProperty("gender", out var gender) ? gender.GetString() : null
+            HttpStatusCode.OK => await ParsePatientAsync(response, patientId, ct),
+            HttpStatusCode.NotFound => FhirErrors.NotFound("Patient", patientId),
+            HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => FhirErrors.AuthenticationFailed,
+            _ => FhirErrors.NetworkError($"FHIR server returned {response.StatusCode}")
         };
     }
 
     /// <inheritdoc />
-    public async Task<List<ConditionInfo>> SearchConditionsAsync(
+    public async Task<Result<IReadOnlyList<ConditionInfo>>> SearchConditionsAsync(
         string patientId,
-        string accessToken,
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default)
     {
-        var results = new List<ConditionInfo>();
+        var httpClient = await _httpClientProvider.GetAuthenticatedClientAsync(ClientName, ct);
+        if (httpClient is null)
+        {
+            return FhirErrors.AuthenticationFailed;
+        }
 
-        using var request = new HttpRequestMessage(
-            HttpMethod.Get,
-            $"Condition?patient={patientId}&clinical-status=active");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/fhir+json"));
-
-        var response = await _httpClient.SendAsync(request, cancellationToken);
+        var response = await httpClient.GetAsync(
+            $"Condition?patient={patientId}&clinical-status=active", ct);
 
         if (!response.IsSuccessStatusCode)
         {
-            _logger.LogWarning("Failed to search conditions for {PatientId}: {Status}", patientId, response.StatusCode);
-            return results;
+            return MapHttpError(response.StatusCode, "Condition search");
         }
 
-        var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cancellationToken);
+        var json = await response.Content.ReadAsStringAsync(ct);
+        var bundle = _fhirSerializer.DeserializeBundle(json);
 
-        if (json.TryGetProperty("entry", out var entries))
-        {
-            foreach (var entry in entries.EnumerateArray())
-            {
-                if (entry.TryGetProperty("resource", out var resource))
-                {
-                    var coding = ExtractFirstCoding(resource, "code");
-                    if (coding is not null)
-                    {
-                        results.Add(new ConditionInfo
-                        {
-                            Id = resource.TryGetProperty("id", out var id) ? id.GetString()! : Guid.NewGuid().ToString(),
-                            Code = coding.Value.code,
-                            CodeSystem = coding.Value.system,
-                            Display = coding.Value.display,
-                            ClinicalStatus = ExtractClinicalStatus(resource)
-                        });
-                    }
-                }
-            }
-        }
-
-        return results;
+        return MapConditions(bundle);
     }
 
     /// <inheritdoc />
-    public async Task<List<ObservationInfo>> SearchObservationsAsync(
+    public async Task<Result<IReadOnlyList<ObservationInfo>>> SearchObservationsAsync(
         string patientId,
         DateOnly since,
-        string accessToken,
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default)
     {
-        var results = new List<ObservationInfo>();
+        var httpClient = await _httpClientProvider.GetAuthenticatedClientAsync(ClientName, ct);
+        if (httpClient is null)
+        {
+            return FhirErrors.AuthenticationFailed;
+        }
 
-        using var request = new HttpRequestMessage(
-            HttpMethod.Get,
-            $"Observation?patient={patientId}&category=laboratory&date=ge{since:yyyy-MM-dd}");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/fhir+json"));
-
-        var response = await _httpClient.SendAsync(request, cancellationToken);
+        var response = await httpClient.GetAsync(
+            $"Observation?patient={patientId}&category=laboratory&date=ge{since:yyyy-MM-dd}", ct);
 
         if (!response.IsSuccessStatusCode)
         {
-            _logger.LogWarning("Failed to search observations for {PatientId}: {Status}", patientId, response.StatusCode);
-            return results;
+            return MapHttpError(response.StatusCode, "Observation search");
         }
 
-        var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cancellationToken);
+        var json = await response.Content.ReadAsStringAsync(ct);
+        var bundle = _fhirSerializer.DeserializeBundle(json);
 
-        if (json.TryGetProperty("entry", out var entries))
-        {
-            foreach (var entry in entries.EnumerateArray())
-            {
-                if (entry.TryGetProperty("resource", out var resource))
-                {
-                    var coding = ExtractFirstCoding(resource, "code");
-                    if (coding is not null)
-                    {
-                        results.Add(new ObservationInfo
-                        {
-                            Id = resource.TryGetProperty("id", out var id) ? id.GetString()! : Guid.NewGuid().ToString(),
-                            Code = coding.Value.code,
-                            CodeSystem = coding.Value.system,
-                            Display = coding.Value.display,
-                            Value = ExtractObservationValue(resource),
-                            Unit = ExtractObservationUnit(resource)
-                        });
-                    }
-                }
-            }
-        }
-
-        return results;
+        return MapObservations(bundle);
     }
 
     /// <inheritdoc />
-    public async Task<List<ProcedureInfo>> SearchProceduresAsync(
+    public async Task<Result<IReadOnlyList<ProcedureInfo>>> SearchProceduresAsync(
         string patientId,
         DateOnly since,
-        string accessToken,
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default)
     {
-        var results = new List<ProcedureInfo>();
+        var httpClient = await _httpClientProvider.GetAuthenticatedClientAsync(ClientName, ct);
+        if (httpClient is null)
+        {
+            return FhirErrors.AuthenticationFailed;
+        }
 
-        using var request = new HttpRequestMessage(
-            HttpMethod.Get,
-            $"Procedure?patient={patientId}&date=ge{since:yyyy-MM-dd}");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/fhir+json"));
-
-        var response = await _httpClient.SendAsync(request, cancellationToken);
+        var response = await httpClient.GetAsync(
+            $"Procedure?patient={patientId}&date=ge{since:yyyy-MM-dd}", ct);
 
         if (!response.IsSuccessStatusCode)
         {
-            _logger.LogWarning("Failed to search procedures for {PatientId}: {Status}", patientId, response.StatusCode);
-            return results;
+            return MapHttpError(response.StatusCode, "Procedure search");
         }
 
-        var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cancellationToken);
+        var json = await response.Content.ReadAsStringAsync(ct);
+        var bundle = _fhirSerializer.DeserializeBundle(json);
 
-        if (json.TryGetProperty("entry", out var entries))
-        {
-            foreach (var entry in entries.EnumerateArray())
-            {
-                if (entry.TryGetProperty("resource", out var resource))
-                {
-                    var coding = ExtractFirstCoding(resource, "code");
-                    if (coding is not null)
-                    {
-                        results.Add(new ProcedureInfo
-                        {
-                            Id = resource.TryGetProperty("id", out var id) ? id.GetString()! : Guid.NewGuid().ToString(),
-                            Code = coding.Value.code,
-                            CodeSystem = coding.Value.system,
-                            Display = coding.Value.display,
-                            Status = resource.TryGetProperty("status", out var status) ? status.GetString() : null
-                        });
-                    }
-                }
-            }
-        }
-
-        return results;
+        return MapProcedures(bundle);
     }
 
     /// <inheritdoc />
-    public async Task<List<DocumentInfo>> SearchDocumentsAsync(
+    public async Task<Result<IReadOnlyList<DocumentInfo>>> SearchDocumentsAsync(
         string patientId,
-        string accessToken,
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default)
     {
-        var results = new List<DocumentInfo>();
+        var httpClient = await _httpClientProvider.GetAuthenticatedClientAsync(ClientName, ct);
+        if (httpClient is null)
+        {
+            return FhirErrors.AuthenticationFailed;
+        }
 
-        using var request = new HttpRequestMessage(
-            HttpMethod.Get,
-            $"DocumentReference?patient={patientId}&status=current");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/fhir+json"));
-
-        var response = await _httpClient.SendAsync(request, cancellationToken);
+        var response = await httpClient.GetAsync(
+            $"DocumentReference?patient={patientId}&status=current", ct);
 
         if (!response.IsSuccessStatusCode)
         {
-            _logger.LogWarning("Failed to search documents for {PatientId}: {Status}", patientId, response.StatusCode);
-            return results;
+            return MapHttpError(response.StatusCode, "DocumentReference search");
         }
 
-        var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cancellationToken);
+        var json = await response.Content.ReadAsStringAsync(ct);
+        var bundle = _fhirSerializer.DeserializeBundle(json);
 
-        if (json.TryGetProperty("entry", out var entries))
-        {
-            foreach (var entry in entries.EnumerateArray())
-            {
-                if (entry.TryGetProperty("resource", out var resource))
-                {
-                    var docId = resource.TryGetProperty("id", out var id) ? id.GetString()! : Guid.NewGuid().ToString();
-                    var type = ExtractFirstCoding(resource, "type");
-
-                    results.Add(new DocumentInfo
-                    {
-                        Id = docId,
-                        Type = type?.display ?? type?.code ?? "Unknown",
-                        ContentType = ExtractContentType(resource),
-                        Title = ExtractDocumentTitle(resource)
-                    });
-                }
-            }
-        }
-
-        return results;
+        return MapDocuments(bundle);
     }
 
     /// <inheritdoc />
-    public async Task<byte[]?> GetDocumentContentAsync(
+    public async Task<Result<byte[]>> GetDocumentContentAsync(
         string documentId,
-        string accessToken,
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"Binary/{documentId}");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-
-        var response = await _httpClient.SendAsync(request, cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
+        var httpClient = await _httpClientProvider.GetAuthenticatedClientAsync(ClientName, ct);
+        if (httpClient is null)
         {
-            _logger.LogWarning("Failed to fetch document content {DocumentId}: {Status}", documentId, response.StatusCode);
-            return null;
+            return FhirErrors.AuthenticationFailed;
         }
 
-        return await response.Content.ReadAsByteArrayAsync(cancellationToken);
+        var response = await httpClient.GetAsync($"Binary/{documentId}", ct);
+
+        return response.StatusCode switch
+        {
+            HttpStatusCode.OK => await response.Content.ReadAsByteArrayAsync(ct),
+            HttpStatusCode.NotFound => FhirErrors.NotFound("Binary", documentId),
+            HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => FhirErrors.AuthenticationFailed,
+            _ => FhirErrors.NetworkError($"FHIR server returned {response.StatusCode}")
+        };
     }
 
-    private static string? ExtractName(JsonElement json, string part)
+    private async Task<Result<PatientInfo>> ParsePatientAsync(
+        HttpResponseMessage response,
+        string patientId,
+        CancellationToken ct)
     {
-        if (!json.TryGetProperty("name", out var names)) return null;
+        var json = await response.Content.ReadAsStringAsync(ct);
+        var patient = _fhirSerializer.Deserialize<Patient>(json);
 
-        foreach (var name in names.EnumerateArray())
+        if (patient is null)
         {
-            if (part == "given" && name.TryGetProperty("given", out var given))
+            return FhirErrors.InvalidResponse("Failed to parse Patient resource");
+        }
+
+        return new PatientInfo
+        {
+            Id = patient.Id ?? patientId,
+            GivenName = ExtractGivenName(patient),
+            FamilyName = ExtractFamilyName(patient),
+            BirthDate = ParseDate(patient.BirthDate),
+            Gender = patient.Gender?.ToString()
+        };
+    }
+
+    private static string? ExtractGivenName(Patient patient)
+    {
+        var name = patient.Name.FirstOrDefault();
+        if (name?.Given is null) return null;
+        return string.Join(" ", name.Given);
+    }
+
+    private static string? ExtractFamilyName(Patient patient)
+    {
+        return patient.Name.FirstOrDefault()?.Family;
+    }
+
+    private static DateOnly? ParseDate(string? dateStr)
+    {
+        if (string.IsNullOrEmpty(dateStr)) return null;
+        if (DateOnly.TryParse(dateStr, out var date)) return date;
+        return null;
+    }
+
+    private static Result<IReadOnlyList<ConditionInfo>> MapConditions(Bundle? bundle)
+    {
+        if (bundle is null)
+        {
+            return Array.Empty<ConditionInfo>();
+        }
+
+        var conditions = new List<ConditionInfo>();
+
+        foreach (var entry in bundle.Entry ?? Enumerable.Empty<Bundle.EntryComponent>())
+        {
+            if (entry.Resource is Condition condition && condition.Code?.Coding?.Count > 0)
             {
-                var givenNames = new List<string>();
-                foreach (var g in given.EnumerateArray())
+                var coding = condition.Code.Coding[0];
+                conditions.Add(new ConditionInfo
                 {
-                    givenNames.Add(g.GetString() ?? "");
-                }
-                return string.Join(" ", givenNames);
+                    Id = condition.Id ?? Guid.NewGuid().ToString(),
+                    Code = coding.Code,
+                    CodeSystem = coding.System,
+                    Display = coding.Display ?? condition.Code.Text,
+                    ClinicalStatus = ExtractClinicalStatus(condition)
+                });
             }
-            if (part == "family" && name.TryGetProperty("family", out var family))
+        }
+
+        return conditions;
+    }
+
+    private static string? ExtractClinicalStatus(Condition condition)
+    {
+        return condition.ClinicalStatus?.Coding?.FirstOrDefault()?.Code;
+    }
+
+    private static Result<IReadOnlyList<ObservationInfo>> MapObservations(Bundle? bundle)
+    {
+        if (bundle is null)
+        {
+            return Array.Empty<ObservationInfo>();
+        }
+
+        var observations = new List<ObservationInfo>();
+
+        foreach (var entry in bundle.Entry ?? Enumerable.Empty<Bundle.EntryComponent>())
+        {
+            if (entry.Resource is Observation obs && obs.Code?.Coding?.Count > 0)
             {
-                return family.GetString();
-            }
-        }
-
-        return null;
-    }
-
-    private static DateOnly? ExtractDate(JsonElement json, string property)
-    {
-        if (!json.TryGetProperty(property, out var value)) return null;
-        if (DateOnly.TryParse(value.GetString(), out var date)) return date;
-        return null;
-    }
-
-    private static (string code, string? system, string? display)? ExtractFirstCoding(JsonElement json, string property)
-    {
-        if (!json.TryGetProperty(property, out var codeableConcept)) return null;
-        if (!codeableConcept.TryGetProperty("coding", out var codings)) return null;
-
-        foreach (var coding in codings.EnumerateArray())
-        {
-            var code = coding.TryGetProperty("code", out var c) ? c.GetString() : null;
-            if (code is null) continue;
-
-            var system = coding.TryGetProperty("system", out var s) ? s.GetString() : null;
-            var display = coding.TryGetProperty("display", out var d) ? d.GetString() : null;
-
-            return (code, system, display);
-        }
-
-        return null;
-    }
-
-    private static string? ExtractClinicalStatus(JsonElement resource)
-    {
-        if (!resource.TryGetProperty("clinicalStatus", out var status)) return null;
-        var coding = ExtractFirstCoding(status, "coding");
-        return coding?.code;
-    }
-
-    private static string? ExtractObservationValue(JsonElement resource)
-    {
-        if (resource.TryGetProperty("valueQuantity", out var quantity))
-        {
-            return quantity.TryGetProperty("value", out var v) ? v.ToString() : null;
-        }
-        if (resource.TryGetProperty("valueString", out var str))
-        {
-            return str.GetString();
-        }
-        return null;
-    }
-
-    private static string? ExtractObservationUnit(JsonElement resource)
-    {
-        if (!resource.TryGetProperty("valueQuantity", out var quantity)) return null;
-        return quantity.TryGetProperty("unit", out var unit) ? unit.GetString() : null;
-    }
-
-    private static string? ExtractContentType(JsonElement resource)
-    {
-        if (!resource.TryGetProperty("content", out var contents)) return null;
-        foreach (var content in contents.EnumerateArray())
-        {
-            if (content.TryGetProperty("attachment", out var attachment))
-            {
-                if (attachment.TryGetProperty("contentType", out var ct))
+                var coding = obs.Code.Coding[0];
+                observations.Add(new ObservationInfo
                 {
-                    return ct.GetString();
-                }
+                    Id = obs.Id ?? Guid.NewGuid().ToString(),
+                    Code = coding.Code,
+                    CodeSystem = coding.System,
+                    Display = coding.Display ?? obs.Code.Text,
+                    Value = ExtractObservationValue(obs),
+                    Unit = ExtractObservationUnit(obs)
+                });
             }
         }
-        return null;
+
+        return observations;
     }
 
-    private static string? ExtractDocumentTitle(JsonElement resource)
+    private static string? ExtractObservationValue(Observation obs)
     {
-        if (!resource.TryGetProperty("content", out var contents)) return null;
-        foreach (var content in contents.EnumerateArray())
+        return obs.Value switch
         {
-            if (content.TryGetProperty("attachment", out var attachment))
+            Quantity q => q.Value?.ToString(),
+            FhirString s => s.Value,
+            _ => null
+        };
+    }
+
+    private static string? ExtractObservationUnit(Observation obs)
+    {
+        return obs.Value is Quantity q ? q.Unit : null;
+    }
+
+    private static Result<IReadOnlyList<ProcedureInfo>> MapProcedures(Bundle? bundle)
+    {
+        if (bundle is null)
+        {
+            return Array.Empty<ProcedureInfo>();
+        }
+
+        var procedures = new List<ProcedureInfo>();
+
+        foreach (var entry in bundle.Entry ?? Enumerable.Empty<Bundle.EntryComponent>())
+        {
+            if (entry.Resource is Procedure proc && proc.Code?.Coding?.Count > 0)
             {
-                if (attachment.TryGetProperty("title", out var title))
+                var coding = proc.Code.Coding[0];
+                procedures.Add(new ProcedureInfo
                 {
-                    return title.GetString();
-                }
+                    Id = proc.Id ?? Guid.NewGuid().ToString(),
+                    Code = coding.Code,
+                    CodeSystem = coding.System,
+                    Display = coding.Display ?? proc.Code.Text,
+                    Status = proc.Status?.ToString()
+                });
             }
         }
-        return null;
+
+        return procedures;
+    }
+
+    private static Result<IReadOnlyList<DocumentInfo>> MapDocuments(Bundle? bundle)
+    {
+        if (bundle is null)
+        {
+            return Array.Empty<DocumentInfo>();
+        }
+
+        var documents = new List<DocumentInfo>();
+
+        foreach (var entry in bundle.Entry ?? Enumerable.Empty<Bundle.EntryComponent>())
+        {
+            if (entry.Resource is DocumentReference docRef)
+            {
+                var typeCoding = docRef.Type?.Coding?.FirstOrDefault();
+                var attachment = docRef.Content?.FirstOrDefault()?.Attachment;
+
+                documents.Add(new DocumentInfo
+                {
+                    Id = docRef.Id ?? Guid.NewGuid().ToString(),
+                    Type = typeCoding?.Display ?? typeCoding?.Code ?? "Unknown",
+                    ContentType = attachment?.ContentType,
+                    Title = attachment?.Title
+                });
+            }
+        }
+
+        return documents;
+    }
+
+    private static Error MapHttpError(HttpStatusCode statusCode, string operation)
+    {
+        return statusCode switch
+        {
+            HttpStatusCode.NotFound => FhirErrors.NotFound(operation, "search"),
+            HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => FhirErrors.AuthenticationFailed,
+            HttpStatusCode.ServiceUnavailable => FhirErrors.ServiceUnavailable,
+            HttpStatusCode.RequestTimeout or HttpStatusCode.GatewayTimeout => FhirErrors.Timeout,
+            _ => FhirErrors.NetworkError($"FHIR {operation} failed with status {statusCode}")
+        };
     }
 }

@@ -1,3 +1,4 @@
+using Gateway.API.Abstractions;
 using Gateway.API.Contracts;
 using Gateway.API.Models;
 
@@ -24,10 +25,9 @@ public sealed class FhirDataAggregator : IFhirDataAggregator
     }
 
     /// <inheritdoc />
-    public async Task<ClinicalBundle> AggregateClinicalDataAsync(
+    public async Task<Result<ClinicalBundle>> AggregateClinicalDataAsync(
         string patientId,
-        string accessToken,
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default)
     {
         _logger.LogInformation("Aggregating clinical data for patient {PatientId}", patientId);
 
@@ -35,22 +35,35 @@ public sealed class FhirDataAggregator : IFhirDataAggregator
         var oneYearAgo = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-1));
 
         // Parallel FHIR fetches for performance
-        var patientTask = _fhirClient.GetPatientAsync(patientId, accessToken, cancellationToken);
-        var conditionsTask = _fhirClient.SearchConditionsAsync(patientId, accessToken, cancellationToken);
-        var observationsTask = _fhirClient.SearchObservationsAsync(patientId, sixMonthsAgo, accessToken, cancellationToken);
-        var proceduresTask = _fhirClient.SearchProceduresAsync(patientId, oneYearAgo, accessToken, cancellationToken);
-        var documentsTask = _fhirClient.SearchDocumentsAsync(patientId, accessToken, cancellationToken);
+        var patientTask = _fhirClient.GetPatientAsync(patientId, ct);
+        var conditionsTask = _fhirClient.SearchConditionsAsync(patientId, ct);
+        var observationsTask = _fhirClient.SearchObservationsAsync(patientId, sixMonthsAgo, ct);
+        var proceduresTask = _fhirClient.SearchProceduresAsync(patientId, oneYearAgo, ct);
+        var documentsTask = _fhirClient.SearchDocumentsAsync(patientId, ct);
 
         await Task.WhenAll(patientTask, conditionsTask, observationsTask, proceduresTask, documentsTask);
 
+        var patientResult = await patientTask;
+        var conditionsResult = await conditionsTask;
+        var observationsResult = await observationsTask;
+        var proceduresResult = await proceduresTask;
+        var documentsResult = await documentsTask;
+
+        // Patient is required - if it fails, propagate the error
+        if (patientResult.IsFailure)
+        {
+            return patientResult.Error!;
+        }
+
+        // Other resources use default empty lists on failure (partial success)
         var bundle = new ClinicalBundle
         {
             PatientId = patientId,
-            Patient = await patientTask,
-            Conditions = await conditionsTask,
-            Observations = await observationsTask,
-            Procedures = await proceduresTask,
-            Documents = await documentsTask
+            Patient = patientResult.Value,
+            Conditions = conditionsResult.IsSuccess ? conditionsResult.Value!.ToList() : [],
+            Observations = observationsResult.IsSuccess ? observationsResult.Value!.ToList() : [],
+            Procedures = proceduresResult.IsSuccess ? proceduresResult.Value!.ToList() : [],
+            Documents = documentsResult.IsSuccess ? documentsResult.Value!.ToList() : []
         };
 
         _logger.LogInformation(

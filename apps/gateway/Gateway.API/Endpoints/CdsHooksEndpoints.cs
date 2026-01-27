@@ -1,6 +1,6 @@
+using Gateway.API.Abstractions;
 using Gateway.API.Contracts;
 using Gateway.API.Models;
-using Gateway.API.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Gateway.API.Endpoints;
@@ -113,36 +113,58 @@ public static class CdsHooksEndpoints
                 return Results.Ok(BuildSuccessCard(transactionId, cachedResponse, config));
             }
 
-            // Full pipeline
-            var accessToken = request.FhirAuthorization?.AccessToken;
-            if (string.IsNullOrEmpty(accessToken))
+            // No access token check needed - IHttpClientProvider handles auth internally
+
+            // 1. Aggregate FHIR data using Result pattern
+            var bundleResult = await fhirAggregator.AggregateClinicalDataAsync(
+                request.Context.PatientId,
+                cts.Token);
+
+            if (bundleResult.IsFailure)
             {
-                logger.LogWarning("No access token provided in CDS request");
-                return Results.Ok(BuildErrorCard("Missing FHIR authorization"));
+                logger.LogWarning(
+                    "Failed to aggregate FHIR data: {Error}",
+                    bundleResult.Error!.Message);
+                return Results.Ok(BuildErrorCard(bundleResult.Error.Message));
             }
 
-            // 1. Aggregate FHIR data
-            var clinicalBundle = await fhirAggregator.AggregateClinicalDataAsync(
-                request.Context.PatientId,
-                accessToken,
-                cts.Token);
-
             // 2. Send to Intelligence service for analysis
-            var formData = await intelligenceClient.AnalyzeAsync(
-                clinicalBundle,
+            var analysisResult = await intelligenceClient.AnalyzeAsync(
+                bundleResult.Value!,
                 procedureCode,
                 cts.Token);
+
+            if (analysisResult.IsFailure)
+            {
+                logger.LogWarning(
+                    "Intelligence analysis failed: {Error}",
+                    analysisResult.Error!.Message);
+                return Results.Ok(BuildFallbackCard(transactionId, config));
+            }
+
+            var formData = analysisResult.Value!;
 
             // 3. Stamp PDF form
             var pdfBytes = await pdfStamper.StampFormAsync(formData, cts.Token);
 
             // 4. Upload to Epic
-            var documentId = await epicUploader.UploadDocumentAsync(
+            var uploadResult = await epicUploader.UploadDocumentAsync(
                 pdfBytes,
                 request.Context.PatientId,
                 request.Context.EncounterId,
-                accessToken,
                 cts.Token);
+
+            string? documentId = null;
+            if (uploadResult.IsSuccess)
+            {
+                documentId = uploadResult.Value;
+            }
+            else
+            {
+                logger.LogWarning(
+                    "Document upload failed: {Error}. Returning card without document reference.",
+                    uploadResult.Error!.Message);
+            }
 
             // Cache the successful response for demo purposes
             await cacheService.SetCachedResponseAsync(cacheKey, formData, cts.Token);

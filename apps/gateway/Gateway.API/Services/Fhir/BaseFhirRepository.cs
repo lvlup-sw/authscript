@@ -1,5 +1,6 @@
-using Gateway.API.Contracts;
+using Gateway.API.Abstractions;
 using Gateway.API.Contracts.Fhir;
+using Hl7.Fhir.Model;
 
 namespace Gateway.API.Services.Fhir;
 
@@ -8,7 +9,7 @@ namespace Gateway.API.Services.Fhir;
 /// Provides common repository functionality for FHIR resources.
 /// </summary>
 /// <typeparam name="TResource">The FHIR resource type.</typeparam>
-public abstract class BaseFhirRepository<TResource> : IFhirRepository<TResource> where TResource : class
+public abstract class BaseFhirRepository<TResource> : IFhirRepository<TResource> where TResource : Resource
 {
     /// <summary>
     /// The underlying FHIR context.
@@ -67,7 +68,7 @@ public abstract class BaseFhirRepository<TResource> : IFhirRepository<TResource>
 /// <typeparam name="TResource">The FHIR resource type.</typeparam>
 public abstract class BaseFhirRepositoryWithDateRange<TResource>
     : BaseFhirRepository<TResource>, IFhirRepositoryWithDateRange<TResource>
-    where TResource : class
+    where TResource : Resource
 {
     /// <summary>
     /// The name of the date field to filter on.

@@ -1,7 +1,11 @@
-using System.Net.Http.Headers;
+using System.Net;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using Gateway.API.Abstractions;
 using Gateway.API.Contracts;
+using Gateway.API.Contracts.Http;
+using Gateway.API.Errors;
 
 namespace Gateway.API.Services;
 
@@ -11,41 +15,40 @@ namespace Gateway.API.Services;
 /// </summary>
 public sealed class EpicUploader : IEpicUploader
 {
-    private readonly IEpicFhirClient _fhirClient;
-    private readonly HttpClient _httpClient;
+    private const string ClientName = "EpicFhir";
+
+    private readonly IHttpClientProvider _httpClientProvider;
     private readonly ILogger<EpicUploader> _logger;
-    private readonly IConfiguration _configuration;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="EpicUploader"/> class.
     /// </summary>
-    /// <param name="fhirClient">The Epic FHIR client for reference.</param>
-    /// <param name="httpClient">HTTP client for direct FHIR calls.</param>
+    /// <param name="httpClientProvider">Provider for authenticated HTTP clients.</param>
     /// <param name="logger">Logger for diagnostic output.</param>
-    /// <param name="configuration">Configuration for Epic FHIR base URL.</param>
     public EpicUploader(
-        IEpicFhirClient fhirClient,
-        HttpClient httpClient,
-        ILogger<EpicUploader> logger,
-        IConfiguration configuration)
+        IHttpClientProvider httpClientProvider,
+        ILogger<EpicUploader> logger)
     {
-        _fhirClient = fhirClient;
-        _httpClient = httpClient;
+        _httpClientProvider = httpClientProvider;
         _logger = logger;
-        _configuration = configuration;
     }
 
     /// <inheritdoc />
-    public async Task<string> UploadDocumentAsync(
+    public async Task<Result<string>> UploadDocumentAsync(
         byte[] pdfBytes,
         string patientId,
         string? encounterId,
-        string accessToken,
-        CancellationToken cancellationToken = default)
+        CancellationToken ct = default)
     {
         _logger.LogInformation(
             "Uploading PA form to Epic. PatientId={PatientId}, Size={Size} bytes",
             patientId, pdfBytes.Length);
+
+        var httpClient = await _httpClientProvider.GetAuthenticatedClientAsync(ClientName, ct);
+        if (httpClient is null)
+        {
+            return FhirErrors.AuthenticationFailed;
+        }
 
         var documentReference = new
         {
@@ -93,23 +96,28 @@ public sealed class EpicUploader : IEpicUploader
         var json = JsonSerializer.Serialize(documentReference);
         var content = new StringContent(json, Encoding.UTF8, "application/fhir+json");
 
-        var baseUrl = _configuration["Epic:FhirBaseUrl"]
-            ?? "https://fhir.epic.com/interconnect-fhir-oauth/api/FHIR/R4";
-
-        using var request = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/DocumentReference");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        request.Content = content;
-
-        var response = await _httpClient.SendAsync(request, cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
+        try
         {
-            var error = await response.Content.ReadAsStringAsync(cancellationToken);
-            _logger.LogError("Failed to upload document: {Status} - {Error}", response.StatusCode, error);
-            throw new HttpRequestException($"Epic returned {response.StatusCode}: {error}");
-        }
+            var response = await httpClient.PostAsync("DocumentReference", content, ct);
 
-        var responseJson = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cancellationToken);
+            return response.StatusCode switch
+            {
+                HttpStatusCode.Created or HttpStatusCode.OK => await ExtractDocumentIdAsync(response, ct),
+                HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => FhirErrors.AuthenticationFailed,
+                HttpStatusCode.UnprocessableEntity => await ExtractValidationErrorAsync(response, ct),
+                _ => await ExtractGenericErrorAsync(response, ct)
+            };
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Network error uploading document");
+            return FhirErrors.NetworkError($"Epic upload failed: {ex.Message}", ex);
+        }
+    }
+
+    private async Task<Result<string>> ExtractDocumentIdAsync(HttpResponseMessage response, CancellationToken ct)
+    {
+        var responseJson = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
 
         var documentId = responseJson.TryGetProperty("id", out var id)
             ? id.GetString()
@@ -118,5 +126,19 @@ public sealed class EpicUploader : IEpicUploader
         _logger.LogInformation("Document uploaded successfully. DocumentId={DocumentId}", documentId);
 
         return documentId!;
+    }
+
+    private async Task<Error> ExtractValidationErrorAsync(HttpResponseMessage response, CancellationToken ct)
+    {
+        var error = await response.Content.ReadAsStringAsync(ct);
+        _logger.LogError("Validation error uploading document: {Error}", error);
+        return ErrorFactory.Validation($"Epic rejected document: {error}");
+    }
+
+    private async Task<Error> ExtractGenericErrorAsync(HttpResponseMessage response, CancellationToken ct)
+    {
+        var error = await response.Content.ReadAsStringAsync(ct);
+        _logger.LogError("Failed to upload document: {Status} - {Error}", response.StatusCode, error);
+        return FhirErrors.NetworkError($"Epic returned {response.StatusCode}: {error}");
     }
 }
