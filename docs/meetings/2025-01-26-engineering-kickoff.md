@@ -16,8 +16,8 @@
 - **Our Solution:** AI agent that reads EHR, matches payer policy, auto-fills PA forms
 - **Demo Target:** March 11, 2026 VC pitch at Pioneer Square Labs
 - **Scope for Demo:**
-  - Single procedure: MRI Lumbar Spine
-  - Single payer: Blue Cross
+  - Single procedure: TBD
+  - Single payer: TBD
   - "Bulletproof happy path" philosophy
 
 **Discussion:** Any questions on product direction?
@@ -63,7 +63,7 @@
 ### System Overview
 
 ```
-Epic Hyperdrive → CDS Hook (order-select) → Gateway Service
+Epic Hyperdrive → CDS Hook (ServiceRequest.C/R/U/D) → Gateway Service
                                                    ↓
                                            FHIR Data Aggregation
                                                    ↓
@@ -85,14 +85,14 @@ Epic Hyperdrive → CDS Hook (order-select) → Gateway Service
 
 ### Key Integration Points
 
-1. **CDS Hooks** — Epic fires `order-select` when physician enters MRI order
+1. **CDS Hooks** — Epic fires `ServiceRequest.C/R/U/D` when physician creates a ServiceRequest
 2. **FHIR R4 API** — We fetch Conditions, Observations, Procedures, DocumentReferences
 3. **OAuth 2.0** — JWT validation + access token for FHIR queries
 4. **DocumentReference.write** — Upload completed PA form back to Epic
 
 ### Design Decisions to Validate
 
-- Using `order-select` hook (not `order-sign`) — more recovery time
+- Using `ServiceRequest.C/R/U/D` resource hook — triggers on ServiceRequest lifecycle events
 - Pre-caching LLM responses for demo patients — sub-100ms response
 - Fallback to SMART app if CDS Hook fails
 

@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-AuthScript is an AI-native prior authorization solution that integrates directly into Epic's clinical workflow via CDS Hooks. For the March 11, 2026 VC pitch at Pioneer Square Labs, we will demonstrate a **live, end-to-end** workflow where a physician orders an MRI in Epic Hyperdrive, and AuthScript automatically:
+AuthScript is an AI-native prior authorization solution that integrates directly into Epic's clinical workflow via CDS Hooks. For the March 11, 2026 VC pitch at Pioneer Square Labs, we will demonstrate a **live, end-to-end** workflow where a physician creates a ServiceRequest in Epic Hyperdrive, and AuthScript automatically:
 
 1. Detects the order via CDS Hooks
 2. Aggregates structured FHIR data and unstructured clinical documents
@@ -17,7 +17,7 @@ AuthScript is an AI-native prior authorization solution that integrates directly
 4. Generates a completed prior authorization form
 5. Uploads the form back to Epic
 
-The architecture follows a **"Bulletproof Happy Path"** philosophy: narrow scope (single procedure, single payer), pre-validated scenarios, aggressive caching, and graceful fallbacks. A SMART on FHIR app serves as both the "Shadow Dashboard" for demo visibility and a manual fallback if the automated flow encounters issues.
+The architecture follows a **"Bulletproof Happy Path"** philosophy: narrow scope (procedure TBD, payer TBD), pre-validated scenarios, aggressive caching, and graceful fallbacks. A SMART on FHIR app serves as both the "Shadow Dashboard" for demo visibility and a manual fallback if the automated flow encounters issues.
 
 ---
 
@@ -51,7 +51,7 @@ The architecture follows a **"Bulletproof Happy Path"** philosophy: narrow scope
 │           │                      │                      │                   │
 └───────────┼──────────────────────┼──────────────────────┼───────────────────┘
             │ CDS Hook             │ FHIR Queries         │ Token Exchange
-            │ (order-select)       │                      │
+            │ (ServiceRequest)     │                      │
             ▼                      ▼                      ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                        AUTHSCRIPT SYSTEM (.NET Aspire)                       │
@@ -97,11 +97,12 @@ The architecture follows a **"Bulletproof Happy Path"** philosophy: narrow scope
 │          │     │Hyperdrive│     │ Service  │     │ Service  │     │FHIR API  │
 └────┬─────┘     └────┬─────┘     └────┬─────┘     └────┬─────┘     └────┬─────┘
      │                │                │                │                │
-     │ 1. Order MRI   │                │                │                │
+     │ 1. Create      │                │                │                │
+     │ ServiceRequest │                │                │                │
      │───────────────>│                │                │                │
      │                │                │                │                │
      │                │ 2. CDS Hook    │                │                │
-     │                │  (order-select)│                │                │
+     │                │  (ServiceReq)  │                │                │
      │                │───────────────>│                │                │
      │                │                │                │                │
      │                │                │ 3. Check Cache │                │
@@ -163,7 +164,7 @@ The architecture follows a **"Bulletproof Happy Path"** philosophy: narrow scope
 
 | Class | Responsibility |
 |-------|---------------|
-| `CdsHookController` | Receives `order-select` webhooks, validates JWT, routes to pipeline |
+| `CdsHookController` | Receives `ServiceRequest.C/R/U/D` webhooks, validates JWT, routes to pipeline |
 | `FhirDataAggregator` | Parallel fetch of Conditions, Observations, Procedures, DocumentReferences |
 | `IntelligenceClient` | HTTP client for Python service with streaming support |
 | `PdfFormStamper` | Maps JSON to PDF form fields using iText7 AcroForms |
@@ -173,8 +174,8 @@ The architecture follows a **"Bulletproof Happy Path"** philosophy: narrow scope
 **API Endpoints:**
 
 ```
-POST /cds-services/authscript/order-select
-  → Receives CDS Hook, returns Card(s)
+POST /cds-services/authscript/ServiceRequest
+  → Receives CDS Hook (ServiceRequest.C/R/U/D), returns Card(s)
 
 GET /cds-services/authscript
   → Discovery endpoint for Epic registration
@@ -222,7 +223,7 @@ GET /health
 |--------|---------------|
 | `api/analyze.py` | FastAPI endpoint accepting clinical bundle + documents |
 | `parsers/pdf_parser.py` | LlamaParse wrapper for medical document extraction |
-| `policies/mri_lumbar.py` | Hardcoded Blue Cross MRI Lumbar policy criteria |
+| `policies/` | Payer policy definitions (procedure/payer TBD) |
 | `reasoning/evidence_extractor.py` | LLM chain that finds policy-relevant evidence |
 | `reasoning/form_generator.py` | LLM chain that produces structured form JSON |
 | `models/pa_form.py` | Pydantic models for PA form fields |
@@ -314,7 +315,7 @@ Value: Serialized PAFormResponse JSON
 TTL: 24 hours (refresh before demo)
 
 Example:
-  authscript:demo:patient-123:72148 → { "patient_name": "John Doe", ... }
+  authscript:demo:patient-123:{procedure_code} → { "patient_name": "John Doe", ... }
 ```
 
 **Pre-warming Script:**
@@ -394,31 +395,31 @@ const { data: status } = useQuery({
 {
   "services": [
     {
-      "id": "authscript-order-select",
-      "hook": "order-select",
+      "id": "authscript-service-request",
+      "hook": "ServiceRequest.C/R/U/D",
       "title": "AuthScript Prior Authorization",
       "description": "AI-powered prior authorization form completion",
       "prefetch": {
         "patient": "Patient/{{context.patientId}}",
-        "serviceRequest": "ServiceRequest?_id={{context.draftOrders.ServiceRequest.id}}"
+        "serviceRequest": "ServiceRequest/{{context.serviceRequestId}}"
       }
     }
   ]
 }
 ```
 
-### 3.2 Hook Selection: `order-select` vs `order-sign`
+### 3.2 Hook Selection: `ServiceRequest.C/R/U/D`
 
-**Decision: Use `order-select`**
+**Decision: Use `ServiceRequest.C/R/U/D` (Resource-based hook)**
 
-| Aspect | order-select | order-sign |
-|--------|--------------|------------|
-| Timing | When order is entered | When "Sign" is clicked |
-| Recovery time | Full ordering workflow remaining | Last chance, no recovery |
-| User expectation | Can see suggestions before committing | Expects to complete action |
-| Demo safety | Higher (can retry) | Lower (one shot) |
+| Aspect | ServiceRequest.C/R/U/D | order-select |
+|--------|------------------------|--------------|
+| Trigger | ServiceRequest create/read/update/delete | Order entry in workflow |
+| Scope | Any ServiceRequest operation | Only during ordering |
+| Flexibility | Handles PA at any point | Limited to order workflow |
+| Epic Support | Resource hooks supported | Hook availability varies |
 
-**Rationale:** `order-select` gives us the entire ordering workflow to recover if something goes wrong. The clinician sees our card, can interact with it, and still has time to complete the order naturally.
+**Rationale:** `ServiceRequest.C/R/U/D` provides a resource-centric approach that triggers on any ServiceRequest lifecycle event. This gives us flexibility to handle prior authorization at various points in the clinical workflow, not just during initial order entry.
 
 ### 3.3 Authentication Flow
 
@@ -579,13 +580,13 @@ public async Task<string> UploadCompletedForm(
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │               POLICY MATCHING LAYER                       │   │
 │  │  ┌─────────────────────────────────────────────────────┐ │   │
-│  │  │  MRI Lumbar Policy (Blue Cross)                     │ │   │
+│  │  │  Demo Policy (Procedure/Payer TBD)                  │ │   │
 │  │  │  ─────────────────────────────                      │ │   │
 │  │  │  Required Criteria:                                 │ │   │
-│  │  │  [ ] Diagnosis: M54.5 (Low back pain) or similar    │ │   │
-│  │  │  [ ] Conservative therapy ≥ 6 weeks                 │ │   │
-│  │  │  [ ] Documentation of failed treatment              │ │   │
-│  │  │  [ ] No contraindications to MRI                    │ │   │
+│  │  │  [ ] Appropriate diagnosis codes                    │ │   │
+│  │  │  [ ] Conservative therapy (if required)             │ │   │
+│  │  │  [ ] Documentation of treatment history             │ │   │
+│  │  │  [ ] No contraindications                           │ │   │
 │  │  └─────────────────────────────────────────────────────┘ │   │
 │  └──────────────────────────┬───────────────────────────────┘   │
 │                             │                                    │
@@ -607,77 +608,76 @@ public async Task<string> UploadCompletedForm(
 
 ### 4.2 PDF Parsing Strategy
 
-**LlamaParse Configuration:**
+**PDF Parsing Configuration:**
 
 ```python
-from llama_parse import LlamaParse
+# Primary: PyMuPDF4LLM (local, fast)
+# Future: LlamaParse for complex documents
 
-parser = LlamaParse(
-    api_key=os.getenv("LLAMA_CLOUD_API_KEY"),
-    result_type="markdown",
-    parsing_instruction="""
-    This is a medical clinical document. Extract:
+import pymupdf4llm
+
+def parse_document(pdf_bytes: bytes) -> str:
+    """
+    Extract text from medical clinical documents.
+    Extracts:
     - Patient demographics (name, DOB, MRN)
     - Diagnoses and ICD-10 codes
     - Dates of service
     - Clinical findings and assessments
     - Treatment history (medications, physical therapy, imaging)
-    - Preserve table structures for lab results
-    """,
-    language="en"
-)
+    - Table structures for lab results
+    """
+    return pymupdf4llm.to_markdown(pdf_bytes)
 ```
 
 **Fallback Strategy:**
 ```python
 async def parse_document(pdf_bytes: bytes) -> str:
     try:
-        # Primary: LlamaParse (best quality)
-        return await llama_parse(pdf_bytes)
-    except LlamaParseError:
-        # Fallback: PyMuPDF (fast, local)
-        return extract_with_pymupdf(pdf_bytes)
+        # Primary: PyMuPDF4LLM (fast, local)
+        return pymupdf4llm.to_markdown(pdf_bytes)
+    except Exception:
+        # Fallback: Basic text extraction
+        return extract_basic_text(pdf_bytes)
 ```
 
 ### 4.3 Policy Definition (Hardcoded for Demo)
 
-**MRI Lumbar Spine - Blue Cross Policy:**
+**Policy Structure (Procedure/Payer TBD):**
 
 ```python
-# policies/mri_lumbar.py
+# policies/demo_policy.py
+# Actual procedure and payer to be determined
 
-MRI_LUMBAR_POLICY = {
-    "procedure_codes": ["72148", "72149", "72158"],  # CPT codes for lumbar MRI
+DEMO_POLICY = {
+    "procedure_codes": [],  # CPT codes TBD
     "diagnosis_codes": {
-        "primary": ["M54.5", "M54.50", "M54.51", "M54.52"],  # Low back pain
-        "supporting": ["M51.16", "M51.17", "G89.29"]  # Radiculopathy, etc.
+        "primary": [],  # ICD-10 codes TBD
+        "supporting": []
     },
     "criteria": [
         {
             "id": "conservative_therapy",
-            "description": "6+ weeks of conservative therapy",
+            "description": "Required conservative therapy duration",
             "evidence_patterns": [
                 r"physical therapy.*(\d+)\s*weeks",
                 r"PT\s*x\s*(\d+)\s*weeks",
                 r"conservative.*treatment.*(\d+)\s*weeks"
             ],
-            "threshold": 6
+            "threshold": None  # TBD based on payer policy
         },
         {
             "id": "failed_treatment",
             "description": "Documentation of treatment failure",
             "evidence_patterns": [
                 r"(failed|inadequate|no improvement|persistent)",
-                r"continue.*to.*experience.*pain"
+                r"continue.*to.*experience"
             ]
         },
         {
-            "id": "neurological_symptoms",
-            "description": "Red flag symptoms warranting urgent imaging",
-            "evidence_patterns": [
-                r"(radiculopathy|weakness|numbness|bowel|bladder)",
-                r"progressive.*neurological"
-            ],
+            "id": "red_flag_symptoms",
+            "description": "Red flag symptoms warranting urgent intervention",
+            "evidence_patterns": [],  # TBD based on procedure
             "bypasses_conservative": True
         }
     ]
@@ -804,13 +804,13 @@ llm = ChatOpenAI(
 
 | Patient ID | Scenario | Expected Outcome |
 |------------|----------|------------------|
-| `demo-001` | Perfect case: 8 weeks PT, failed treatment, clear diagnosis | APPROVE (high confidence) |
-| `demo-002` | Urgent case: Neurological red flags, bypasses conservative | APPROVE (red flag pathway) |
-| `demo-003` | Incomplete: Only 4 weeks PT documented | NEED_INFO (missing criteria) |
+| `demo-001` | Perfect case: All criteria met, clear documentation | APPROVE (high confidence) |
+| `demo-002` | Urgent case: Red flags present, expedited pathway | APPROVE (red flag pathway) |
+| `demo-003` | Incomplete: Missing required documentation | NEED_INFO (missing criteria) |
 | `demo-004` | Complex: Multiple comorbidities, conflicting notes | MANUAL_REVIEW |
-| `demo-005` | Edge case: PT documented but dates unclear | APPROVE (medium confidence) |
+| `demo-005` | Edge case: Documentation present but dates unclear | APPROVE (medium confidence) |
 
-**Primary demo uses `demo-001`** — guaranteed happy path.
+**Primary demo uses `demo-001`** — guaranteed happy path. Specific clinical scenarios will be defined once procedure/payer are selected.
 
 ### 5.2 Pre-Computation Strategy
 
@@ -1257,7 +1257,7 @@ Week 7: Polish & Buffer
 
 ### 11.4 Strategic Recommendations
 
-1. **Prioritize Happy Path**: Focus on demo-001 patient, MRI Lumbar, Blue Cross
+1. **Prioritize Happy Path**: Focus on demo-001 patient (procedure/payer TBD)
 2. **Use Cached Responses**: Pre-compute LLM responses for demo patients
 3. **Build Integration Tests First**: Mock Epic responses for development
 4. **Prepare Recovery Scripts**: Dashboard fallback if CDS Hook fails
@@ -1304,7 +1304,7 @@ httpx>=0.26.0
     {
       "uuid": "authscript-card-001",
       "summary": "Prior Authorization Form Ready",
-      "detail": "AuthScript has completed the PA form for MRI Lumbar Spine. High confidence approval predicted.",
+      "detail": "AuthScript has completed the PA form. High confidence approval predicted.",
       "indicator": "info",
       "source": {
         "label": "AuthScript",

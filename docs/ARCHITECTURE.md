@@ -49,8 +49,8 @@ sequenceDiagram
     participant I as Intelligence
     participant R as Redis
 
-    C->>E: 1. Order MRI
-    E->>G: 2. CDS Hook (order-select)
+    C->>E: 1. Create ServiceRequest
+    E->>G: 2. CDS Hook (ServiceRequest.C/R/U/D)
     G->>R: 3. Check cache
     alt Cache hit
         R-->>G: Cached response
