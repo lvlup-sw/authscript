@@ -1,0 +1,26 @@
+name: Investigation
+description: Research or discovery task
+labels: ["type:chore"]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Question to Answer
+      description: What do we need to find out?
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Why is this important? What does it unblock?
+
+  - type: textarea
+    id: deliverables
+    attributes:
+      label: Deliverables
+      description: What should be produced?
+      placeholder: |
+        - Decision documented in docs/decisions/
+        - Updated architecture diagram

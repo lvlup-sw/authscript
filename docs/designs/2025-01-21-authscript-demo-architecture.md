@@ -41,109 +41,85 @@ The architecture follows a **"Bulletproof Happy Path"** philosophy: narrow scope
 
 ### 1.1 System Context Diagram
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           EPIC ECOSYSTEM                                     │
-│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐         │
-│  │   Hyperdrive    │    │   FHIR R4 API   │    │   OAuth 2.0     │         │
-│  │   (Clinician)   │    │   (Data Access) │    │   (Auth)        │         │
-│  └────────┬────────┘    └────────┬────────┘    └────────┬────────┘         │
-│           │                      │                      │                   │
-└───────────┼──────────────────────┼──────────────────────┼───────────────────┘
-            │ CDS Hook             │ FHIR Queries         │ Token Exchange
-            │ (ServiceRequest)     │                      │
-            ▼                      ▼                      ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                        AUTHSCRIPT SYSTEM (.NET Aspire)                       │
-│                                                                              │
-│  ┌──────────────────────────────────────────────────────────────────────┐   │
-│  │                      GATEWAY SERVICE (.NET 10)                        │   │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  │   │
-│  │  │ CDS Hook    │  │ FHIR Data   │  │ PDF Form    │  │ Response    │  │   │
-│  │  │ Controller  │──│ Aggregator  │──│ Stamper     │──│ Builder     │  │   │
-│  │  └─────────────┘  └──────┬──────┘  └─────────────┘  └─────────────┘  │   │
-│  └──────────────────────────┼───────────────────────────────────────────┘   │
-│                             │                                                │
-│                             ▼                                                │
-│  ┌──────────────────────────────────────────────────────────────────────┐   │
-│  │                   INTELLIGENCE SERVICE (Python/FastAPI)               │   │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  │   │
-│  │  │ PDF Parser  │  │ Policy      │  │ LLM         │  │ Evidence    │  │   │
-│  │  │ (LlamaParse)│──│ Matcher     │──│ Reasoner    │──│ Extractor   │  │   │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘  │   │
-│  └──────────────────────────────────────────────────────────────────────┘   │
-│                                                                              │
-│  ┌────────────────────┐  ┌────────────────────┐  ┌────────────────────┐    │
-│  │   PostgreSQL       │  │   Redis Cache      │  │   Blob Storage     │    │
-│  │   (Audit + Vector) │  │   (Demo Speedup)   │  │   (PDF Templates)  │    │
-│  └────────────────────┘  └────────────────────┘  └────────────────────┘    │
-│                                                                              │
-│  ┌──────────────────────────────────────────────────────────────────────┐   │
-│  │                     SMART APP / SHADOW DASHBOARD (React 19)           │   │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  │   │
-│  │  │ Live Status │  │ AI Analysis │  │ Form        │  │ Manual      │  │   │
-│  │  │ Feed        │  │ Display     │  │ Preview     │  │ Submit      │  │   │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘  │   │
-│  └──────────────────────────────────────────────────────────────────────┘   │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph Epic["EPIC ECOSYSTEM"]
+        Hyperdrive["Hyperdrive<br/>(Clinician)"]
+        FhirApi["FHIR R4 API<br/>(Data Access)"]
+        OAuth["OAuth 2.0<br/>(Auth)"]
+    end
+
+    subgraph AuthScript["AUTHSCRIPT SYSTEM (.NET Aspire)"]
+        subgraph Gateway["GATEWAY SERVICE (.NET 10)"]
+            CdsController["CDS Hook<br/>Controller"]
+            FhirAggregator["FHIR Data<br/>Aggregator"]
+            PdfStamper["PDF Form<br/>Stamper"]
+            ResponseBuilder["Response<br/>Builder"]
+            CdsController --> FhirAggregator --> PdfStamper --> ResponseBuilder
+        end
+
+        subgraph Intelligence["INTELLIGENCE SERVICE (Python/FastAPI)"]
+            PdfParser["PDF Parser<br/>(LlamaParse)"]
+            PolicyMatcher["Policy<br/>Matcher"]
+            LlmReasoner["LLM<br/>Reasoner"]
+            EvidenceExtractor["Evidence<br/>Extractor"]
+            PdfParser --> PolicyMatcher --> LlmReasoner --> EvidenceExtractor
+        end
+
+        subgraph Storage["Storage Layer"]
+            Postgres[("PostgreSQL<br/>(Audit + Vector)")]
+            Redis[("Redis Cache<br/>(Demo Speedup)")]
+            Blob[("Blob Storage<br/>(PDF Templates)")]
+        end
+
+        subgraph SmartApp["SMART APP / SHADOW DASHBOARD (React 19)"]
+            LiveStatus["Live Status<br/>Feed"]
+            AiAnalysis["AI Analysis<br/>Display"]
+            FormPreview["Form<br/>Preview"]
+            ManualSubmit["Manual<br/>Submit"]
+        end
+
+        FhirAggregator --> Intelligence
+    end
+
+    Hyperdrive -->|"CDS Hook<br/>(ServiceRequest)"| CdsController
+    FhirApi -->|"FHIR Queries"| FhirAggregator
+    OAuth -->|"Token Exchange"| Gateway
 ```
 
 ### 1.2 Request Flow Sequence
 
-```
-┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
-│ Clinician│     │  Epic    │     │ Gateway  │     │ Intel.   │     │  Epic    │
-│          │     │Hyperdrive│     │ Service  │     │ Service  │     │FHIR API  │
-└────┬─────┘     └────┬─────┘     └────┬─────┘     └────┬─────┘     └────┬─────┘
-     │                │                │                │                │
-     │ 1. Create      │                │                │                │
-     │ ServiceRequest │                │                │                │
-     │───────────────>│                │                │                │
-     │                │                │                │                │
-     │                │ 2. CDS Hook    │                │                │
-     │                │  (ServiceReq)  │                │                │
-     │                │───────────────>│                │                │
-     │                │                │                │                │
-     │                │                │ 3. Check Cache │                │
-     │                │                │───────┐        │                │
-     │                │                │       │        │                │
-     │                │                │<──────┘        │                │
-     │                │                │  (cache miss)  │                │
-     │                │                │                │                │
-     │                │                │ 4. Parallel FHIR Fetch          │
-     │                │                │───────────────────────────────>│
-     │                │                │  - Condition                    │
-     │                │                │  - Observation                  │
-     │                │                │  - Procedure                    │
-     │                │                │  - DocumentReference            │
-     │                │                │<───────────────────────────────│
-     │                │                │                │                │
-     │                │                │ 5. Analyze     │                │
-     │                │                │───────────────>│                │
-     │                │                │                │                │
-     │                │                │                │ 6. Parse PDFs  │
-     │                │                │                │ 7. Match Policy│
-     │                │                │                │ 8. LLM Reason  │
-     │                │                │                │                │
-     │                │                │ 9. Form JSON   │                │
-     │                │                │<───────────────│                │
-     │                │                │                │                │
-     │                │                │ 10. Stamp PDF  │                │
-     │                │                │───────┐        │                │
-     │                │                │       │        │                │
-     │                │                │<──────┘        │                │
-     │                │                │                │                │
-     │                │                │ 11. Upload to Epic              │
-     │                │                │───────────────────────────────>│
-     │                │                │                │                │
-     │                │ 12. CDS Card   │                │                │
-     │                │<───────────────│                │                │
-     │                │                │                │                │
-     │ 13. Card Shows │                │                │                │
-     │<───────────────│                │                │                │
-     │ "PA Form Ready"│                │                │                │
-     │                │                │                │                │
+```mermaid
+sequenceDiagram
+    participant Clinician
+    participant Epic as Epic Hyperdrive
+    participant Gateway as Gateway Service
+    participant Intel as Intelligence Service
+    participant FhirApi as Epic FHIR API
+
+    Clinician->>Epic: 1. Create ServiceRequest
+    Epic->>Gateway: 2. CDS Hook (ServiceReq)
+
+    Gateway->>Gateway: 3. Check Cache (miss)
+
+    par 4. Parallel FHIR Fetch
+        Gateway->>FhirApi: Condition
+        Gateway->>FhirApi: Observation
+        Gateway->>FhirApi: Procedure
+        Gateway->>FhirApi: DocumentReference
+    end
+    FhirApi-->>Gateway: FHIR Resources
+
+    Gateway->>Intel: 5. Analyze
+    Note over Intel: 6. Parse PDFs<br/>7. Match Policy<br/>8. LLM Reason
+    Intel-->>Gateway: 9. Form JSON
+
+    Gateway->>Gateway: 10. Stamp PDF
+
+    Gateway->>FhirApi: 11. Upload to Epic
+
+    Gateway-->>Epic: 12. CDS Card
+    Epic-->>Clinician: 13. Card Shows "PA Form Ready"
 ```
 
 ---
@@ -423,37 +399,20 @@ const { data: status } = useQuery({
 
 ### 3.3 Authentication Flow
 
-```
-┌──────────┐         ┌──────────┐         ┌──────────┐
-│  Epic    │         │ Gateway  │         │  Epic    │
-│Hyperdrive│         │ Service  │         │  OAuth   │
-└────┬─────┘         └────┬─────┘         └────┬─────┘
-     │                    │                    │
-     │ 1. CDS Hook        │                    │
-     │ (includes JWT)     │                    │
-     │───────────────────>│                    │
-     │                    │                    │
-     │                    │ 2. Validate JWT    │
-     │                    │ (check signature   │
-     │                    │  via JWKS)         │
-     │                    │───────┐            │
-     │                    │       │            │
-     │                    │<──────┘            │
-     │                    │                    │
-     │                    │ 3. Extract access  │
-     │                    │ token from         │
-     │                    │ fhirAuthorization  │
-     │                    │───────┐            │
-     │                    │       │            │
-     │                    │<──────┘            │
-     │                    │                    │
-     │                    │ 4. Use token for   │
-     │                    │ FHIR API calls     │
-     │                    │───────────────────>│
-     │                    │                    │
-     │                    │ 5. FHIR Response   │
-     │                    │<───────────────────│
-     │                    │                    │
+```mermaid
+sequenceDiagram
+    participant Epic as Epic Hyperdrive
+    participant Gateway as Gateway Service
+    participant OAuth as Epic OAuth
+
+    Epic->>Gateway: 1. CDS Hook (includes JWT)
+
+    Gateway->>Gateway: 2. Validate JWT<br/>(check signature via JWKS)
+
+    Gateway->>Gateway: 3. Extract access token<br/>from fhirAuthorization
+
+    Gateway->>OAuth: 4. Use token for FHIR API calls
+    OAuth-->>Gateway: 5. FHIR Response
 ```
 
 **Key Implementation Notes:**
@@ -558,52 +517,34 @@ public async Task<string> UploadCompletedForm(
 
 ### 4.1 Clinical Reasoning Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    INTELLIGENCE SERVICE                          │
-│                                                                  │
-│  ┌──────────────┐                                               │
-│  │ /analyze     │                                               │
-│  │ endpoint     │                                               │
-│  └──────┬───────┘                                               │
-│         │                                                        │
-│         ▼                                                        │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │              DOCUMENT PROCESSING LAYER                    │   │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐       │   │
-│  │  │ LlamaParse  │  │ Text        │  │ Section     │       │   │
-│  │  │ PDF→Text    │─>│ Cleaner     │─>│ Identifier  │       │   │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘       │   │
-│  └──────────────────────────┬───────────────────────────────┘   │
-│                             │                                    │
-│                             ▼                                    │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │               POLICY MATCHING LAYER                       │   │
-│  │  ┌─────────────────────────────────────────────────────┐ │   │
-│  │  │  Demo Policy (Procedure/Payer TBD)                  │ │   │
-│  │  │  ─────────────────────────────                      │ │   │
-│  │  │  Required Criteria:                                 │ │   │
-│  │  │  [ ] Appropriate diagnosis codes                    │ │   │
-│  │  │  [ ] Conservative therapy (if required)             │ │   │
-│  │  │  [ ] Documentation of treatment history             │ │   │
-│  │  │  [ ] No contraindications                           │ │   │
-│  │  └─────────────────────────────────────────────────────┘ │   │
-│  └──────────────────────────┬───────────────────────────────┘   │
-│                             │                                    │
-│                             ▼                                    │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │                 LLM REASONING LAYER                       │   │
-│  │                                                           │   │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐       │   │
-│  │  │ Evidence    │  │ Gap         │  │ Form        │       │   │
-│  │  │ Extractor   │─>│ Analyzer    │─>│ Generator   │       │   │
-│  │  │ (GPT-4o)    │  │ (GPT-4o)    │  │ (GPT-4o)    │       │   │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘       │   │
-│  │                                                           │   │
-│  │  Structured Output: PAFormResponse (Pydantic)            │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph Intelligence["INTELLIGENCE SERVICE"]
+        Endpoint["/analyze endpoint"]
+
+        subgraph DocProcessing["DOCUMENT PROCESSING LAYER"]
+            LlamaParse["LlamaParse<br/>PDF→Text"]
+            TextCleaner["Text<br/>Cleaner"]
+            SectionId["Section<br/>Identifier"]
+            LlamaParse --> TextCleaner --> SectionId
+        end
+
+        subgraph PolicyLayer["POLICY MATCHING LAYER"]
+            DemoPolicy["Demo Policy (Procedure/Payer TBD)<br/>━━━━━━━━━━━━━━━━━━━━━━━━━━<br/>Required Criteria:<br/>☐ Appropriate diagnosis codes<br/>☐ Conservative therapy (if required)<br/>☐ Documentation of treatment history<br/>☐ No contraindications"]
+        end
+
+        subgraph LlmLayer["LLM REASONING LAYER"]
+            EvidenceExtractor["Evidence Extractor<br/>(GPT-4o)"]
+            GapAnalyzer["Gap Analyzer<br/>(GPT-4o)"]
+            FormGenerator["Form Generator<br/>(GPT-4o)"]
+            EvidenceExtractor --> GapAnalyzer --> FormGenerator
+            Output["Structured Output: PAFormResponse (Pydantic)"]
+        end
+
+        Endpoint --> DocProcessing
+        DocProcessing --> PolicyLayer
+        PolicyLayer --> LlmLayer
+    end
 ```
 
 ### 4.2 PDF Parsing Strategy
@@ -933,43 +874,21 @@ public async Task<CdsResponse> HandleOrderSelect(CdsRequest request)
 
 ### 6.3 Fallback Cascade
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                      FAILURE SCENARIOS                           │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  [Cache Hit]                                                     │
-│      │                                                           │
-│      └──► Return pre-computed response (< 100ms)                │
-│           ✓ Best case                                            │
-│                                                                  │
-│  [Cache Miss + Pipeline Success]                                 │
-│      │                                                           │
-│      └──► Return computed response (3-8 seconds)                │
-│           ✓ Normal operation                                     │
-│                                                                  │
-│  [Pipeline Timeout]                                              │
-│      │                                                           │
-│      └──► Return "Processing..." card with dashboard link       │
-│           → User clicks link → Dashboard shows progress          │
-│           → Eventually: notification of completion               │
-│           ⚠ Degraded but functional                             │
-│                                                                  │
-│  [LLM API Error]                                                 │
-│      │                                                           │
-│      └──► Return "Launch AuthScript" card                       │
-│           → SMART app launches                                   │
-│           → Manual workflow in app                               │
-│           ⚠ Fallback to Approach B                              │
-│                                                                  │
-│  [Epic FHIR Error]                                               │
-│      │                                                           │
-│      └──► Return error card with support info                   │
-│           → "Unable to retrieve patient data"                    │
-│           → Include transaction ID for debugging                 │
-│           ✗ Must recover manually                               │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    Start([Request Received]) --> CacheCheck{Cache Hit?}
+
+    CacheCheck -->|Yes| CacheHit["Return pre-computed response<br/>(&lt; 100ms)<br/>✓ Best case"]
+
+    CacheCheck -->|No| Pipeline{Pipeline<br/>Success?}
+
+    Pipeline -->|Yes| PipelineSuccess["Return computed response<br/>(3-8 seconds)<br/>✓ Normal operation"]
+
+    Pipeline -->|Timeout| Timeout["Return 'Processing...' card<br/>with dashboard link<br/>→ User clicks link<br/>→ Dashboard shows progress<br/>⚠ Degraded but functional"]
+
+    Pipeline -->|LLM Error| LlmError["Return 'Launch AuthScript' card<br/>→ SMART app launches<br/>→ Manual workflow in app<br/>⚠ Fallback to Approach B"]
+
+    Pipeline -->|FHIR Error| FhirError["Return error card<br/>with support info<br/>→ 'Unable to retrieve patient data'<br/>→ Include transaction ID<br/>✗ Must recover manually"]
 ```
 
 ### 6.4 Demo Day Checklist
@@ -1000,41 +919,23 @@ public async Task<CdsResponse> HandleOrderSelect(CdsRequest request)
 
 ### 7.1 SMART on FHIR Launch Flow
 
-```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│ Epic         │     │ AuthScript   │     │ AuthScript   │
-│ Hyperdrive   │     │ Auth Server  │     │ SMART App    │
-└──────┬───────┘     └──────┬───────┘     └──────┬───────┘
-       │                    │                    │
-       │ 1. User clicks     │                    │
-       │ "Launch AuthScript"│                    │
-       │────────────────────┼───────────────────>│
-       │                    │                    │
-       │                    │ 2. OAuth redirect  │
-       │                    │<───────────────────│
-       │                    │                    │
-       │ 3. Auth code grant │                    │
-       │<───────────────────│                    │
-       │                    │                    │
-       │ 4. User authorizes │                    │
-       │───────────────────>│                    │
-       │                    │                    │
-       │                    │ 5. Access token    │
-       │                    │───────────────────>│
-       │                    │                    │
-       │                    │                    │ 6. Fetch FHIR data
-       │                    │                    │    (same as hook)
-       │                    │                    │
-       │                    │                    │ 7. Display analysis
-       │                    │                    │    in app UI
-       │                    │                    │
-       │                    │                    │ 8. User clicks
-       │                    │                    │    "Submit"
-       │                    │                    │
-       │ 9. DocumentReference│                   │
-       │    uploaded         │                   │
-       │<────────────────────┼───────────────────│
-       │                    │                    │
+```mermaid
+sequenceDiagram
+    participant Epic as Epic Hyperdrive
+    participant Auth as AuthScript Auth Server
+    participant App as AuthScript SMART App
+
+    Epic->>App: 1. User clicks "Launch AuthScript"
+    App->>Auth: 2. OAuth redirect
+    Auth->>Epic: 3. Auth code grant
+    Epic->>Auth: 4. User authorizes
+    Auth->>App: 5. Access token
+
+    Note over App: 6. Fetch FHIR data<br/>(same as hook)
+    Note over App: 7. Display analysis<br/>in app UI
+    Note over App: 8. User clicks "Submit"
+
+    App->>Epic: 9. DocumentReference uploaded
 ```
 
 ### 7.2 SMART App Configuration

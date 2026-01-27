@@ -1,0 +1,56 @@
+name: Implementation Task
+description: Technical work for a planned feature or component
+labels: ["type:feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for tracked implementation work.
+        Link to the relevant design document section below.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What needs to be implemented?
+    validations:
+      required: true
+
+  - type: textarea
+    id: tasks
+    attributes:
+      label: Tasks
+      description: Checklist of implementation steps
+      placeholder: |
+        - [ ] First task
+        - [ ] Second task
+
+  - type: input
+    id: design-link
+    attributes:
+      label: Design Reference
+      description: Link to architecture/design doc section
+      placeholder: "docs/ARCHITECTURE.md#request-flow"
+
+  - type: textarea
+    id: files
+    attributes:
+      label: Files to Modify
+      description: Key files that will be changed
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: How do we know this is done?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - Gateway (.NET)
+        - Intelligence (Python)
+        - Cross-cutting

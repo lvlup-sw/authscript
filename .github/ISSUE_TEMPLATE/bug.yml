@@ -31,7 +31,6 @@ body:
     attributes:
       label: Area
       options:
-        - Dashboard (Frontend)
         - Gateway API (Backend)
         - Intelligence (AI/ML)
         - FHIR Integration

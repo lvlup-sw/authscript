@@ -23,3 +23,10 @@ body:
     attributes:
       label: Alternatives considered
       description: Any other approaches you've thought about?
+
+  - type: input
+    id: design-link
+    attributes:
+      label: Design Reference
+      description: Link to architecture/design doc section (optional)
+      placeholder: "docs/designs/some-design.md#section"
