@@ -75,25 +75,23 @@ public sealed class FhirClient : IFhirClient
         }
 
         var json = result.Value!;
-        if (json.TryGetProperty("entry", out var entries))
+        if (!json.TryGetProperty("entry", out var entries)) return results;
+        
+        foreach (var entry in entries.EnumerateArray())
         {
-            foreach (var entry in entries.EnumerateArray())
+            if (!entry.TryGetProperty("resource", out var resource)) continue;
+            
+            var coding = ExtractFirstCoding(resource, "code");
+            if (coding is not null)
             {
-                if (entry.TryGetProperty("resource", out var resource))
+                results.Add(new ConditionInfo
                 {
-                    var coding = ExtractFirstCoding(resource, "code");
-                    if (coding is not null)
-                    {
-                        results.Add(new ConditionInfo
-                        {
-                            Id = resource.TryGetProperty("id", out var id) ? id.GetString()! : Guid.NewGuid().ToString(),
-                            Code = coding.Value.code,
-                            CodeSystem = coding.Value.system,
-                            Display = coding.Value.display,
-                            ClinicalStatus = ExtractClinicalStatus(resource)
-                        });
-                    }
-                }
+                    Id = resource.TryGetProperty("id", out var id) ? id.GetString()! : Guid.NewGuid().ToString(),
+                    Code = coding.Value.code,
+                    CodeSystem = coding.Value.system,
+                    Display = coding.Value.display,
+                    ClinicalStatus = ExtractClinicalStatus(resource)
+                });
             }
         }
 
@@ -124,26 +122,24 @@ public sealed class FhirClient : IFhirClient
         }
 
         var json = result.Value!;
-        if (json.TryGetProperty("entry", out var entries))
+        if (!json.TryGetProperty("entry", out var entries)) return results;
+        
+        foreach (var entry in entries.EnumerateArray())
         {
-            foreach (var entry in entries.EnumerateArray())
+            if (!entry.TryGetProperty("resource", out var resource)) continue;
+            
+            var coding = ExtractFirstCoding(resource, "code");
+            if (coding is not null)
             {
-                if (entry.TryGetProperty("resource", out var resource))
+                results.Add(new ObservationInfo
                 {
-                    var coding = ExtractFirstCoding(resource, "code");
-                    if (coding is not null)
-                    {
-                        results.Add(new ObservationInfo
-                        {
-                            Id = resource.TryGetProperty("id", out var id) ? id.GetString()! : Guid.NewGuid().ToString(),
-                            Code = coding.Value.code,
-                            CodeSystem = coding.Value.system,
-                            Display = coding.Value.display,
-                            Value = ExtractObservationValue(resource),
-                            Unit = ExtractObservationUnit(resource)
-                        });
-                    }
-                }
+                    Id = resource.TryGetProperty("id", out var id) ? id.GetString()! : Guid.NewGuid().ToString(),
+                    Code = coding.Value.code,
+                    CodeSystem = coding.Value.system,
+                    Display = coding.Value.display,
+                    Value = ExtractObservationValue(resource),
+                    Unit = ExtractObservationUnit(resource)
+                });
             }
         }
 
@@ -174,25 +170,23 @@ public sealed class FhirClient : IFhirClient
         }
 
         var json = result.Value!;
-        if (json.TryGetProperty("entry", out var entries))
+        if (!json.TryGetProperty("entry", out var entries)) return results;
+        
+        foreach (var entry in entries.EnumerateArray())
         {
-            foreach (var entry in entries.EnumerateArray())
+            if (!entry.TryGetProperty("resource", out var resource)) continue;
+            
+            var coding = ExtractFirstCoding(resource, "code");
+            if (coding is not null)
             {
-                if (entry.TryGetProperty("resource", out var resource))
+                results.Add(new ProcedureInfo
                 {
-                    var coding = ExtractFirstCoding(resource, "code");
-                    if (coding is not null)
-                    {
-                        results.Add(new ProcedureInfo
-                        {
-                            Id = resource.TryGetProperty("id", out var id) ? id.GetString()! : Guid.NewGuid().ToString(),
-                            Code = coding.Value.code,
-                            CodeSystem = coding.Value.system,
-                            Display = coding.Value.display,
-                            Status = resource.TryGetProperty("status", out var status) ? status.GetString() : null
-                        });
-                    }
-                }
+                    Id = resource.TryGetProperty("id", out var id) ? id.GetString()! : Guid.NewGuid().ToString(),
+                    Code = coding.Value.code,
+                    CodeSystem = coding.Value.system,
+                    Display = coding.Value.display,
+                    Status = resource.TryGetProperty("status", out var status) ? status.GetString() : null
+                });
             }
         }
 
@@ -222,24 +216,22 @@ public sealed class FhirClient : IFhirClient
         }
 
         var json = result.Value!;
-        if (json.TryGetProperty("entry", out var entries))
+        if (!json.TryGetProperty("entry", out var entries)) return results;
+        
+        foreach (var entry in entries.EnumerateArray())
         {
-            foreach (var entry in entries.EnumerateArray())
-            {
-                if (entry.TryGetProperty("resource", out var resource))
-                {
-                    var docId = resource.TryGetProperty("id", out var id) ? id.GetString()! : Guid.NewGuid().ToString();
-                    var type = ExtractFirstCoding(resource, "type");
+            if (!entry.TryGetProperty("resource", out var resource)) continue;
+            
+            var docId = resource.TryGetProperty("id", out var id) ? id.GetString()! : Guid.NewGuid().ToString();
+            var type = ExtractFirstCoding(resource, "type");
 
-                    results.Add(new DocumentInfo
-                    {
-                        Id = docId,
-                        Type = type?.display ?? type?.code ?? "Unknown",
-                        ContentType = ExtractContentType(resource),
-                        Title = ExtractDocumentTitle(resource)
-                    });
-                }
-            }
+            results.Add(new DocumentInfo
+            {
+                Id = docId,
+                Type = type?.display ?? type?.code ?? "Unknown",
+                ContentType = ExtractContentType(resource),
+                Title = ExtractDocumentTitle(resource)
+            });
         }
 
         return results;
@@ -253,16 +245,15 @@ public sealed class FhirClient : IFhirClient
     {
         var result = await _httpClient.ReadBinaryAsync(documentId, accessToken, cancellationToken);
 
-        if (result.IsFailure)
-        {
-            _logger.LogWarning(
-                "Failed to fetch document content {DocumentId}: {Error}",
-                documentId,
-                result.Error?.Message);
-            return null;
-        }
+        if (!result.IsFailure) return result.Value;
+        
+        _logger.LogWarning(
+            "Failed to fetch document content {DocumentId}: {Error}",
+            documentId,
+            result.Error?.Message);
+        
+        return null;
 
-        return result.Value;
     }
 
     private static string? ExtractName(JsonElement json, string part)
@@ -271,18 +262,15 @@ public sealed class FhirClient : IFhirClient
 
         foreach (var name in names.EnumerateArray())
         {
-            if (part == "given" && name.TryGetProperty("given", out var given))
+            switch (part)
             {
-                var givenNames = new List<string>();
-                foreach (var g in given.EnumerateArray())
+                case "given" when name.TryGetProperty("given", out var given):
                 {
-                    givenNames.Add(g.GetString() ?? "");
+                    var givenNames = given.EnumerateArray().Select(g => g.GetString() ?? "").ToList();
+                    return string.Join(" ", givenNames);
                 }
-                return string.Join(" ", givenNames);
-            }
-            if (part == "family" && name.TryGetProperty("family", out var family))
-            {
-                return family.GetString();
+                case "family" when name.TryGetProperty("family", out var family):
+                    return family.GetString();
             }
         }
 
@@ -328,11 +316,10 @@ public sealed class FhirClient : IFhirClient
         {
             return quantity.TryGetProperty("value", out var v) ? v.ToString() : null;
         }
-        if (resource.TryGetProperty("valueString", out var str))
-        {
-            return str.GetString();
-        }
-        return null;
+        
+        return resource.TryGetProperty("valueString", out var str) 
+            ? str.GetString() 
+            : null;
     }
 
     private static string? ExtractObservationUnit(JsonElement resource)
@@ -346,12 +333,11 @@ public sealed class FhirClient : IFhirClient
         if (!resource.TryGetProperty("content", out var contents)) return null;
         foreach (var content in contents.EnumerateArray())
         {
-            if (content.TryGetProperty("attachment", out var attachment))
+            if (!content.TryGetProperty("attachment", out var attachment)) continue;
+            
+            if (attachment.TryGetProperty("contentType", out var ct))
             {
-                if (attachment.TryGetProperty("contentType", out var ct))
-                {
-                    return ct.GetString();
-                }
+                return ct.GetString();
             }
         }
         return null;
@@ -362,12 +348,11 @@ public sealed class FhirClient : IFhirClient
         if (!resource.TryGetProperty("content", out var contents)) return null;
         foreach (var content in contents.EnumerateArray())
         {
-            if (content.TryGetProperty("attachment", out var attachment))
+            if (!content.TryGetProperty("attachment", out var attachment)) continue;
+            
+            if (attachment.TryGetProperty("title", out var title))
             {
-                if (attachment.TryGetProperty("title", out var title))
-                {
-                    return title.GetString();
-                }
+                return title.GetString();
             }
         }
         return null;
