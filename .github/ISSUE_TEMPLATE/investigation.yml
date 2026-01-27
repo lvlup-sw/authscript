@@ -48,18 +48,6 @@ body:
         | Criterion 2 | Medium | Why this matters |
 
   - type: textarea
-    id: deliverables
-    attributes:
-      label: Deliverables
-      description: What artifacts should be produced?
-      placeholder: |
-        1. **Decision Document** - Rationale and selection
-        2. **Updated Design Doc** - Sections X, Y, Z updated
-        3. **Configuration/Assets** - Any files to add
-    validations:
-      required: true
-
-  - type: textarea
     id: downstream
     attributes:
       label: Downstream Dependencies
@@ -77,16 +65,3 @@ body:
       description: Links to relevant design doc sections (use full GitHub URLs)
       placeholder: |
         - [Section Name](https://github.com/lvlup-sw/authscript/blob/main/docs/designs/2025-01-21-authscript-demo-architecture.md#section-anchor) - What this section provides
-
-  - type: textarea
-    id: acceptance
-    attributes:
-      label: Acceptance Criteria
-      description: How do we know the investigation is complete?
-      placeholder: |
-        - [ ] Question 1 answered with rationale
-        - [ ] Question 2 answered with rationale
-        - [ ] Decision documented in docs/
-        - [ ] Downstream issues unblocked
-    validations:
-      required: true

@@ -92,19 +92,6 @@ body:
         - [Section Name](https://github.com/lvlup-sw/authscript/blob/main/docs/designs/2025-01-21-authscript-demo-architecture.md#section-anchor) - What this section provides
         - [Another Section](URL) - What this section provides
 
-  - type: textarea
-    id: acceptance
-    attributes:
-      label: Acceptance Criteria
-      description: Specific, testable outcomes. How do we know this is done?
-      placeholder: |
-        - [ ] Criterion 1 (specific and testable)
-        - [ ] Criterion 2
-        - [ ] Unit tests achieve >90% coverage
-        - [ ] No hardcoded stub values
-    validations:
-      required: true
-
   - type: dropdown
     id: scope
     attributes:
