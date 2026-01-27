@@ -1,11 +1,13 @@
 namespace Gateway.API.Contracts.Fhir;
 
+using Hl7.Fhir.Model;
+
 /// <summary>
 /// Repository pattern interface for FHIR resources.
 /// Provides higher-level domain-oriented operations.
 /// </summary>
 /// <typeparam name="TResource">The FHIR resource type.</typeparam>
-public interface IFhirRepository<TResource> where TResource : class
+public interface IFhirRepository<TResource> where TResource : Resource
 {
     /// <summary>
     /// Gets a resource by its ID.
@@ -30,7 +32,7 @@ public interface IFhirRepository<TResource> where TResource : class
 /// Extended repository interface with date-range filtering.
 /// </summary>
 /// <typeparam name="TResource">The FHIR resource type.</typeparam>
-public interface IFhirRepositoryWithDateRange<TResource> : IFhirRepository<TResource> where TResource : class
+public interface IFhirRepositoryWithDateRange<TResource> : IFhirRepository<TResource> where TResource : Resource
 {
     /// <summary>
     /// Finds resources for a patient within a date range.
