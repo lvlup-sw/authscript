@@ -21,6 +21,9 @@ var azureOpenAiEndpoint = builder.AddParameter("azure-openai-endpoint");
 // Google Gemini (alternative)
 var googleApiKey = builder.AddParameter("google-api-key", secret: true);
 
+// LLM Provider selection (github, azure, gemini, or openai)
+var llmProvider = builder.AddParameter("llm-provider");
+
 // ---------------------------------------------------------------------------
 // Infrastructure
 // ---------------------------------------------------------------------------
@@ -40,8 +43,8 @@ var redis = builder
 var intelligence = builder
     .AddDockerfile("intelligence", "../../apps/intelligence")
     .WithHttpEndpoint(port: 8000, targetPort: 8000, name: "intelligence-api")
-    // LLM Provider config (GitHub Models is default)
-    .WithEnvironment("LLM_PROVIDER", "github")
+    // LLM Provider config (configurable via user-secrets)
+    .WithEnvironment("LLM_PROVIDER", llmProvider)
     .WithEnvironment("GITHUB_TOKEN", githubToken)
     .WithEnvironment("AZURE_OPENAI_API_KEY", azureOpenAiKey)
     .WithEnvironment("AZURE_OPENAI_ENDPOINT", azureOpenAiEndpoint)
