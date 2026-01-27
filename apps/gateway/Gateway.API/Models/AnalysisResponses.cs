@@ -111,6 +111,7 @@ public sealed record ErrorResponse
 
 /// <summary>
 /// Request body for the SubmitToEpic endpoint.
+/// Authentication is handled internally by IHttpClientProvider.
 /// </summary>
 public sealed record SubmitToEpicRequest
 {
@@ -123,9 +124,4 @@ public sealed record SubmitToEpicRequest
     /// Gets the optional FHIR Encounter resource ID for context.
     /// </summary>
     public string? EncounterId { get; init; }
-
-    /// <summary>
-    /// Gets the OAuth access token for Epic authentication.
-    /// </summary>
-    public required string AccessToken { get; init; }
 }

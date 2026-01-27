@@ -1,10 +1,9 @@
+using Gateway.API.Abstractions;
 using Gateway.API.Contracts;
 using Gateway.API.Models;
-using Gateway.API.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using NSubstitute;
-using NSubstitute.ExceptionExtensions;
 
 namespace Gateway.API.Tests.Endpoints;
 
@@ -277,8 +276,7 @@ public class AnalysisEndpointsTests
         var request = new SubmitToEpicRequest
         {
             PatientId = "patient-123",
-            EncounterId = "encounter-456",
-            AccessToken = "bearer-token-xyz"
+            EncounterId = "encounter-456"
         };
 
         _cacheService
@@ -294,9 +292,8 @@ public class AnalysisEndpointsTests
                 pdfBytes,
                 request.PatientId,
                 request.EncounterId,
-                request.AccessToken,
                 Arg.Any<CancellationToken>())
-            .Returns(documentId);
+            .Returns(Result<string>.Success(documentId));
 
         // Act
         var result = await InvokeSubmitToEpic(transactionId, request);
@@ -314,7 +311,6 @@ public class AnalysisEndpointsTests
             pdfBytes,
             request.PatientId,
             request.EncounterId,
-            request.AccessToken,
             Arg.Any<CancellationToken>());
     }
 
@@ -325,8 +321,7 @@ public class AnalysisEndpointsTests
         const string transactionId = "txn-nonexistent";
         var request = new SubmitToEpicRequest
         {
-            PatientId = "patient-123",
-            AccessToken = "bearer-token-xyz"
+            PatientId = "patient-123"
         };
 
         _cacheService
@@ -355,8 +350,7 @@ public class AnalysisEndpointsTests
         var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
         var request = new SubmitToEpicRequest
         {
-            PatientId = "patient-123",
-            AccessToken = "bearer-token-xyz"
+            PatientId = "patient-123"
         };
 
         _cacheService
@@ -372,9 +366,8 @@ public class AnalysisEndpointsTests
                 Arg.Any<byte[]>(),
                 Arg.Any<string>(),
                 Arg.Any<string?>(),
-                Arg.Any<string>(),
                 Arg.Any<CancellationToken>())
-            .Throws(new HttpRequestException("Epic returned 401"));
+            .Returns(Result<string>.Failure(ErrorFactory.Infrastructure("Epic returned 401")));
 
         // Act
         var result = await InvokeSubmitToEpic(transactionId, request);

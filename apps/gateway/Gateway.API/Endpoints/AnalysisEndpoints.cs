@@ -1,6 +1,6 @@
+using Gateway.API.Abstractions;
 using Gateway.API.Contracts;
 using Gateway.API.Models;
-using Gateway.API.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Gateway.API.Endpoints;
@@ -242,30 +242,24 @@ public static class AnalysisEndpoints
             await cacheService.SetCachedPdfAsync(transactionId, pdfBytes, cancellationToken);
         }
 
-        try
-        {
-            var documentId = await epicUploader.UploadDocumentAsync(
-                pdfBytes,
-                request.PatientId,
-                request.EncounterId,
-                request.AccessToken,
-                cancellationToken);
+        var uploadResult = await epicUploader.UploadDocumentAsync(
+            pdfBytes,
+            request.PatientId,
+            request.EncounterId,
+            cancellationToken);
 
-            return Results.Ok(new SubmitResponse
+        return uploadResult.Match<IResult>(
+            documentId => Results.Ok(new SubmitResponse
             {
                 TransactionId = transactionId,
                 Submitted = true,
                 DocumentId = documentId,
                 Message = "PA form successfully submitted to Epic"
-            });
-        }
-        catch (HttpRequestException ex)
-        {
-            return Results.Problem(
-                detail: ex.Message,
+            }),
+            error => Results.Problem(
+                detail: error.Message,
                 title: "Epic Submission Failed",
-                statusCode: StatusCodes.Status500InternalServerError);
-        }
+                statusCode: (int)error.Type));
     }
 
     private static async Task<IResult> TriggerAnalysis(
