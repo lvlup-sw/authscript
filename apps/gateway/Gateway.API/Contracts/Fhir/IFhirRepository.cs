@@ -1,5 +1,6 @@
 namespace Gateway.API.Contracts.Fhir;
 
+using Gateway.API.Abstractions;
 using Hl7.Fhir.Model;
 
 /// <summary>
