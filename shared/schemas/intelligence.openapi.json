@@ -5,6 +5,7 @@
     "description": "Clinical reasoning engine for prior authorization.\n\n## Features\n- Evidence Extraction: Analyzes clinical data against policy criteria\n- Form Generation: Populates PA form fields with extracted evidence\n- Multi-Provider LLM: Supports GitHub, Azure, Gemini, OpenAI\n    ",
     "version": "0.1.0"
   },
+  "security": [],
   "paths": {
     "/analyze": {
       "post": {
@@ -172,6 +173,7 @@
     }
   },
   "components": {
+    "securitySchemes": {},
     "schemas": {
       "AnalyzeRequest": {
         "properties": {

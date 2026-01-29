@@ -11,6 +11,17 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 cd "$ROOT_DIR"
 
+# CI fail-fast guard: exit non-zero when required artifacts are missing in CI
+ci_require() {
+    local path="$1"
+    local description="$2"
+    if [[ -n "${CI:-}" ]] && [[ ! -f "$path" ]]; then
+        echo "      ✗ CI: Required artifact missing: ${path}" >&2
+        echo "      ${description}" >&2
+        exit 1
+    fi
+}
+
 echo "=== AuthScript Schema Synchronization ==="
 echo ""
 
@@ -47,9 +58,11 @@ if [ -f "apps/gateway/Gateway.API/Gateway.API.csproj" ]; then
         echo "      ! apps/gateway/openapi.json not found"
         echo "      Gateway uses runtime OpenAPI generation (Microsoft.AspNetCore.OpenApi)"
         echo "      To extract: run Gateway and fetch from /openapi/v1.json"
+        ci_require "apps/gateway/openapi.json" "CI requires gateway.openapi.json for schema sync"
     fi
 else
     echo "      ! Gateway project not found, skipping"
+    ci_require "apps/gateway/Gateway.API/Gateway.API.csproj" "CI requires Gateway project"
 fi
 echo ""
 
@@ -72,11 +85,17 @@ print('Intelligence OpenAPI spec extracted to shared/schemas/')
 " 2>/dev/null || echo "      ! Python generation failed"
     else
         echo "      ! uv not installed, skipping Python OpenAPI generation"
+        if [[ -n "${CI:-}" ]]; then
+            echo "      ✗ CI: uv is required for Intelligence spec generation" >&2
+            exit 1
+        fi
     fi
     cd "$ROOT_DIR"
 else
     echo "      ! Intelligence project not found, skipping"
+    ci_require "apps/intelligence/pyproject.toml" "CI requires Intelligence project"
 fi
+ci_require "shared/schemas/intelligence.openapi.json" "CI requires intelligence.openapi.json for schema sync"
 echo "      ✓ Intelligence spec complete"
 echo ""
 
@@ -100,11 +119,17 @@ if [ -f "shared/schemas/gateway.openapi.json" ]; then
     else
         echo "      ! datamodel-codegen not installed, skipping Python generation"
         echo "      Install with: uv add --dev datamodel-code-generator"
+        if [[ -n "${CI:-}" ]]; then
+            echo "      ✗ CI: datamodel-codegen is required for Python type generation" >&2
+            exit 1
+        fi
     fi
     cd "$ROOT_DIR"
 else
     echo "      ! Gateway spec not found, skipping Python type generation"
+    ci_require "shared/schemas/gateway.openapi.json" "CI requires gateway.openapi.json for Python type generation"
 fi
+ci_require "apps/intelligence/src/models/generated/gateway_types.py" "CI requires generated Python types"
 echo ""
 
 # Step 4: Generate C# types from Intelligence OpenAPI (PAFormResponse)
@@ -123,10 +148,16 @@ if [ -f "shared/schemas/intelligence.openapi.json" ]; then
     else
         echo "      ! NSwag not installed, skipping C# generation"
         echo "      Install with: dotnet tool install NSwag.ConsoleCore"
+        if [[ -n "${CI:-}" ]]; then
+            echo "      ✗ CI: NSwag is required for C# type generation" >&2
+            exit 1
+        fi
     fi
 else
     echo "      ! Intelligence spec not found, skipping C# type generation"
+    ci_require "shared/schemas/intelligence.openapi.json" "CI requires intelligence.openapi.json for C# type generation"
 fi
+ci_require "apps/gateway/Gateway.API/Models/Generated/IntelligenceTypes.cs" "CI requires generated C# types"
 echo ""
 
 # Step 5: Clean stale generated directories

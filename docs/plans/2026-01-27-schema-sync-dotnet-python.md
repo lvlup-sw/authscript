@@ -13,6 +13,7 @@ Link: `docs/designs/2026-01-26-schema-sync-dotnet-python.md`
 This plan implements bidirectional OpenAPI-based schema synchronization between the Gateway (.NET) and Intelligence (Python) services. The goal is to auto-generate consumer types from producer OpenAPI specs, eliminating manual type duplication.
 
 **Contract Ownership:**
+
 | Contract | Producer | Consumer |
 |----------|----------|----------|
 | ClinicalBundle | Gateway (.NET) | Intelligence (Python) |
@@ -244,7 +245,7 @@ This plan implements bidirectional OpenAPI-based schema synchronization between 
 
 ## Parallelization Strategy
 
-```
+```text
                     ┌─────────────────────────────────────────────┐
                     │              Group A (Parallel)             │
                     ├─────────────────────────────────────────────┤
