@@ -190,18 +190,33 @@ echo ""
 
 # Step 6: Generate TypeScript types via Orval
 echo "[6/7] Generating TypeScript types..."
-if [ -f "apps/gateway/openapi.json" ] || [ -f "apps/intelligence/openapi.json" ]; then
+# Orval config references both gateway and intelligence specs
+# Gateway spec is runtime-only, so we run Orval selectively based on available specs
+ORVAL_FAILED=false
+if [ -f "apps/gateway/openapi.json" ] && [ -f "apps/intelligence/openapi.json" ]; then
+    # Both specs available - run full generation
     if npm run generate 2>/dev/null; then
-        echo "      ✓ TypeScript types generated"
+        echo "      ✓ TypeScript types generated (gateway + intelligence)"
     else
-        echo "      ! Orval generation failed (may need npm install)" >&2
-        if [[ -n "${CI:-}" ]]; then
-            echo "      ✗ CI: Orval generation failed" >&2
-            exit 1
-        fi
+        ORVAL_FAILED=true
+    fi
+elif [ -f "apps/intelligence/openapi.json" ]; then
+    # Only intelligence spec - run intelligence targets only
+    if npx orval --config orval.config.ts --targets intelligence,intelligenceTypes 2>/dev/null; then
+        echo "      ✓ TypeScript types generated (intelligence only)"
+    else
+        ORVAL_FAILED=true
     fi
 else
     echo "      ! No OpenAPI specs found, skipping type generation"
+fi
+
+if [ "$ORVAL_FAILED" = true ]; then
+    echo "      ! Orval generation failed (may need npm install)" >&2
+    if [[ -n "${CI:-}" ]]; then
+        echo "      ✗ CI: Orval generation failed" >&2
+        exit 1
+    fi
 fi
 echo ""
 
