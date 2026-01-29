@@ -22,6 +22,16 @@ ci_require() {
     fi
 }
 
+# CI warning: warn but don't fail (for optional/runtime-only artifacts)
+ci_warn() {
+    local path="$1"
+    local description="$2"
+    if [[ -n "${CI:-}" ]] && [[ ! -f "$path" ]]; then
+        echo "      ⚠ CI: Optional artifact missing: ${path}"
+        echo "      ${description}"
+    fi
+}
+
 echo "=== AuthScript Schema Synchronization ==="
 echo ""
 
@@ -58,7 +68,8 @@ if [ -f "apps/gateway/Gateway.API/Gateway.API.csproj" ]; then
         echo "      ! apps/gateway/openapi.json not found"
         echo "      Gateway uses runtime OpenAPI generation (Microsoft.AspNetCore.OpenApi)"
         echo "      To extract: run Gateway and fetch from /openapi/v1.json"
-        ci_require "apps/gateway/openapi.json" "CI requires gateway.openapi.json for schema sync"
+        # Gateway spec is runtime-only - warn but don't fail in CI
+        ci_warn "apps/gateway/openapi.json" "Gateway spec requires runtime extraction (optional in CI)"
     fi
 else
     echo "      ! Gateway project not found, skipping"
@@ -127,9 +138,11 @@ if [ -f "shared/schemas/gateway.openapi.json" ]; then
     cd "$ROOT_DIR"
 else
     echo "      ! Gateway spec not found, skipping Python type generation"
-    ci_require "shared/schemas/gateway.openapi.json" "CI requires gateway.openapi.json for Python type generation"
+    # Gateway spec is runtime-only - warn but don't fail in CI
+    ci_warn "shared/schemas/gateway.openapi.json" "Gateway spec requires runtime extraction (optional in CI)"
 fi
-ci_require "apps/intelligence/src/models/generated/gateway_types.py" "CI requires generated Python types"
+# Python types are optional since Gateway spec requires runtime extraction
+ci_warn "apps/intelligence/src/models/generated/gateway_types.py" "Python types depend on Gateway spec (optional in CI)"
 echo ""
 
 # Step 4: Generate C# types from Intelligence OpenAPI (PAFormResponse)
