@@ -190,7 +190,7 @@ This plan implements bidirectional OpenAPI-based schema synchronization between 
    - Expected failure: Properties missing
 
 3. [GREEN] Add generation step to sync-schemas.sh
-   - Run `dotnet nswag openapi2cscontroller` with:
+   - Run `dotnet nswag openapi2csclient` with:
      - `/input:shared/schemas/intelligence.openapi.json`
      - `/output:apps/gateway/Gateway.API/Models/Generated/IntelligenceTypes.cs`
      - `/generateRecordTypes:true`

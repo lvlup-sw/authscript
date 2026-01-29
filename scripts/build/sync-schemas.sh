@@ -83,7 +83,7 @@ if [ -f "apps/intelligence/pyproject.toml" ]; then
     cd apps/intelligence
     if command -v uv &> /dev/null; then
         # Use FastAPI's built-in OpenAPI generation
-        uv run python -c "
+        if uv run python -c "
 from src.main import app
 import json
 # Output to app directory
@@ -93,7 +93,15 @@ with open('openapi.json', 'w') as f:
 with open('../../shared/schemas/intelligence.openapi.json', 'w') as f:
     json.dump(app.openapi(), f, indent=2)
 print('Intelligence OpenAPI spec extracted to shared/schemas/')
-" 2>/dev/null || echo "      ! Python generation failed"
+" 2>/dev/null; then
+            echo "      ✓ Intelligence OpenAPI spec generated"
+        else
+            echo "      ! Python generation failed" >&2
+            if [[ -n "${CI:-}" ]]; then
+                echo "      ✗ CI: Intelligence OpenAPI generation failed" >&2
+                exit 1
+            fi
+        fi
     else
         echo "      ! uv not installed, skipping Python OpenAPI generation"
         if [[ -n "${CI:-}" ]]; then
@@ -183,11 +191,18 @@ echo ""
 # Step 6: Generate TypeScript types via Orval
 echo "[6/7] Generating TypeScript types..."
 if [ -f "apps/gateway/openapi.json" ] || [ -f "apps/intelligence/openapi.json" ]; then
-    npm run generate 2>/dev/null || echo "      ! Orval generation failed (may need npm install)"
+    if npm run generate 2>/dev/null; then
+        echo "      ✓ TypeScript types generated"
+    else
+        echo "      ! Orval generation failed (may need npm install)" >&2
+        if [[ -n "${CI:-}" ]]; then
+            echo "      ✗ CI: Orval generation failed" >&2
+            exit 1
+        fi
+    fi
 else
     echo "      ! No OpenAPI specs found, skipping type generation"
 fi
-echo "      ✓ TypeScript types generated"
 echo ""
 
 # Step 7: Rebuild shared packages
