@@ -201,8 +201,11 @@ if [ -f "apps/gateway/openapi.json" ] && [ -f "apps/intelligence/openapi.json" ]
         ORVAL_FAILED=true
     fi
 elif [ -f "apps/intelligence/openapi.json" ]; then
-    # Only intelligence spec - run intelligence targets only
-    if npx orval --config orval.config.ts --targets intelligence,intelligenceTypes 2>/dev/null; then
+    # Only intelligence spec - run intelligence projects only (use --project flag)
+    ORVAL_SUCCESS=true
+    npx orval --config orval.config.ts --project intelligence 2>/dev/null || ORVAL_SUCCESS=false
+    npx orval --config orval.config.ts --project intelligenceTypes 2>/dev/null || ORVAL_SUCCESS=false
+    if [ "$ORVAL_SUCCESS" = true ]; then
         echo "      ✓ TypeScript types generated (intelligence only)"
     else
         ORVAL_FAILED=true
