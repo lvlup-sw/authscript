@@ -28,6 +28,7 @@ builder.Services.AddGatewayServices(builder.Configuration);
 builder.Services.AddFhirClients(builder.Configuration);
 builder.Services.AddIntelligenceClient(builder.Configuration);
 builder.Services.AddNotificationServices();
+builder.Services.AddAthenaServices(builder.Configuration);
 
 // CORS for dashboard
 builder.Services.AddCors(options =>
