@@ -25,8 +25,11 @@ public class AthenaPollingServiceTests
         {
             FhirBaseUrl = "https://api.athena.test/fhir/r4",
             ClientId = "test-client",
+            TokenEndpoint = "https://api.athena.test/oauth2/token",
             PollingIntervalSeconds = 1,
+#pragma warning disable CS0618 // Type or member is obsolete
             AccessToken = "test-token"
+#pragma warning restore CS0618
         });
 
         _sut = new AthenaPollingService(_fhirClient, _options, _logger);

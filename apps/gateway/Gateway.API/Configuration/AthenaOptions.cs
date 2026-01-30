@@ -41,6 +41,13 @@ public sealed class AthenaOptions
     public string? PracticeId { get; init; }
 
     /// <summary>
+    /// OAuth access token (deprecated - use AthenaTokenStrategy instead).
+    /// Kept for backward compatibility during integration.
+    /// </summary>
+    [Obsolete("Use AthenaTokenStrategy for token acquisition instead.")]
+    public string? AccessToken { get; init; }
+
+    /// <summary>
     /// Validates that all required configuration properties are present.
     /// </summary>
     /// <returns>True if ClientId, FhirBaseUrl, and TokenEndpoint are non-empty; otherwise false.</returns>
