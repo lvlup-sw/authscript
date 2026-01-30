@@ -14,7 +14,7 @@ Our new objective is to deploy a **Direct Integration Pilot** using athenahealth
 
 We are shifting our target market, platform, and technical architecture simultaneously to align with the reality of a rapid deployment.
 
-| **Feature**         | **Previous Strategy **             | **New Strategy**                   |
+| **Feature**         | **Previous Strategy**              | **New Strategy**                   |
 | ------------------- | ---------------------------------- | ---------------------------------- |
 | **Target Customer** | Large Health Systems (Enterprise)  | Independent Family Practices (SMB) |
 | **Platform**        | Epic Systems                       | athenahealth                       |
@@ -59,11 +59,15 @@ The product is no longer a tool the doctor "uses" proactively. It is a backgroun
 
 ## Strategic Realities & Risks
 
-### Reality 1: We Are Not Competing with athenaPayer
+### Reality 1: Pilot Environment Access (Critical Dependency)
 
-**Risk:** athenahealth has a product called [athenaPayer](https://www.athenahealth.com/resources/blog/athenapayer-modernizing-prior-authorization).
+**Risk:** We cannot access athenahealth's frontend Preview environment on our own. A current athenahealth customer must grant us user access to test and build the embedded UI.
 
-**Mitigation:** athenaPayer is sold to *insurance companies* to ingest data. We are selling to *providers* to defend against denials. We are the "Defense Counsel" to athenaPayer's "Prosecutor."
+**Mitigation:**
+
+- Our pilot practice discussion is ongoing
+- Fallback: Build and demo against sandbox APIs only (no embedded UI), show mockups for the embedded experience
+- This is our **most critical dependency** — actively pursuing confirmation
 
 ### Reality 2: HIPAA Liability & Data Minimization
 
@@ -82,3 +86,16 @@ The product is no longer a tool the doctor "uses" proactively. It is a backgroun
 **Mitigation:** We are building for **Multi-Tenancy**.
 
 - **Demo/Pilot Mode:** Aggressive polling (every 3-5s) for the pilot client.
+- **Production Mode:** Increase polling interval to 10-15s, leverage batch hydration with concurrent limits.
+
+**Validated Constraints:**
+- Preview: 15 req/sec, 50,000 calls/day
+- Production: 150 req/sec
+- Our usage per 5s polling cycle: ~6 requests (1 poll + 5 hydration)
+- Daily budget of 50K calls provides ample headroom for pilot
+
+### Reality 4: We Are Not Competing with athenaPayer
+
+**Risk:** athenahealth has a product called [athenaPayer](https://www.athenahealth.com/resources/blog/athenapayer-modernizing-prior-authorization).
+
+**Mitigation:** athenaPayer is sold to *insurance companies* to ingest data. We are selling to *providers* to defend against denials. We are the "Defense Counsel" to athenaPayer's "Prosecutor."
