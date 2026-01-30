@@ -1,9 +1,5 @@
 # Strategic Pivot Memorandum: AuthScript
 
-**Subject:** Strategic Pivot to athenahealth & "Invisible" Integration Model
-
-------
-
 ## Executive Summary
 
 We are pivoting AuthScript from an **Epic/CDS Hooks** enterprise play to an **athenahealth/SMART on FHIR** solution targeting independent family practices.

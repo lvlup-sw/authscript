@@ -50,6 +50,33 @@ Full integration with athenahealth via Private App model, building on the existi
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
+```mermaid
+flowchart TB
+    subgraph EHR["athenahealth EHR"]
+        FHIR["FHIR R4 Certified APIs"]
+        Encounters["Encounter Detection"]
+    end
+
+    subgraph Gateway["Gateway (.NET 10)"]
+        Token["Athena Token Strategy"]
+        PDF["PDF Generator (iText7)"]
+        SSE["SSE Hub"]
+    end
+
+    subgraph Intelligence["Intelligence (Python/FastAPI)"]
+        LLM["LLM Reasoning (GPT-4.1)"]
+        Policy["Policy Matcher"]
+    end
+
+    Dashboard["Dashboard (SMART on FHIR)"]
+
+    Encounters -->|"poll/3-5s"| Gateway
+    FHIR <-->|"hydrate"| Gateway
+    Gateway <-->|"analyze"| Intelligence
+    Gateway -->|"SSE"| Dashboard
+    Gateway -->|"DocumentReference"| FHIR
+```
+
 ### Component Modifications
 
 #### 1. Gateway - Athena Token Strategy
@@ -131,6 +158,419 @@ const patientId = launchParams.get('patient');
 const encounterId = launchParams.get('encounter');
 ```
 
+### Intelligence Service Architecture
+
+The Intelligence service uses a **hybrid Extract-then-Reason pipeline** orchestrated by [LangGraph](https://langchain-ai.github.io/langgraph/) for reliable, auditable clinical reasoning.
+
+#### LangGraph Pipeline
+
+```mermaid
+stateDiagram-v2
+    [*] --> RetrievePolicy
+    RetrievePolicy --> ExtractFacts
+    ExtractFacts --> EvaluateCriteria
+    EvaluateCriteria --> GenerateForm
+    GenerateForm --> [*]
+
+    note right of RetrievePolicy: Vector search (pgvector)
+    note right of ExtractFacts: LLM extracts structured clinical facts
+    note right of EvaluateCriteria: LLM evaluates facts against policy
+    note right of GenerateForm: Build PAFormResponse with citations
+```
+
+```python
+from langgraph.graph import StateGraph, END
+
+class AnalysisState(TypedDict):
+    clinical_bundle: ClinicalBundle
+    procedure_code: str
+    payer_id: str | None
+    policy: PolicyDocument | None
+    extracted_facts: ExtractedFacts | None
+    criteria_results: list[CriteriaResult]
+    form_response: PAFormResponse | None
+    error: str | None
+
+def build_analysis_graph() -> StateGraph:
+    graph = StateGraph(AnalysisState)
+
+    graph.add_node("retrieve_policy", retrieve_policy_node)
+    graph.add_node("extract_facts", extract_facts_node)
+    graph.add_node("evaluate_criteria", evaluate_criteria_node)
+    graph.add_node("generate_form", generate_form_node)
+
+    graph.set_entry_point("retrieve_policy")
+    graph.add_edge("retrieve_policy", "extract_facts")
+    graph.add_edge("extract_facts", "evaluate_criteria")
+    graph.add_edge("evaluate_criteria", "generate_form")
+    graph.add_edge("generate_form", END)
+
+    return graph.compile()
+```
+
+#### Stage 0: Policy Retrieval (Vector Search)
+
+Policies are stored as JSON documents in PostgreSQL with pgvector embeddings for semantic search.
+
+**Policy Schema:**
+
+```python
+@dataclass
+class PolicyDocument:
+    policy_id: str
+    payer_name: str
+    procedure_codes: list[str]  # CPT codes this policy covers
+    effective_date: date
+    criteria: list[PolicyCriterion]
+    form_field_mappings: dict[str, str]
+
+@dataclass
+class PolicyCriterion:
+    criterion_id: str
+    description: str  # Human-readable requirement
+    evidence_prompt: str  # Prompt fragment for LLM extraction
+    required: bool
+    bypasses: list[str]  # Other criteria this bypasses if met (e.g., red flags)
+```
+
+**Retrieval Logic:**
+
+```python
+async def retrieve_policy_node(state: AnalysisState) -> AnalysisState:
+    # Embed the procedure code + payer context
+    query = f"Prior authorization policy for {state.procedure_code}"
+    if state.payer_id:
+        query += f" with {state.payer_id}"
+
+    # Vector similarity search
+    policy = await policy_store.search(
+        query_embedding=embed(query),
+        filter={"procedure_codes": {"$contains": state.procedure_code}},
+        limit=1
+    )
+
+    return {**state, "policy": policy}
+```
+
+**Storage:** PostgreSQL with pgvector extension (already in Aspire stack).
+
+#### Stage 1: Clinical Fact Extraction (LLM)
+
+Extract structured facts from unstructured clinical notes and FHIR resources.
+
+**Extracted Facts Schema:**
+
+```python
+@dataclass
+class ExtractedFacts:
+    diagnoses: list[DiagnosisFact]
+    treatments: list[TreatmentFact]
+    medications: list[MedicationFact]
+    lab_results: list[LabFact]
+    clinical_timeline: list[TimelineEvent]
+
+@dataclass
+class DiagnosisFact:
+    code: str  # ICD-10
+    display: str
+    source: str  # "FHIR Condition/123" or "Note dated 2026-01-15"
+    confidence: float
+
+@dataclass
+class TreatmentFact:
+    treatment_type: str  # "physical_therapy", "medication", "injection", etc.
+    start_date: date | None
+    end_date: date | None
+    duration_weeks: int | None
+    outcome: str | None  # "failed", "partial_response", "ongoing"
+    source: str
+```
+
+**Extraction Prompt Pattern:**
+
+```python
+EXTRACTION_PROMPT = """
+You are a clinical data extractor. Given the patient's clinical data, extract structured facts.
+
+## Clinical Data
+{clinical_bundle_json}
+
+## Required Extractions
+For each finding, include the source (FHIR resource ID or note date).
+
+1. **Diagnoses**: ICD-10 codes with descriptions
+2. **Treatments**: Type, dates, duration, and outcome
+3. **Medications**: Name, dosage, start/end dates
+4. **Labs**: Relevant results with dates
+5. **Timeline**: Key clinical events in chronological order
+
+Return as JSON matching the ExtractedFacts schema.
+"""
+```
+
+#### Stage 2: Criteria Evaluation (LLM)
+
+Evaluate extracted facts against policy criteria to determine which requirements are met.
+
+**Criteria Result Schema:**
+
+```python
+@dataclass
+class CriteriaResult:
+    criterion_id: str
+    status: Literal["MET", "NOT_MET", "UNCLEAR"]
+    evidence: list[EvidenceItem]
+    reasoning: str  # LLM explanation of why criterion is/isn't met
+
+@dataclass
+class EvidenceItem:
+    fact_reference: str  # Points to ExtractedFact
+    source_citation: str  # "Progress note 01/15/2026" or "Condition/abc123"
+    relevance: str  # How this fact supports the criterion
+```
+
+**Evaluation Prompt Pattern:**
+
+```python
+EVALUATION_PROMPT = """
+You are a prior authorization specialist. Evaluate whether the clinical evidence meets each policy criterion.
+
+## Policy: {policy.payer_name} - {policy.policy_id}
+
+## Criteria to Evaluate
+{criteria_list}
+
+## Extracted Clinical Facts
+{extracted_facts_json}
+
+For each criterion:
+1. Determine if MET, NOT_MET, or UNCLEAR
+2. Cite specific evidence from the facts (include source)
+3. Explain your reasoning
+
+Return as JSON matching the list[CriteriaResult] schema.
+"""
+```
+
+#### Stage 3: Form Generation
+
+Build the final PA form response with field mappings and clinical summary.
+
+```python
+async def generate_form_node(state: AnalysisState) -> AnalysisState:
+    # Determine recommendation based on criteria results
+    required_criteria = [c for c in state.policy.criteria if c.required]
+    met_required = [r for r in state.criteria_results
+                    if r.status == "MET" and r.criterion_id in required_criteria]
+
+    if len(met_required) == len(required_criteria):
+        recommendation = "APPROVE"
+    elif any(r.status == "UNCLEAR" for r in state.criteria_results):
+        recommendation = "NEED_INFO"
+    else:
+        recommendation = "MANUAL_REVIEW"
+
+    # Generate clinical summary via LLM
+    summary = await generate_clinical_summary(
+        state.extracted_facts,
+        state.criteria_results
+    )
+
+    # Map to form fields
+    form_fields = map_to_form_fields(
+        state.clinical_bundle,
+        state.extracted_facts,
+        state.policy.form_field_mappings
+    )
+
+    return {
+        **state,
+        "form_response": PAFormResponse(
+            recommendation=recommendation,
+            confidence=calculate_confidence(state.criteria_results),
+            clinical_summary=summary,
+            evidence=flatten_evidence(state.criteria_results),
+            form_fields=form_fields
+        )
+    }
+```
+
+#### Intelligence Service API
+
+**POST /analyze** - Synchronous analysis (existing endpoint, updated implementation)
+
+**POST /analyze/stream** - SSE streaming for real-time progress
+
+```python
+@app.post("/analyze/stream")
+async def analyze_stream(request: AnalyzeRequest):
+    async def event_generator():
+        graph = build_analysis_graph()
+
+        async for event in graph.astream(initial_state):
+            yield {
+                "event": "progress",
+                "data": json.dumps({
+                    "stage": event.node,
+                    "status": "running" if not event.done else "complete",
+                    "partial_result": serialize_partial(event.state)
+                })
+            }
+
+        yield {"event": "complete", "data": json.dumps(event.state["form_response"])}
+
+    return EventSourceResponse(event_generator())
+```
+
+### Dashboard Architecture
+
+> **Note:** Dashboard UI specifics are **pending wireframes and customer environment access**. This section outlines the technical architecture and basic functionality.
+
+#### SMART on FHIR OAuth Flow (athenahealth)
+
+Complete OAuth 2.0 authorization flow for embedded app launch:
+
+```mermaid
+sequenceDiagram
+    participant A as athenahealth
+    participant D as Dashboard
+    participant G as Gateway
+
+    A->>D: 1. Launch with ?iss=...&launch=...
+    D->>A: 2. GET /.well-known/smart-configuration
+    A-->>D: 3. {authorization_endpoint, token_endpoint}
+    D->>A: 4. Redirect to authorization_endpoint
+    Note over D,A: User authorizes (may be silent if pre-approved)
+    A->>D: 5. Redirect with ?code=...
+    D->>A: 6. POST token_endpoint (exchange code)
+    A-->>D: 7. {access_token, patient, encounter}
+    D->>G: 8. Connect SSE with access_token
+    G-->>D: 9. Real-time notifications
+```
+
+**Implementation:**
+
+```typescript
+// lib/smartAuth.ts
+export async function handleSmartLaunch(iss: string, launch: string): Promise<SmartContext> {
+  // 1. Discover SMART configuration
+  const config = await fetch(`${iss}/.well-known/smart-configuration`).then(r => r.json());
+
+  // 2. Build authorization URL
+  const authUrl = new URL(config.authorization_endpoint);
+  authUrl.searchParams.set('response_type', 'code');
+  authUrl.searchParams.set('client_id', ATHENA_CLIENT_ID);
+  authUrl.searchParams.set('redirect_uri', REDIRECT_URI);
+  authUrl.searchParams.set('scope', 'launch patient/*.read openid fhirUser');
+  authUrl.searchParams.set('state', generateState());
+  authUrl.searchParams.set('aud', iss);
+  authUrl.searchParams.set('launch', launch);
+
+  // 3. Redirect for authorization
+  window.location.href = authUrl.toString();
+}
+
+export async function handleCallback(code: string, state: string): Promise<SmartContext> {
+  // 4. Exchange code for token
+  const tokenResponse = await fetch(tokenEndpoint, {
+    method: 'POST',
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: REDIRECT_URI,
+      client_id: ATHENA_CLIENT_ID,
+    }),
+  });
+
+  const { access_token, patient, encounter } = await tokenResponse.json();
+
+  return { accessToken: access_token, patientId: patient, encounterId: encounter };
+}
+```
+
+#### SSE Client for Real-Time Updates
+
+Replace polling with Server-Sent Events for live progress tracking:
+
+```typescript
+// hooks/useAnalysisStream.ts
+export function useAnalysisStream(transactionId: string | null) {
+  const [status, setStatus] = useState<AnalysisStatus>({ stage: 'idle' });
+  const [result, setResult] = useState<PAFormResponse | null>(null);
+
+  useEffect(() => {
+    if (!transactionId) return;
+
+    const eventSource = new EventSource(
+      `${API_BASE}/api/analysis/${transactionId}/stream`,
+      { withCredentials: true }
+    );
+
+    eventSource.addEventListener('progress', (e) => {
+      const data = JSON.parse(e.data);
+      setStatus({
+        stage: data.stage,
+        progress: data.progress,
+        message: data.message,
+      });
+    });
+
+    eventSource.addEventListener('complete', (e) => {
+      setResult(JSON.parse(e.data));
+      eventSource.close();
+    });
+
+    eventSource.addEventListener('error', (e) => {
+      setStatus({ stage: 'error', error: 'Connection lost' });
+      eventSource.close();
+    });
+
+    return () => eventSource.close();
+  }, [transactionId]);
+
+  return { status, result };
+}
+```
+
+#### Core Dashboard Functionality
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **SMART Launch** | OAuth flow with athenahealth ISS | To implement |
+| **Patient Context** | Display patient name, DOB, encounter date | To implement |
+| **Analysis Progress** | Real-time stage progress via SSE | To implement |
+| **Evidence Review** | Display criteria with MET/NOT_MET/UNCLEAR status | Exists (needs data wiring) |
+| **Form Preview** | Show pre-filled PA form fields | Exists (needs data wiring) |
+| **Confidence Display** | Visual indicator of overall confidence | Exists |
+| **Submit Action** | Confirm and trigger DocumentReference write-back | To implement |
+| **Notification Badge** | "PA Draft Ready" indicator in embedded view | To implement |
+
+#### Dashboard State Flow
+
+```mermaid
+stateDiagram-v2
+    [*] --> Launching: SMART launch params received
+    Launching --> Authenticated: OAuth complete
+    Authenticated --> Idle: No active analysis
+    Authenticated --> Watching: Analysis in progress
+    Idle --> Watching: SSE notification received
+    Watching --> Ready: Analysis complete
+    Ready --> Reviewing: Provider opens form
+    Reviewing --> Submitted: Provider confirms
+    Submitted --> Idle: Write-back complete
+
+    Watching --> Error: Analysis failed
+    Error --> Idle: Dismissed
+```
+
+#### Pending Items (Require Wireframes/Environment)
+
+- [ ] Visual design for embedded app chrome (athenahealth style compliance)
+- [ ] Notification badge placement within athenahealth UI
+- [ ] Mobile/responsive layout requirements
+- [ ] Error state designs (auth failure, analysis failure, network issues)
+- [ ] Provider feedback capture UI (for accuracy improvement loop)
+
 ### Data Flow
 
 ```mermaid
@@ -209,19 +649,31 @@ Safety Margin:
 |-----------|--------|----------------|
 | `ITokenAcquisitionStrategy` | In progress (Epic plan) | Add athena implementation |
 | `IFhirClient` | Exists, abstracted | None |
-| Intelligence service | Exists, EHR-agnostic | None |
-| Dashboard | Exists, SMART-ready | ISS configuration |
+| Intelligence service | Exists (stubbed) | Implement LangGraph pipeline |
+| Dashboard | Exists (stubbed) | Implement SMART OAuth, SSE client |
 | PDF generation (iText7) | Exists | None |
+| PostgreSQL (Aspire) | Exists | Add pgvector extension, policy tables |
 
 ### New Components
 
-| Component | Effort | Priority |
-|-----------|--------|----------|
-| `AthenaTokenStrategy` | 4 hours | P0 |
-| `AthenaPollingService` | 8 hours | P0 |
-| SSE notification hub | 4 hours | P1 |
-| Dashboard SSE client | 4 hours | P1 |
-| DocumentReference write endpoint | 4 hours | P1 |
+| Component | Service | Priority |
+|-----------|---------|----------|
+| **Gateway** | | |
+| `AthenaTokenStrategy` | Gateway | P0 |
+| `AthenaPollingService` | Gateway | P0 |
+| SSE notification hub | Gateway | P1 |
+| DocumentReference write endpoint | Gateway | P1 |
+| **Intelligence** | | |
+| LangGraph analysis pipeline | Intelligence | P0 |
+| Policy vector store (pgvector) | Intelligence | P0 |
+| Clinical fact extraction stage | Intelligence | P0 |
+| Criteria evaluation stage | Intelligence | P0 |
+| Streaming analysis endpoint | Intelligence | P1 |
+| **Dashboard** | | |
+| SMART OAuth flow (athenahealth) | Dashboard | P0 |
+| SSE client hook | Dashboard | P1 |
+| Evidence/form data wiring | Dashboard | P1 |
+| Submit action endpoint | Dashboard | P1 |
 
 ### Configuration
 
@@ -244,9 +696,18 @@ Safety Margin:
 
 | Component | Test Focus |
 |-----------|------------|
+| **Gateway** | |
 | `AthenaTokenStrategy` | OAuth flow, token caching, refresh |
 | `AthenaPollingService` | Interval timing, deduplication |
 | SSE hub | Client connection, message serialization |
+| **Intelligence** | |
+| Policy retrieval | Vector search accuracy, filtering by procedure code |
+| Fact extraction | Schema compliance, source citation accuracy |
+| Criteria evaluation | MET/NOT_MET/UNCLEAR logic, evidence linking |
+| Form generation | Field mapping, recommendation logic |
+| **Dashboard** | |
+| SMART OAuth | State management, token storage, redirect handling |
+| SSE hook | Connection lifecycle, event parsing, reconnection |
 
 ### Integration Tests (Sandbox)
 
@@ -271,36 +732,50 @@ Scripted walkthrough with sandbox data:
 |------|--------|------------|
 | DocumentReference.write access | ✅ Resolved | Confirmed in Certified tier (USCDI mandate) |
 | Pilot access falls through | ⚠️ Active | Sandbox demo viable; seek alternative practice |
-| LLM accuracy insufficient | ⚠️ Active | Hardcode demo payer policy; curate test cases |
+| LLM accuracy insufficient | ⚠️ Active | Two-stage pipeline with fact extraction improves auditability; curate test cases |
 | Polling rate limited | ✅ Resolved | 15 QPS preview / 150 QPS prod is ample |
-| 6-week timeline too tight | ⚠️ Active | Lean MVP fallback (drop embedded app) |
+| 6-week timeline too tight | ⚠️ Active | Lean MVP fallback (drop embedded app, use standalone) |
+| LangGraph complexity | ⚠️ Active | Pipeline stages are independently testable; can fall back to sequential calls |
+| Policy coverage gaps | ⚠️ Active | Start with 2-3 well-defined demo policies; vector search handles variations |
 
 ## Open Questions
 
 1. **Practice Configuration:** How will we onboard additional practices post-demo? (Multi-tenant architecture is designed but not implemented)
 
-2. **Payer Policy Source:** Where do payer-specific PA requirements come from? (Current: hardcoded demo policy)
+2. ~~**Payer Policy Source:**~~ ✅ **Resolved** — Policies stored as JSON documents in PostgreSQL with pgvector embeddings, retrieved via semantic search based on procedure/payer context.
 
 3. **HIPAA BAA:** Is BAA required for Private App pilot? (Likely yes for production PHI)
+
+4. **Dashboard Wireframes:** UI design pending customer environment access and visual requirements from athenahealth style guide.
+
+5. **Demo Policy Content:** Which specific payer policies will we seed for the demo? (Suggest: Blue Cross MRI Lumbar, UnitedHealthcare PT evaluation)
 
 ## Implementation Phases
 
 ### Phase 1: Foundation (Week 1-2)
-- Complete Epic FHIR refactor (strategy pattern)
+- Complete FHIR refactor (strategy pattern)
 - Implement `AthenaTokenStrategy`
 - Verify sandbox access and credentials
+- Set up pgvector extension and policy tables
+- Seed 2-3 demo policies (MRI Lumbar, PT evaluation)
 
-### Phase 2: Core Pipeline (Week 3-4)
+### Phase 2: Intelligence Pipeline (Week 3-4)
+- Implement LangGraph analysis pipeline
+- Build fact extraction stage with LLM
+- Build criteria evaluation stage with LLM
+- Implement policy vector retrieval
+- Unit test each pipeline stage
+
+### Phase 3: Gateway Integration (Week 4-5)
 - Implement `AthenaPollingService`
-- Integrate polling with existing hydration logic
-- Verify Intelligence service works with athena data
-
-### Phase 3: User Experience (Week 5)
+- Integrate polling → hydration → Intelligence pipeline
 - Implement SSE notification hub
-- Connect Dashboard to SSE
 - Implement DocumentReference write-back
 
-### Phase 4: Demo Prep (Week 6)
+### Phase 4: Dashboard & Demo (Week 5-6)
+- Complete SMART OAuth flow (athenahealth)
+- Implement SSE client for real-time progress
+- Wire evidence/form components to live data
 - Create demo script and test data
 - Run E2E tests in sandbox
 - Prepare fallback if pilot unavailable
@@ -313,13 +788,47 @@ Scripted walkthrough with sandbox data:
 - [ ] Full workflow completes in under 3 minutes
 - [ ] Demo runs without manual intervention
 
+## Dependencies
+
+### Intelligence Service (Python)
+
+| Package | Purpose |
+|---------|---------|
+| `langgraph` | LLM workflow orchestration |
+| `langchain-openai` | OpenAI/Azure OpenAI LLM provider |
+| `pgvector` | Vector similarity search for policies |
+| `asyncpg` | Async PostgreSQL driver |
+| `sse-starlette` | Server-Sent Events for FastAPI |
+
+### Dashboard (TypeScript)
+
+| Package | Purpose |
+|---------|---------|
+| `fhirclient` | SMART on FHIR OAuth library (optional) |
+| Native `EventSource` | SSE client (built-in) |
+
+### Infrastructure
+
+| Component | Purpose |
+|-----------|---------|
+| PostgreSQL + pgvector | Policy storage with vector search |
+| Redis | Encounter deduplication, draft caching |
+
 ## References
 
-- [athenahealth Certified APIs](https://docs.athenahealth.com/api/guides/certified-apis)
-- [athenahealth Embedded Apps](https://docs.athenahealth.com/api/guides/embedded-apps)
-- [athenahealth FHIR R4 Base URLs](https://docs.athenahealth.com/api/guides/base-fhir-urls)
-- [athenahealth Best Practices](https://docs.athenahealth.com/api/guides/best-practices)
-- [athenahealth Onboarding Overview](https://docs.athenahealth.com/api/guides/onboarding-overview)
+### athenahealth
+- [Certified APIs](https://docs.athenahealth.com/api/guides/certified-apis)
+- [Embedded Apps](https://docs.athenahealth.com/api/guides/embedded-apps)
+- [FHIR R4 Base URLs](https://docs.athenahealth.com/api/guides/base-fhir-urls)
+- [Best Practices](https://docs.athenahealth.com/api/guides/best-practices)
+- [Onboarding Overview](https://docs.athenahealth.com/api/guides/onboarding-overview)
+
+### Technical
+- [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
+- [pgvector GitHub](https://github.com/pgvector/pgvector)
+- [SMART on FHIR Spec](https://hl7.org/fhir/smart-app-launch/)
+
+### Internal
 - [Pivot Memo](../pitch/pivot-memo.md)
 - [Architecture Proposal](../pitch/authscript-pivot-architecture-proposal.md)
 - [Viability Addendum](../pitch/viability-addendum.md)
