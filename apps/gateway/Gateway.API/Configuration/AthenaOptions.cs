@@ -1,7 +1,7 @@
 namespace Gateway.API.Configuration;
 
 /// <summary>
-/// Configuration for athenahealth FHIR API connectivity.
+/// Configuration for athenahealth FHIR API connectivity and polling.
 /// </summary>
 public sealed class AthenaOptions
 {
@@ -9,6 +9,11 @@ public sealed class AthenaOptions
     /// Configuration section name.
     /// </summary>
     public const string SectionName = "Athena";
+
+    /// <summary>
+    /// Base URL for athenahealth FHIR R4 API.
+    /// </summary>
+    public required string FhirBaseUrl { get; init; }
 
     /// <summary>
     /// OAuth client ID for athenahealth.
@@ -19,11 +24,6 @@ public sealed class AthenaOptions
     /// OAuth client secret (from user-secrets in dev).
     /// </summary>
     public string? ClientSecret { get; init; }
-
-    /// <summary>
-    /// Base URL for athenahealth FHIR R4 API.
-    /// </summary>
-    public required string FhirBaseUrl { get; init; }
 
     /// <summary>
     /// Token endpoint for OAuth 2.0 client credentials flow.
