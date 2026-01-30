@@ -1,21 +1,21 @@
 namespace Gateway.API.Contracts;
 
 /// <summary>
-/// Hub for broadcasting notifications about PA form processing events.
-/// Supports Server-Sent Events (SSE) for real-time client updates.
+/// Interface for publishing and subscribing to real-time notifications.
+/// Uses a channel-based approach for SSE streaming.
 /// </summary>
 public interface INotificationHub
 {
     /// <summary>
-    /// Writes a notification to the hub for broadcasting to subscribers.
+    /// Writes a notification to the channel for all subscribers.
     /// </summary>
-    /// <param name="notification">The notification to broadcast.</param>
+    /// <param name="notification">The notification to publish.</param>
     /// <param name="ct">Cancellation token.</param>
     Task WriteAsync(Notification notification, CancellationToken ct);
 
     /// <summary>
-    /// Reads all notifications from the hub as an async stream.
-    /// Clients subscribe to this for real-time updates.
+    /// Returns an async enumerable of all notifications.
+    /// This will block until notifications are available or cancellation is requested.
     /// </summary>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>An async enumerable of notifications.</returns>
@@ -23,17 +23,16 @@ public interface INotificationHub
 }
 
 /// <summary>
-/// Notification message for PA form processing events.
+/// Represents a notification for SSE streaming.
 /// </summary>
 /// <param name="Type">The notification type (e.g., "PA_FORM_READY", "PROCESSING_ERROR").</param>
-/// <param name="TransactionId">Unique transaction identifier for correlation.</param>
-/// <param name="EncounterId">The FHIR Encounter resource ID.</param>
-/// <param name="PatientId">The FHIR Patient resource ID.</param>
-/// <param name="Message">Human-readable notification message.</param>
+/// <param name="TransactionId">The transaction ID this notification relates to.</param>
+/// <param name="EncounterId">The encounter ID for context.</param>
+/// <param name="PatientId">The patient ID for context.</param>
+/// <param name="Message">A human-readable message describing the notification.</param>
 public sealed record Notification(
     string Type,
     string TransactionId,
     string EncounterId,
     string PatientId,
-    string Message
-);
+    string Message);

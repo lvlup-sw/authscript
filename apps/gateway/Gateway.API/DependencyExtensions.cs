@@ -3,6 +3,7 @@ using Gateway.API.Contracts;
 using Gateway.API.Services;
 using Gateway.API.Services.Decorators;
 using Gateway.API.Services.Fhir;
+using Gateway.API.Services.Notifications;
 using Microsoft.Extensions.Caching.Hybrid;
 
 namespace Gateway.API;
@@ -105,6 +106,19 @@ public static class DependencyExtensions
         {
             services.Decorate<IIntelligenceClient, CachingIntelligenceClient>();
         }
+
+        return services;
+    }
+
+    /// <summary>
+    /// Adds notification services to the dependency injection container.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddNotificationServices(this IServiceCollection services)
+    {
+        // Register NotificationHub as singleton for cross-request notifications
+        services.AddSingleton<INotificationHub, NotificationHub>();
 
         return services;
     }
