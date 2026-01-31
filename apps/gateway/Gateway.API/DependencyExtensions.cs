@@ -1,8 +1,12 @@
 using Gateway.API.Configuration;
 using Gateway.API.Contracts;
+using Gateway.API.Contracts.Http;
 using Gateway.API.Services;
 using Gateway.API.Services.Decorators;
 using Gateway.API.Services.Fhir;
+using Gateway.API.Services.Http;
+using Gateway.API.Services.Notifications;
+using Gateway.API.Services.Polling;
 using Microsoft.Extensions.Caching.Hybrid;
 
 namespace Gateway.API;
@@ -105,6 +109,49 @@ public static class DependencyExtensions
         {
             services.Decorate<IIntelligenceClient, CachingIntelligenceClient>();
         }
+
+        return services;
+    }
+
+    /// <summary>
+    /// Adds notification services to the dependency injection container.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddNotificationServices(this IServiceCollection services)
+    {
+        // Register NotificationHub as singleton for cross-request notifications
+        services.AddSingleton<INotificationHub, NotificationHub>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Adds athenahealth-specific services to the dependency injection container.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configuration">The configuration.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddAthenaServices(this IServiceCollection services, IConfiguration configuration)
+    {
+        // Configuration options with validation
+        services.AddOptions<AthenaOptions>()
+            .Bind(configuration.GetSection(AthenaOptions.SectionName))
+            .Validate(o => o.IsValid(), "AthenaOptions validation failed");
+
+        // Named HttpClient for token requests
+        services.AddHttpClient("Athena");
+
+        // Token acquisition strategy and resolver
+        services.AddSingleton<ITokenAcquisitionStrategy, AthenaTokenStrategy>();
+        services.AddSingleton<TokenStrategyResolver>();
+
+        // Background polling service
+        services.AddSingleton<AthenaPollingService>();
+        services.AddHostedService(sp => sp.GetRequiredService<AthenaPollingService>());
+
+        // Encounter processor
+        services.AddScoped<IEncounterProcessor, EncounterProcessor>();
 
         return services;
     }
