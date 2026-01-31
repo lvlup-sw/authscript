@@ -1,9 +1,7 @@
-using System.Text.Json;
 using Gateway.API.Contracts;
 using Gateway.API.Endpoints;
 using Gateway.API.Services.Notifications;
 using Microsoft.AspNetCore.Http;
-using NSubstitute;
 
 namespace Gateway.API.Tests.Endpoints;
 
@@ -18,7 +16,13 @@ public class SseEndpointsTests
         // Arrange
         var hub = new NotificationHub();
         var context = CreateHttpContext();
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
+
+        // Start streaming (subscriber must be active before write)
+        var streamTask = SseEndpoints.StreamEventsAsync(context, hub, cts.Token);
+
+        // Give subscriber time to register
+        await Task.Delay(50);
 
         // Write a notification so endpoint can process something
         await hub.WriteAsync(new Notification(
@@ -28,8 +32,8 @@ public class SseEndpointsTests
             PatientId: "patient-1",
             Message: "Test"), CancellationToken.None);
 
-        // Act
-        await SseEndpoints.StreamEventsAsync(context, hub, cts.Token);
+        // Wait for streaming to complete
+        await streamTask;
 
         // Assert
         await Assert.That(context.Response.ContentType).IsEqualTo("text/event-stream");
@@ -41,7 +45,13 @@ public class SseEndpointsTests
         // Arrange
         var hub = new NotificationHub();
         var context = CreateHttpContext();
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
+
+        // Start streaming (subscriber must be active before write)
+        var streamTask = SseEndpoints.StreamEventsAsync(context, hub, cts.Token);
+
+        // Give subscriber time to register
+        await Task.Delay(50);
 
         // Write a notification
         await hub.WriteAsync(new Notification(
@@ -51,8 +61,8 @@ public class SseEndpointsTests
             PatientId: "patient-1",
             Message: "Test"), CancellationToken.None);
 
-        // Act
-        await SseEndpoints.StreamEventsAsync(context, hub, cts.Token);
+        // Wait for streaming to complete
+        await streamTask;
 
         // Assert
         await Assert.That(context.Response.Headers.CacheControl.ToString()).IsEqualTo("no-cache");
@@ -74,12 +84,19 @@ public class SseEndpointsTests
             PatientId: "patient-789",
             Message: "Analysis completed");
 
-        // Write notification first
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(300));
+
+        // Start streaming (subscriber must be active before write)
+        var streamTask = SseEndpoints.StreamEventsAsync(context, hub, cts.Token);
+
+        // Give subscriber time to register
+        await Task.Delay(50);
+
+        // Write notification after subscriber is registered
         await hub.WriteAsync(notification, CancellationToken.None);
 
-        // Act
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
-        await SseEndpoints.StreamEventsAsync(context, hub, cts.Token);
+        // Wait for streaming to complete (or timeout)
+        await streamTask;
 
         // Assert - Check the response body
         memoryStream.Seek(0, SeekOrigin.Begin);
@@ -96,7 +113,13 @@ public class SseEndpointsTests
         // Arrange
         var hub = new NotificationHub();
         var context = CreateHttpContext();
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
+
+        // Start streaming (subscriber must be active before write)
+        var streamTask = SseEndpoints.StreamEventsAsync(context, hub, cts.Token);
+
+        // Give subscriber time to register
+        await Task.Delay(50);
 
         // Write a notification
         await hub.WriteAsync(new Notification(
@@ -106,8 +129,8 @@ public class SseEndpointsTests
             PatientId: "patient-1",
             Message: "Test"), CancellationToken.None);
 
-        // Act
-        await SseEndpoints.StreamEventsAsync(context, hub, cts.Token);
+        // Wait for streaming to complete
+        await streamTask;
 
         // Assert
         await Assert.That(context.Response.Headers.Connection.ToString()).IsEqualTo("keep-alive");

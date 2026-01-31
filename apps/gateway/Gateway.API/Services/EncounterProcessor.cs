@@ -1,4 +1,5 @@
 using Gateway.API.Contracts;
+using Gateway.API.Contracts.Http;
 using Gateway.API.Models;
 
 namespace Gateway.API.Services;
@@ -15,11 +16,8 @@ public sealed class EncounterProcessor : IEncounterProcessor
     private readonly IPdfFormStamper _pdfStamper;
     private readonly IAnalysisResultStore _resultStore;
     private readonly INotificationHub _notificationHub;
+    private readonly ITokenAcquisitionStrategy _tokenStrategy;
     private readonly ILogger<EncounterProcessor> _logger;
-
-    // Default access token for backend-initiated processing
-    // In production, this would come from a service account or be passed contextually
-    private const string DefaultAccessToken = "service-account-token";
 
     // Default procedure code when not specified by encounter
     // In production, this would be extracted from the encounter ServiceRequest or claim
@@ -33,6 +31,7 @@ public sealed class EncounterProcessor : IEncounterProcessor
     /// <param name="pdfStamper">PDF form stamper for generating PA forms.</param>
     /// <param name="resultStore">Result store for caching generated PDFs.</param>
     /// <param name="notificationHub">Notification hub for broadcasting completion events.</param>
+    /// <param name="tokenStrategy">Token acquisition strategy for obtaining access tokens.</param>
     /// <param name="logger">Logger for diagnostic output.</param>
     public EncounterProcessor(
         IFhirDataAggregator aggregator,
@@ -40,6 +39,7 @@ public sealed class EncounterProcessor : IEncounterProcessor
         IPdfFormStamper pdfStamper,
         IAnalysisResultStore resultStore,
         INotificationHub notificationHub,
+        ITokenAcquisitionStrategy tokenStrategy,
         ILogger<EncounterProcessor> logger)
     {
         _aggregator = aggregator;
@@ -47,6 +47,7 @@ public sealed class EncounterProcessor : IEncounterProcessor
         _pdfStamper = pdfStamper;
         _resultStore = resultStore;
         _notificationHub = notificationHub;
+        _tokenStrategy = tokenStrategy;
         _logger = logger;
     }
 
@@ -58,6 +59,17 @@ public sealed class EncounterProcessor : IEncounterProcessor
             encounterId,
             patientId);
 
+        // Acquire access token dynamically via token strategy
+        var accessToken = _tokenStrategy.CanHandle
+            ? await _tokenStrategy.AcquireTokenAsync(ct)
+            : null;
+
+        if (string.IsNullOrWhiteSpace(accessToken))
+        {
+            _logger.LogError("No access token available for encounter {EncounterId}", encounterId);
+            return;
+        }
+
         var transactionId = $"pa-{encounterId}-{DateTime.UtcNow:yyyyMMddHHmmss}";
 
         try
@@ -65,7 +77,7 @@ public sealed class EncounterProcessor : IEncounterProcessor
             // Step 1: Hydrate clinical context via FHIR data aggregator
             var clinicalBundle = await _aggregator.AggregateClinicalDataAsync(
                 patientId,
-                DefaultAccessToken,
+                accessToken,
                 ct);
 
             _logger.LogInformation(

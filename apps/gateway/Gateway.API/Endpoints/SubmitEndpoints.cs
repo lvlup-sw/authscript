@@ -51,13 +51,18 @@ public static class SubmitEndpoints
         IPdfFormStamper pdfStamper,
         CancellationToken ct)
     {
+        // Derive cache key: composite when encounterId available, otherwise transactionId only
+        var cacheKey = request.EncounterId is null
+            ? transactionId
+            : $"{request.EncounterId}:{transactionId}";
+
         // Try to get cached PDF first
-        var pdfBytes = await resultStore.GetCachedPdfAsync(transactionId, ct);
+        var pdfBytes = await resultStore.GetCachedPdfAsync(cacheKey, ct);
 
         if (pdfBytes is null)
         {
             // No cached PDF, try to generate from form data
-            var formData = await resultStore.GetCachedResponseAsync(transactionId, ct);
+            var formData = await resultStore.GetCachedResponseAsync(cacheKey, ct);
 
             if (formData is null)
             {
@@ -70,7 +75,7 @@ public static class SubmitEndpoints
 
             // Generate PDF
             pdfBytes = await pdfStamper.StampFormAsync(formData, ct);
-            await resultStore.SetCachedPdfAsync(transactionId, pdfBytes, ct);
+            await resultStore.SetCachedPdfAsync(cacheKey, pdfBytes, ct);
         }
 
         // Upload to FHIR server

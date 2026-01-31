@@ -137,16 +137,18 @@ public static class DependencyExtensions
         // Configuration options with validation
         services.AddOptions<AthenaOptions>()
             .Bind(configuration.GetSection(AthenaOptions.SectionName))
-            .ValidateDataAnnotations();
+            .Validate(o => o.IsValid(), "AthenaOptions validation failed");
 
         // Named HttpClient for token requests
         services.AddHttpClient("Athena");
 
-        // Token acquisition strategy
-        services.AddScoped<ITokenAcquisitionStrategy, AthenaTokenStrategy>();
+        // Token acquisition strategy and resolver
+        services.AddSingleton<ITokenAcquisitionStrategy, AthenaTokenStrategy>();
+        services.AddSingleton<TokenStrategyResolver>();
 
         // Background polling service
-        services.AddHostedService<AthenaPollingService>();
+        services.AddSingleton<AthenaPollingService>();
+        services.AddHostedService(sp => sp.GetRequiredService<AthenaPollingService>());
 
         // Encounter processor
         services.AddScoped<IEncounterProcessor, EncounterProcessor>();

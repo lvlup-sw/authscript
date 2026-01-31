@@ -7,7 +7,7 @@ using Gateway.API.Services.Http;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
-public class AthenaTokenStrategyTests
+public class AthenaTokenStrategyTests : IDisposable
 {
     private readonly IOptions<AthenaOptions> _options;
     private readonly IHttpClientFactory _httpClientFactory;
@@ -28,6 +28,12 @@ public class AthenaTokenStrategyTests
             FhirBaseUrl = "https://api.platform.athenahealth.com/fhir/r4",
             TokenEndpoint = "https://api.platform.athenahealth.com/oauth2/token"
         });
+    }
+
+    public void Dispose()
+    {
+        _httpClient.Dispose();
+        _mockHandler.Dispose();
     }
 
     [Test]

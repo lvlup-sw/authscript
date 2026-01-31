@@ -29,8 +29,9 @@ public class SubmitEndpointTests
         const string transactionId = "txn-123";
         var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
         var request = CreateSubmitRequest();
+        var expectedCacheKey = $"{request.EncounterId}:{transactionId}";
 
-        _resultStore.GetCachedPdfAsync(transactionId, Arg.Any<CancellationToken>())
+        _resultStore.GetCachedPdfAsync(expectedCacheKey, Arg.Any<CancellationToken>())
             .Returns(pdfBytes);
 
         _documentUploader.UploadDocumentAsync(
@@ -45,7 +46,7 @@ public class SubmitEndpointTests
         var result = await InvokeSubmit(transactionId, request);
 
         // Assert
-        await _resultStore.Received(1).GetCachedPdfAsync(transactionId, Arg.Any<CancellationToken>());
+        await _resultStore.Received(1).GetCachedPdfAsync(expectedCacheKey, Arg.Any<CancellationToken>());
     }
 
     [Test]
@@ -55,8 +56,9 @@ public class SubmitEndpointTests
         const string transactionId = "txn-123";
         var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
         var request = CreateSubmitRequest();
+        var cacheKey = $"{request.EncounterId}:{transactionId}";
 
-        _resultStore.GetCachedPdfAsync(transactionId, Arg.Any<CancellationToken>())
+        _resultStore.GetCachedPdfAsync(cacheKey, Arg.Any<CancellationToken>())
             .Returns(pdfBytes);
 
         _documentUploader.UploadDocumentAsync(
@@ -85,11 +87,12 @@ public class SubmitEndpointTests
         // Arrange
         const string transactionId = "txn-nonexistent";
         var request = CreateSubmitRequest();
+        var cacheKey = $"{request.EncounterId}:{transactionId}";
 
-        _resultStore.GetCachedPdfAsync(transactionId, Arg.Any<CancellationToken>())
+        _resultStore.GetCachedPdfAsync(cacheKey, Arg.Any<CancellationToken>())
             .Returns((byte[]?)null);
 
-        _resultStore.GetCachedResponseAsync(transactionId, Arg.Any<CancellationToken>())
+        _resultStore.GetCachedResponseAsync(cacheKey, Arg.Any<CancellationToken>())
             .Returns((PAFormData?)null);
 
         // Act
@@ -110,8 +113,9 @@ public class SubmitEndpointTests
         const string documentId = "doc-uploaded-789";
         var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
         var request = CreateSubmitRequest();
+        var cacheKey = $"{request.EncounterId}:{transactionId}";
 
-        _resultStore.GetCachedPdfAsync(transactionId, Arg.Any<CancellationToken>())
+        _resultStore.GetCachedPdfAsync(cacheKey, Arg.Any<CancellationToken>())
             .Returns(pdfBytes);
 
         _documentUploader.UploadDocumentAsync(
@@ -142,11 +146,12 @@ public class SubmitEndpointTests
         var formData = CreateTestFormData();
         var generatedPdf = new byte[] { 0x25, 0x50, 0x44, 0x46 };
         var request = CreateSubmitRequest();
+        var cacheKey = $"{request.EncounterId}:{transactionId}";
 
-        _resultStore.GetCachedPdfAsync(transactionId, Arg.Any<CancellationToken>())
+        _resultStore.GetCachedPdfAsync(cacheKey, Arg.Any<CancellationToken>())
             .Returns((byte[]?)null);
 
-        _resultStore.GetCachedResponseAsync(transactionId, Arg.Any<CancellationToken>())
+        _resultStore.GetCachedResponseAsync(cacheKey, Arg.Any<CancellationToken>())
             .Returns(formData);
 
         _pdfStamper.StampFormAsync(formData, Arg.Any<CancellationToken>())
@@ -165,6 +170,40 @@ public class SubmitEndpointTests
 
         // Assert
         await _pdfStamper.Received(1).StampFormAsync(formData, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task SubmitEndpoint_Post_UsesTransactionIdOnlyWhenNoEncounterId()
+    {
+        // Arrange
+        const string transactionId = "txn-123";
+        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+        var request = new SubmitRequest
+        {
+            PatientId = "patient-123",
+            EncounterId = null,
+            AccessToken = "bearer-token"
+        };
+
+        // When EncounterId is null, cache key should be transactionId only
+        _resultStore.GetCachedPdfAsync(transactionId, Arg.Any<CancellationToken>())
+            .Returns(pdfBytes);
+
+        _documentUploader.UploadDocumentAsync(
+                Arg.Any<byte[]>(),
+                Arg.Any<string>(),
+                Arg.Any<string?>(),
+                Arg.Any<string>(),
+                Arg.Any<CancellationToken>())
+            .Returns(Result<string>.Success("doc-456"));
+
+        // Act
+        var result = await InvokeSubmit(transactionId, request);
+
+        // Assert
+        await _resultStore.Received(1).GetCachedPdfAsync(transactionId, Arg.Any<CancellationToken>());
+        var okResult = result as Ok<SubmitResponse>;
+        await Assert.That(okResult).IsNotNull();
     }
 
     private static SubmitRequest CreateSubmitRequest()
