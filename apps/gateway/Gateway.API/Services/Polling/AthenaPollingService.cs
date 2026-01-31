@@ -111,6 +111,10 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
     {
         _logger.LogInformation("AthenaPollingService starting");
 
+        // Guard against non-positive polling interval to prevent hot spin or ArgumentOutOfRangeException
+        var pollDelay = TimeSpan.FromSeconds(
+            _options.PollingIntervalSeconds <= 0 ? 1 : _options.PollingIntervalSeconds);
+
         while (!stoppingToken.IsCancellationRequested)
         {
             try
@@ -129,7 +133,7 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
 
             try
             {
-                await Task.Delay(TimeSpan.FromSeconds(_options.PollingIntervalSeconds), stoppingToken);
+                await Task.Delay(pollDelay, stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {

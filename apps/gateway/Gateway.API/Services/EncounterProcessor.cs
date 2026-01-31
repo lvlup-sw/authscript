@@ -105,8 +105,9 @@ public sealed class EncounterProcessor : IEncounterProcessor
                 pdfBytes.Length,
                 encounterId);
 
-            // Step 4: Store PDF in result store with transaction ID
+            // Step 4: Store formData and PDF in result store with transaction ID
             var cacheKey = $"{encounterId}:{transactionId}";
+            await _resultStore.SetCachedResponseAsync(cacheKey, formData, ct);
             await _resultStore.SetCachedPdfAsync(cacheKey, pdfBytes, ct);
 
             _logger.LogInformation(
