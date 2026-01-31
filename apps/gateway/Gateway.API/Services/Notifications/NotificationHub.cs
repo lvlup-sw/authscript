@@ -23,18 +23,14 @@ public sealed class NotificationHub : INotificationHub
     /// <inheritdoc />
     public Task WriteAsync(Notification notification, CancellationToken ct)
     {
-        if (_subscribers.IsEmpty)
-        {
-            return Task.CompletedTask;
-        }
-
-        var writes = new List<Task>();
+        // Fan-out: broadcast to all subscribers using TryWrite for graceful handling of closed channels
         foreach (var channel in _subscribers.Values)
         {
-            writes.Add(channel.Writer.WriteAsync(notification, ct).AsTask());
+            // TryWrite is synchronous and returns false for closed/full channels (unbounded never full)
+            channel.Writer.TryWrite(notification);
         }
 
-        return Task.WhenAll(writes);
+        return Task.CompletedTask;
     }
 
     /// <inheritdoc />
@@ -58,7 +54,10 @@ public sealed class NotificationHub : INotificationHub
         }
         finally
         {
-            _subscribers.TryRemove(id, out _);
+            if (_subscribers.TryRemove(id, out var removed))
+            {
+                removed.Writer.TryComplete();
+            }
         }
     }
 }

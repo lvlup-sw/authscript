@@ -136,7 +136,14 @@ public sealed class EncounterProcessor : IEncounterProcessor
                 "Service error for encounter {EncounterId}: {Message}",
                 encounterId,
                 ex.Message);
-            // Graceful handling - don't propagate, just log
+
+            // Notify subscribers of the processing error
+            await _notificationHub.WriteAsync(new Notification(
+                Type: "PROCESSING_ERROR",
+                TransactionId: transactionId,
+                EncounterId: encounterId,
+                PatientId: patientId,
+                Message: $"Service error: {ex.Message}"), ct);
         }
         catch (Exception ex)
         {
@@ -144,7 +151,14 @@ public sealed class EncounterProcessor : IEncounterProcessor
                 "Unexpected error processing encounter {EncounterId}: {Message}",
                 encounterId,
                 ex.Message);
-            // Graceful handling - don't propagate, just log
+
+            // Notify subscribers of the processing error (no sensitive stack trace)
+            await _notificationHub.WriteAsync(new Notification(
+                Type: "PROCESSING_ERROR",
+                TransactionId: transactionId,
+                EncounterId: encounterId,
+                PatientId: patientId,
+                Message: "Unexpected processing error"), ct);
         }
     }
 }

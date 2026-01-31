@@ -138,8 +138,87 @@ public class EncounterProcessorTests
         // Act - Should complete without throwing (errors are handled gracefully inside)
         await _sut.ProcessEncounterAsync(encounterId, patientId, CancellationToken.None);
 
-        // Assert - PDF and notification steps should NOT be called due to Intelligence failure
+        // Assert - PDF stamper should NOT be called due to Intelligence failure
         await _pdfStamper.DidNotReceive().StampFormAsync(Arg.Any<PAFormData>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ProcessEncounterAsync_OnHttpRequestException_SendsErrorNotification()
+    {
+        // Arrange
+        const string encounterId = "enc-123";
+        const string patientId = "patient-456";
+
+        var clinicalBundle = CreateTestBundle(patientId);
+
+        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(clinicalBundle));
+        _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new HttpRequestException("Intelligence service unavailable"));
+
+        // Act
+        await _sut.ProcessEncounterAsync(encounterId, patientId, CancellationToken.None);
+
+        // Assert - Error notification should be sent to subscribers
+        await _notificationHub.Received(1).WriteAsync(
+            Arg.Is<Notification>(n =>
+                n.Type == "PROCESSING_ERROR" &&
+                n.EncounterId == encounterId &&
+                n.PatientId == patientId &&
+                n.Message.Contains("Service error")),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ProcessEncounterAsync_OnGeneralException_SendsErrorNotification()
+    {
+        // Arrange
+        const string encounterId = "enc-123";
+        const string patientId = "patient-456";
+
+        var clinicalBundle = CreateTestBundle(patientId);
+
+        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(clinicalBundle));
+        _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Unexpected internal error"));
+
+        // Act
+        await _sut.ProcessEncounterAsync(encounterId, patientId, CancellationToken.None);
+
+        // Assert - Error notification should be sent without sensitive details
+        await _notificationHub.Received(1).WriteAsync(
+            Arg.Is<Notification>(n =>
+                n.Type == "PROCESSING_ERROR" &&
+                n.EncounterId == encounterId &&
+                n.PatientId == patientId &&
+                n.Message == "Unexpected processing error"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ProcessEncounterAsync_OnGeneralException_DoesNotExposeStackTrace()
+    {
+        // Arrange
+        const string encounterId = "enc-123";
+        const string patientId = "patient-456";
+
+        var clinicalBundle = CreateTestBundle(patientId);
+
+        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(clinicalBundle));
+        _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Sensitive internal error with stack details"));
+
+        // Act
+        await _sut.ProcessEncounterAsync(encounterId, patientId, CancellationToken.None);
+
+        // Assert - Message should NOT contain the original exception message (security)
+        await _notificationHub.Received(1).WriteAsync(
+            Arg.Is<Notification>(n =>
+                !n.Message.Contains("Sensitive") &&
+                !n.Message.Contains("stack")),
+            Arg.Any<CancellationToken>());
     }
 
     [Test]
