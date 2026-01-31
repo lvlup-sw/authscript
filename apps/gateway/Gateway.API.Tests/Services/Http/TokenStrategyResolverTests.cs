@@ -22,31 +22,27 @@ public class TokenStrategyResolverTests
     }
 
     [Test]
-    public async Task Resolve_WhenNoStrategyCanHandle_ReturnsNull()
+    public async Task Resolve_WhenNoStrategyCanHandle_ThrowsInvalidOperationException()
     {
         // Arrange
         var strategy1 = new TestStrategy(canHandle: false);
         var strategy2 = new TestStrategy(canHandle: false);
         var resolver = new TokenStrategyResolver([strategy1, strategy2]);
 
-        // Act
-        var result = resolver.Resolve();
-
-        // Assert
-        await Assert.That(result).IsNull();
+        // Act & Assert
+        var exception = Assert.Throws<InvalidOperationException>(() => resolver.Resolve());
+        await Assert.That(exception).IsNotNull();
     }
 
     [Test]
-    public async Task Resolve_WhenNoStrategiesRegistered_ReturnsNull()
+    public async Task Resolve_WhenNoStrategiesRegistered_ThrowsInvalidOperationException()
     {
         // Arrange
         var resolver = new TokenStrategyResolver([]);
 
-        // Act
-        var result = resolver.Resolve();
-
-        // Assert
-        await Assert.That(result).IsNull();
+        // Act & Assert
+        var exception = Assert.Throws<InvalidOperationException>(() => resolver.Resolve());
+        await Assert.That(exception).IsNotNull();
     }
 
     [Test]

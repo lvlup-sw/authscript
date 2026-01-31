@@ -58,6 +58,51 @@ public static class DependencyExtensions
     }
 
     /// <summary>
+    /// Adds Epic FHIR integration services to the dependency injection container.
+    /// Registers token strategies, authentication provider, and HTTP client.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configuration">The configuration.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddEpicFhirServices(this IServiceCollection services, IConfiguration configuration)
+    {
+        // Configuration options with validation
+        services.AddOptions<EpicFhirOptions>()
+            .Bind(configuration.GetSection(EpicFhirOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        var fhirBaseUrl = configuration["Epic:FhirBaseUrl"];
+        if (string.IsNullOrWhiteSpace(fhirBaseUrl))
+        {
+            throw new InvalidOperationException("Epic:FhirBaseUrl must be configured.");
+        }
+
+        // Memory cache (for token caching in JwtBackendTokenStrategy)
+        services.AddMemoryCache();
+
+        // Token strategies (registered as ITokenAcquisitionStrategy for resolver)
+        services.AddScoped<CdsHookTokenStrategy>();
+        services.AddScoped<JwtBackendTokenStrategy>();
+        services.AddScoped<ITokenAcquisitionStrategy, CdsHookTokenStrategy>();
+        services.AddScoped<ITokenAcquisitionStrategy, JwtBackendTokenStrategy>();
+
+        // Token strategy resolver
+        services.AddScoped<ITokenStrategyResolver, TokenStrategyResolver>();
+
+        // FHIR HTTP client provider
+        services.AddScoped<IFhirHttpClientProvider, FhirHttpClientProvider>();
+
+        // Named HTTP client for Epic FHIR API
+        services.AddHttpClient("EpicFhir", client =>
+        {
+            client.BaseAddress = new Uri(fhirBaseUrl);
+        });
+
+        return services;
+    }
+
+    /// <summary>
     /// Adds FHIR HTTP clients to the dependency injection container.
     /// </summary>
     /// <param name="services">The service collection.</param>

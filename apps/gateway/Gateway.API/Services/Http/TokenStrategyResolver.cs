@@ -7,7 +7,7 @@ namespace Gateway.API.Services.Http;
 /// Iterates through registered strategies and returns the first one that can handle
 /// the current provider configuration.
 /// </summary>
-public sealed class TokenStrategyResolver
+public sealed class TokenStrategyResolver : ITokenStrategyResolver
 {
     private readonly IEnumerable<ITokenAcquisitionStrategy> _strategies;
 
@@ -20,12 +20,10 @@ public sealed class TokenStrategyResolver
         _strategies = strategies;
     }
 
-    /// <summary>
-    /// Resolves the appropriate token acquisition strategy.
-    /// </summary>
-    /// <returns>The first strategy where CanHandle is true, or null if none can handle.</returns>
-    public ITokenAcquisitionStrategy? Resolve()
+    /// <inheritdoc />
+    public ITokenAcquisitionStrategy Resolve()
     {
-        return _strategies.FirstOrDefault(s => s.CanHandle);
+        return _strategies.FirstOrDefault(s => s.CanHandle)
+            ?? throw new InvalidOperationException("No token acquisition strategy available for the current context.");
     }
 }
