@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Gateway.API.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Aspire Service Defaults -->
     <PackageReference Include="Aspire.StackExchange.Redis" Version="13.1.0" />
     <PackageReference Include="Aspire.Npgsql" Version="13.1.0" />
@@ -24,6 +28,9 @@
     <!-- Caching -->
     <PackageReference Include="Scrutor" Version="5.0.2" />
     <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="9.3.0" />
+
+    <!-- JWT / OAuth -->
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.2.1" />
 
     <!-- OpenAPI -->
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
