@@ -1,4 +1,3 @@
-using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -40,15 +39,8 @@ public sealed class FhirHttpClient : IFhirHttpClient
 
             var response = await _httpClient.SendAsync(request, ct);
 
-            if (response.StatusCode == HttpStatusCode.NotFound)
-            {
-                return Result<JsonElement>.Failure(FhirError.NotFound(resourceType, id));
-            }
-
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                return Result<JsonElement>.Failure(FhirError.Unauthorized());
-            }
+            var error = HttpResponseErrorFactory.ValidateReadResponse<JsonElement>(response, resourceType, id);
+            if (error is not null) return error.Value;
 
             response.EnsureSuccessStatusCode();
 
@@ -58,12 +50,12 @@ public sealed class FhirHttpClient : IFhirHttpClient
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Network error reading {ResourceType}/{Id}", resourceType, id);
-            return Result<JsonElement>.Failure(FhirError.Network(ex.Message, ex));
+            return HttpResponseErrorFactory.NetworkError<JsonElement>(ex);
         }
         catch (JsonException ex)
         {
             _logger.LogError(ex, "Invalid JSON response reading {ResourceType}/{Id}", resourceType, id);
-            return Result<JsonElement>.Failure(FhirError.Validation($"Invalid JSON response: {ex.Message}"));
+            return HttpResponseErrorFactory.JsonError<JsonElement>(ex);
         }
     }
 
@@ -81,16 +73,8 @@ public sealed class FhirHttpClient : IFhirHttpClient
 
             var response = await _httpClient.SendAsync(request, ct);
 
-            if (response.StatusCode == HttpStatusCode.NotFound)
-            {
-                return Result<JsonElement>.Failure(
-                    FhirError.InvalidResponse($"FHIR {resourceType} search endpoint not found"));
-            }
-
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                return Result<JsonElement>.Failure(FhirError.Unauthorized());
-            }
+            var error = HttpResponseErrorFactory.ValidateSearchResponse<JsonElement>(response, resourceType);
+            if (error is not null) return error.Value;
 
             response.EnsureSuccessStatusCode();
 
@@ -100,12 +84,12 @@ public sealed class FhirHttpClient : IFhirHttpClient
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Network error searching {ResourceType}", resourceType);
-            return Result<JsonElement>.Failure(FhirError.Network(ex.Message, ex));
+            return HttpResponseErrorFactory.NetworkError<JsonElement>(ex);
         }
         catch (JsonException ex)
         {
             _logger.LogError(ex, "Invalid JSON response searching {ResourceType}", resourceType);
-            return Result<JsonElement>.Failure(FhirError.Validation($"Invalid JSON response: {ex.Message}"));
+            return HttpResponseErrorFactory.JsonError<JsonElement>(ex);
         }
     }
 
@@ -124,16 +108,14 @@ public sealed class FhirHttpClient : IFhirHttpClient
 
             var response = await _httpClient.SendAsync(request, ct);
 
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            string? validationError = null;
+            if (response.StatusCode == System.Net.HttpStatusCode.UnprocessableEntity)
             {
-                return Result<JsonElement>.Failure(FhirError.Unauthorized());
+                validationError = await response.Content.ReadAsStringAsync(ct);
             }
 
-            if (response.StatusCode == HttpStatusCode.UnprocessableEntity)
-            {
-                var error = await response.Content.ReadAsStringAsync(ct);
-                return Result<JsonElement>.Failure(FhirError.Validation(error));
-            }
+            var error = HttpResponseErrorFactory.ValidateCreateResponse<JsonElement>(response, validationError);
+            if (error is not null) return error.Value;
 
             response.EnsureSuccessStatusCode();
 
@@ -143,12 +125,12 @@ public sealed class FhirHttpClient : IFhirHttpClient
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Network error creating {ResourceType}", resourceType);
-            return Result<JsonElement>.Failure(FhirError.Network(ex.Message, ex));
+            return HttpResponseErrorFactory.NetworkError<JsonElement>(ex);
         }
         catch (JsonException ex)
         {
             _logger.LogError(ex, "Invalid JSON response creating {ResourceType}", resourceType);
-            return Result<JsonElement>.Failure(FhirError.Validation($"Invalid JSON response: {ex.Message}"));
+            return HttpResponseErrorFactory.JsonError<JsonElement>(ex);
         }
     }
 
@@ -165,15 +147,8 @@ public sealed class FhirHttpClient : IFhirHttpClient
 
             var response = await _httpClient.SendAsync(request, ct);
 
-            if (response.StatusCode == HttpStatusCode.NotFound)
-            {
-                return Result<byte[]>.Failure(FhirError.NotFound("Binary", id));
-            }
-
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                return Result<byte[]>.Failure(FhirError.Unauthorized());
-            }
+            var error = HttpResponseErrorFactory.ValidateReadResponse<byte[]>(response, "Binary", id);
+            if (error is not null) return error.Value;
 
             response.EnsureSuccessStatusCode();
 
@@ -183,7 +158,7 @@ public sealed class FhirHttpClient : IFhirHttpClient
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Network error reading Binary/{Id}", id);
-            return Result<byte[]>.Failure(FhirError.Network(ex.Message, ex));
+            return HttpResponseErrorFactory.NetworkError<byte[]>(ex);
         }
     }
 

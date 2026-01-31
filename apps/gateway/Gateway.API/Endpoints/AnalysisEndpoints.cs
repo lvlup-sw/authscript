@@ -19,41 +19,33 @@ public static class AnalysisEndpoints
         var group = app.MapGroup("/api/analysis")
             .WithTags("Analysis");
 
-        group.MapGet("/{transactionId}", GetAnalysis)
+        group.MapGet("/{transactionId}", GetAnalysisAsync)
             .WithName("GetAnalysis")
             .WithSummary("Get analysis result by transaction ID")
             .Produces<AnalysisResponse>(StatusCodes.Status200OK)
             .Produces<ErrorResponse>(StatusCodes.Status404NotFound);
 
-        group.MapGet("/{transactionId}/status", GetAnalysisStatus)
+        group.MapGet("/{transactionId}/status", GetAnalysisStatusAsync)
             .WithName("GetAnalysisStatus")
             .WithSummary("Get current status of analysis")
             .Produces<StatusResponse>(StatusCodes.Status200OK);
 
-        group.MapGet("/{transactionId}/form", DownloadForm)
+        group.MapGet("/{transactionId}/form", DownloadFormAsync)
             .WithName("DownloadForm")
             .WithSummary("Download the generated PA form PDF")
             .Produces(StatusCodes.Status200OK, contentType: "application/pdf")
             .Produces<ErrorResponse>(StatusCodes.Status404NotFound);
 
-        group.MapPost("/{transactionId}/submit", SubmitToFhir)
+        group.MapPost("/{transactionId}/submit", SubmitToFhirAsync)
             .WithName("SubmitToFhir")
             .WithSummary("Submit the PA form to FHIR server (manual fallback)")
             .Produces<SubmitResponse>(StatusCodes.Status200OK)
             .Produces<ErrorResponse>(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status500InternalServerError);
 
-        group.MapPost("/", TriggerAnalysis)
+        group.MapPost("/", TriggerAnalysisAsync)
             .WithName("TriggerAnalysis")
             .WithSummary("Manually trigger analysis (SMART app fallback)");
-    }
-
-    private static async Task<IResult> GetAnalysis(
-        string transactionId,
-        [FromServices] IAnalysisResultStore resultStore,
-        CancellationToken cancellationToken)
-    {
-        return await GetAnalysisAsync(transactionId, resultStore, cancellationToken);
     }
 
     /// <summary>
@@ -65,7 +57,7 @@ public static class AnalysisEndpoints
     /// <returns>The analysis response or 404 if not found.</returns>
     public static async Task<IResult> GetAnalysisAsync(
         string transactionId,
-        IAnalysisResultStore resultStore,
+        [FromServices] IAnalysisResultStore resultStore,
         CancellationToken cancellationToken)
     {
         var formData = await resultStore.GetCachedResponseAsync(transactionId, cancellationToken);
@@ -88,14 +80,6 @@ public static class AnalysisEndpoints
         });
     }
 
-    private static async Task<IResult> GetAnalysisStatus(
-        string transactionId,
-        [FromServices] IAnalysisResultStore resultStore,
-        CancellationToken cancellationToken)
-    {
-        return await GetAnalysisStatusAsync(transactionId, resultStore, cancellationToken);
-    }
-
     /// <summary>
     /// Gets the current status of an analysis.
     /// </summary>
@@ -105,7 +89,7 @@ public static class AnalysisEndpoints
     /// <returns>The status response.</returns>
     public static async Task<IResult> GetAnalysisStatusAsync(
         string transactionId,
-        IAnalysisResultStore resultStore,
+        [FromServices] IAnalysisResultStore resultStore,
         CancellationToken cancellationToken)
     {
         var formData = await resultStore.GetCachedResponseAsync(transactionId, cancellationToken);
@@ -131,15 +115,6 @@ public static class AnalysisEndpoints
         });
     }
 
-    private static async Task<IResult> DownloadForm(
-        string transactionId,
-        [FromServices] IAnalysisResultStore resultStore,
-        [FromServices] IPdfFormStamper pdfStamper,
-        CancellationToken cancellationToken)
-    {
-        return await DownloadFormAsync(transactionId, resultStore, pdfStamper, cancellationToken);
-    }
-
     /// <summary>
     /// Downloads the generated PA form PDF.
     /// </summary>
@@ -150,8 +125,8 @@ public static class AnalysisEndpoints
     /// <returns>The PDF file or 404 if not found.</returns>
     public static async Task<IResult> DownloadFormAsync(
         string transactionId,
-        IAnalysisResultStore resultStore,
-        IPdfFormStamper pdfStamper,
+        [FromServices] IAnalysisResultStore resultStore,
+        [FromServices] IPdfFormStamper pdfStamper,
         CancellationToken cancellationToken)
     {
         // First, try to get cached PDF
@@ -187,23 +162,6 @@ public static class AnalysisEndpoints
             $"pa-form-{transactionId}.pdf");
     }
 
-    private static async Task<IResult> SubmitToFhir(
-        string transactionId,
-        [FromBody] SubmitToFhirRequest request,
-        [FromServices] IDocumentUploader documentUploader,
-        [FromServices] IAnalysisResultStore resultStore,
-        [FromServices] IPdfFormStamper pdfStamper,
-        CancellationToken cancellationToken)
-    {
-        return await SubmitToFhirAsync(
-            transactionId,
-            request,
-            documentUploader,
-            resultStore,
-            pdfStamper,
-            cancellationToken);
-    }
-
     /// <summary>
     /// Submits the PA form to FHIR server as a DocumentReference.
     /// </summary>
@@ -216,10 +174,10 @@ public static class AnalysisEndpoints
     /// <returns>The submission response.</returns>
     public static async Task<IResult> SubmitToFhirAsync(
         string transactionId,
-        SubmitToFhirRequest request,
-        IDocumentUploader documentUploader,
-        IAnalysisResultStore resultStore,
-        IPdfFormStamper pdfStamper,
+        [FromBody] SubmitToFhirRequest request,
+        [FromServices] IDocumentUploader documentUploader,
+        [FromServices] IAnalysisResultStore resultStore,
+        [FromServices] IPdfFormStamper pdfStamper,
         CancellationToken cancellationToken)
     {
         // Get the PDF (from cache or generate)
@@ -266,7 +224,16 @@ public static class AnalysisEndpoints
         });
     }
 
-    private static async Task<IResult> TriggerAnalysis(
+    /// <summary>
+    /// Triggers a manual analysis for the given patient and procedure.
+    /// </summary>
+    /// <param name="request">The analysis request with patient and procedure details.</param>
+    /// <param name="fhirAggregator">The FHIR data aggregator service.</param>
+    /// <param name="intelligenceClient">The intelligence client service.</param>
+    /// <param name="logger">Logger for diagnostic output.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The queued analysis response with transaction ID.</returns>
+    public static Task<IResult> TriggerAnalysisAsync(
         [FromBody] ManualAnalysisRequest request,
         [FromServices] IFhirDataAggregator fhirAggregator,
         [FromServices] IIntelligenceClient intelligenceClient,
@@ -280,37 +247,11 @@ public static class AnalysisEndpoints
             transactionId, request.PatientId);
 
         // In production, this would queue the analysis job
-        return Results.Accepted(value: new
+        return Task.FromResult(Results.Accepted(value: new
         {
             transactionId,
             status = "queued",
             message = "Analysis queued for processing"
-        });
-    }
-
-    /// <summary>
-    /// Request for manually triggering an analysis.
-    /// </summary>
-    public sealed record ManualAnalysisRequest
-    {
-        /// <summary>
-        /// Gets the FHIR Patient resource ID.
-        /// </summary>
-        public required string PatientId { get; init; }
-
-        /// <summary>
-        /// Gets the procedure code (CPT) to analyze.
-        /// </summary>
-        public required string ProcedureCode { get; init; }
-
-        /// <summary>
-        /// Gets the optional FHIR Encounter resource ID.
-        /// </summary>
-        public string? EncounterId { get; init; }
-
-        /// <summary>
-        /// Gets the OAuth access token for Epic FHIR access.
-        /// </summary>
-        public required string AccessToken { get; init; }
+        }));
     }
 }

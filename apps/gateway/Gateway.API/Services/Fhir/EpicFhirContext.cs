@@ -11,7 +11,7 @@ namespace Gateway.API.Services.Fhir;
 /// Provides low-level CRUD operations with Result-based error handling.
 /// </summary>
 /// <typeparam name="TResource">The FHIR resource type.</typeparam>
-public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResource : class
+public sealed class EpicFhirContext<TResource> : IFhirContext<TResource> where TResource : class
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<EpicFhirContext<TResource>> _logger;
@@ -39,15 +39,8 @@ public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResourc
 
             var response = await _httpClient.SendAsync(request, ct);
 
-            if (response.StatusCode == HttpStatusCode.NotFound)
-            {
-                return Result<TResource>.Failure(FhirError.NotFound(_resourceType, id));
-            }
-
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                return Result<TResource>.Failure(FhirError.Unauthorized());
-            }
+            var error = HttpResponseErrorFactory.ValidateReadResponse<TResource>(response, _resourceType, id);
+            if (error is not null) return error.Value;
 
             response.EnsureSuccessStatusCode();
 
@@ -55,8 +48,7 @@ public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResourc
 
             if (resource is null)
             {
-                return Result<TResource>.Failure(
-                    FhirError.Validation($"Failed to deserialize {_resourceType}/{id}"));
+                return HttpResponseErrorFactory.DeserializationError<TResource>(_resourceType, id);
             }
 
             return Result<TResource>.Success(resource);
@@ -64,7 +56,7 @@ public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResourc
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Network error reading {ResourceType}/{Id}", _resourceType, id);
-            return Result<TResource>.Failure(FhirError.Network(ex.Message, ex));
+            return HttpResponseErrorFactory.NetworkError<TResource>(ex);
         }
     }
 
@@ -81,16 +73,8 @@ public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResourc
 
             var response = await _httpClient.SendAsync(request, ct);
 
-            if (response.StatusCode == HttpStatusCode.NotFound)
-            {
-                return Result<IReadOnlyList<TResource>>.Failure(
-                    FhirError.InvalidResponse($"FHIR {_resourceType} search endpoint not found"));
-            }
-
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                return Result<IReadOnlyList<TResource>>.Failure(FhirError.Unauthorized());
-            }
+            var error = HttpResponseErrorFactory.ValidateSearchResponse<IReadOnlyList<TResource>>(response, _resourceType);
+            if (error is not null) return error.Value;
 
             response.EnsureSuccessStatusCode();
 
@@ -102,7 +86,7 @@ public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResourc
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Network error searching {ResourceType}", _resourceType);
-            return Result<IReadOnlyList<TResource>>.Failure(FhirError.Network(ex.Message, ex));
+            return HttpResponseErrorFactory.NetworkError<IReadOnlyList<TResource>>(ex);
         }
     }
 
@@ -120,16 +104,14 @@ public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResourc
 
             var response = await _httpClient.SendAsync(request, ct);
 
-            if (response.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                return Result<TResource>.Failure(FhirError.Unauthorized());
-            }
-
+            string? validationError = null;
             if (response.StatusCode == HttpStatusCode.UnprocessableEntity)
             {
-                var error = await response.Content.ReadAsStringAsync(ct);
-                return Result<TResource>.Failure(FhirError.Validation(error));
+                validationError = await response.Content.ReadAsStringAsync(ct);
             }
+
+            var error = HttpResponseErrorFactory.ValidateCreateResponse<TResource>(response, validationError);
+            if (error is not null) return error.Value;
 
             response.EnsureSuccessStatusCode();
 
@@ -137,8 +119,7 @@ public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResourc
 
             if (created is null)
             {
-                return Result<TResource>.Failure(
-                    FhirError.Validation($"Failed to deserialize created {_resourceType}"));
+                return HttpResponseErrorFactory.DeserializationError<TResource>(_resourceType);
             }
 
             return Result<TResource>.Success(created);
@@ -146,7 +127,7 @@ public class EpicFhirContext<TResource> : IFhirContext<TResource> where TResourc
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Network error creating {ResourceType}", _resourceType);
-            return Result<TResource>.Failure(FhirError.Network(ex.Message, ex));
+            return HttpResponseErrorFactory.NetworkError<TResource>(ex);
         }
     }
 
