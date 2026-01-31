@@ -58,65 +58,33 @@ public static class DependencyExtensions
     }
 
     /// <summary>
-    /// Adds Epic FHIR integration services to the dependency injection container.
-    /// Registers token strategies, authentication provider, and HTTP client.
-    /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <param name="configuration">The configuration.</param>
-    /// <returns>The service collection for chaining.</returns>
-    public static IServiceCollection AddEpicFhirServices(this IServiceCollection services, IConfiguration configuration)
-    {
-        // Configuration options with validation
-        services.AddOptions<EpicFhirOptions>()
-            .Bind(configuration.GetSection(EpicFhirOptions.SectionName))
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
-
-        var fhirBaseUrl = configuration["Epic:FhirBaseUrl"];
-        if (string.IsNullOrWhiteSpace(fhirBaseUrl))
-        {
-            throw new InvalidOperationException("Epic:FhirBaseUrl must be configured.");
-        }
-
-        // Memory cache (for token caching in JwtBackendTokenStrategy)
-        services.AddMemoryCache();
-
-        // Token strategies (registered as ITokenAcquisitionStrategy for resolver)
-        services.AddScoped<CdsHookTokenStrategy>();
-        services.AddScoped<JwtBackendTokenStrategy>();
-        services.AddScoped<ITokenAcquisitionStrategy, CdsHookTokenStrategy>();
-        services.AddScoped<ITokenAcquisitionStrategy, JwtBackendTokenStrategy>();
-
-        // Token strategy resolver
-        services.AddScoped<ITokenStrategyResolver, TokenStrategyResolver>();
-
-        // FHIR HTTP client provider
-        services.AddScoped<IFhirHttpClientProvider, FhirHttpClientProvider>();
-
-        // Named HTTP client for Epic FHIR API
-        services.AddHttpClient("EpicFhir", client =>
-        {
-            client.BaseAddress = new Uri(fhirBaseUrl);
-        });
-
-        return services;
-    }
-
-    /// <summary>
     /// Adds FHIR HTTP clients to the dependency injection container.
+    /// Uses athenahealth FHIR base URL from configuration.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="configuration">The configuration.</param>
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddFhirClients(this IServiceCollection services, IConfiguration configuration)
     {
-        var fhirBaseUrl = configuration["Epic:FhirBaseUrl"];
+        var fhirBaseUrl = configuration["Athena:FhirBaseUrl"];
         if (string.IsNullOrWhiteSpace(fhirBaseUrl))
         {
-            throw new InvalidOperationException("Epic:FhirBaseUrl must be configured.");
+            throw new InvalidOperationException("Athena:FhirBaseUrl must be configured.");
         }
 
-        // Low-level FHIR HTTP client
+        // Named HTTP client for FHIR API (used by FhirHttpClientProvider)
+        services.AddHttpClient(FhirHttpClientProvider.HttpClientName, client =>
+        {
+            client.BaseAddress = new Uri(fhirBaseUrl);
+        });
+
+        // Token strategy resolver (uses registered ITokenAcquisitionStrategy instances)
+        services.AddSingleton<ITokenStrategyResolver, TokenStrategyResolver>();
+
+        // Authenticated FHIR HTTP client provider
+        services.AddScoped<IFhirHttpClientProvider, FhirHttpClientProvider>();
+
+        // Low-level FHIR HTTP client (typed client with base URL)
         services.AddHttpClient<IFhirHttpClient, FhirHttpClient>(client =>
         {
             client.BaseAddress = new Uri(fhirBaseUrl);

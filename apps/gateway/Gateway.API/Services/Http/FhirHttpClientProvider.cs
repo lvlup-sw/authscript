@@ -4,10 +4,16 @@ using Gateway.API.Contracts.Http;
 namespace Gateway.API.Services.Http;
 
 /// <summary>
-/// Provides HTTP clients authenticated for Epic FHIR API access.
+/// Provides HTTP clients authenticated for FHIR API access.
+/// Uses the token strategy resolver to acquire tokens from the appropriate EHR provider.
 /// </summary>
 public sealed class FhirHttpClientProvider : IFhirHttpClientProvider
 {
+    /// <summary>
+    /// Named HTTP client identifier for FHIR API requests.
+    /// </summary>
+    public const string HttpClientName = "Fhir";
+
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ITokenStrategyResolver _tokenResolver;
     private readonly ILogger<FhirHttpClientProvider> _logger;
@@ -31,7 +37,7 @@ public sealed class FhirHttpClientProvider : IFhirHttpClientProvider
     /// <inheritdoc />
     public async Task<HttpClient> GetAuthenticatedClientAsync(CancellationToken ct = default)
     {
-        var client = _httpClientFactory.CreateClient("EpicFhir");
+        var client = _httpClientFactory.CreateClient(HttpClientName);
 
         var strategy = _tokenResolver.Resolve();
         var token = await strategy.AcquireTokenAsync(ct);
