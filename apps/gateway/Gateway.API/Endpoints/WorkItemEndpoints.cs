@@ -29,6 +29,7 @@ public static class WorkItemEndpoints
     /// Re-fetches clinical data and re-analyzes a work item.
     /// </summary>
     /// <param name="id">The work item identifier.</param>
+    /// <param name="request">Optional request body containing access token.</param>
     /// <param name="workItemStore">The work item store service.</param>
     /// <param name="fhirAggregator">The FHIR data aggregator service.</param>
     /// <param name="intelligenceClient">The intelligence client service.</param>
@@ -37,6 +38,7 @@ public static class WorkItemEndpoints
     /// <returns>The rehydrate response or 404 if not found.</returns>
     public static async Task<IResult> RehydrateAsync(
         string id,
+        [FromBody] RehydrateRequest? request,
         [FromServices] IWorkItemStore workItemStore,
         [FromServices] IFhirDataAggregator fhirAggregator,
         [FromServices] IIntelligenceClient intelligenceClient,
@@ -58,11 +60,11 @@ public static class WorkItemEndpoints
             "Rehydrating work item {WorkItemId} for patient {PatientId}",
             id, workItem.PatientId);
 
-        // 2. Re-hydrate clinical data (using patient ID from work item)
+        // 2. Use provided access token or fall back to placeholder
         // MVP: Token management is handled by the polling service which stores tokens.
         // Production: Inject ITokenStrategyResolver to get valid token for the patient's practice.
         // See: https://github.com/anthropics/prior-auth/issues/19 for token provider implementation.
-        var accessToken = "placeholder-token"; // TODO(#19): Replace with ITokenStrategyResolver
+        var accessToken = request?.AccessToken ?? "placeholder-token";
 
         var clinicalBundle = await fhirAggregator.AggregateClinicalDataAsync(
             workItem.PatientId,

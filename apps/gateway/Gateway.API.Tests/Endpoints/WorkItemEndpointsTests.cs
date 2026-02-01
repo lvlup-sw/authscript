@@ -213,15 +213,155 @@ public class WorkItemEndpointsTests
         await Assert.That(okResult).IsNotNull();
     }
 
-    private async Task<IResult> InvokeRehydrateAsync(string id)
+    private async Task<IResult> InvokeRehydrateAsync(string id, RehydrateRequest? request = null)
     {
         return await WorkItemEndpoints.RehydrateAsync(
             id,
+            request,
             _workItemStore,
             _fhirAggregator,
             _intelligenceClient,
             _logger,
             CancellationToken.None);
+    }
+
+    [Test]
+    public async Task RehydrateAsync_WithAccessToken_PassesTokenToAggregator()
+    {
+        // Arrange
+        const string workItemId = "wi-token-test";
+        const string accessToken = "test-access-token-123";
+        var workItem = CreateTestWorkItem(workItemId);
+        var clinicalBundle = CreateTestClinicalBundle();
+        var formData = CreateTestFormData();
+
+        _workItemStore
+            .GetByIdAsync(workItemId, Arg.Any<CancellationToken>())
+            .Returns(workItem);
+
+        _fhirAggregator
+            .AggregateClinicalDataAsync(workItem.PatientId, accessToken, Arg.Any<CancellationToken>())
+            .Returns(clinicalBundle);
+
+        _intelligenceClient
+            .AnalyzeAsync(clinicalBundle, workItem.ProcedureCode, Arg.Any<CancellationToken>())
+            .Returns(formData);
+
+        _workItemStore
+            .UpdateStatusAsync(workItemId, Arg.Any<WorkItemStatus>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var request = new RehydrateRequest
+        {
+            WorkItemId = workItemId,
+            AccessToken = accessToken
+        };
+
+        // Act
+        var result = await WorkItemEndpoints.RehydrateAsync(
+            workItemId,
+            request,
+            _workItemStore,
+            _fhirAggregator,
+            _intelligenceClient,
+            _logger,
+            CancellationToken.None);
+
+        // Assert
+        await _fhirAggregator.Received(1).AggregateClinicalDataAsync(
+            workItem.PatientId,
+            accessToken,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task RehydrateAsync_WithoutAccessToken_UsesFallback()
+    {
+        // Arrange
+        const string workItemId = "wi-no-token";
+        var workItem = CreateTestWorkItem(workItemId);
+        var clinicalBundle = CreateTestClinicalBundle();
+        var formData = CreateTestFormData();
+
+        _workItemStore
+            .GetByIdAsync(workItemId, Arg.Any<CancellationToken>())
+            .Returns(workItem);
+
+        _fhirAggregator
+            .AggregateClinicalDataAsync(workItem.PatientId, "placeholder-token", Arg.Any<CancellationToken>())
+            .Returns(clinicalBundle);
+
+        _intelligenceClient
+            .AnalyzeAsync(clinicalBundle, workItem.ProcedureCode, Arg.Any<CancellationToken>())
+            .Returns(formData);
+
+        _workItemStore
+            .UpdateStatusAsync(workItemId, Arg.Any<WorkItemStatus>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        // Act - pass null request (no body provided)
+        var result = await WorkItemEndpoints.RehydrateAsync(
+            workItemId,
+            null,
+            _workItemStore,
+            _fhirAggregator,
+            _intelligenceClient,
+            _logger,
+            CancellationToken.None);
+
+        // Assert
+        await _fhirAggregator.Received(1).AggregateClinicalDataAsync(
+            workItem.PatientId,
+            "placeholder-token",
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task RehydrateAsync_WithNullAccessToken_UsesFallback()
+    {
+        // Arrange
+        const string workItemId = "wi-null-token";
+        var workItem = CreateTestWorkItem(workItemId);
+        var clinicalBundle = CreateTestClinicalBundle();
+        var formData = CreateTestFormData();
+
+        _workItemStore
+            .GetByIdAsync(workItemId, Arg.Any<CancellationToken>())
+            .Returns(workItem);
+
+        _fhirAggregator
+            .AggregateClinicalDataAsync(workItem.PatientId, "placeholder-token", Arg.Any<CancellationToken>())
+            .Returns(clinicalBundle);
+
+        _intelligenceClient
+            .AnalyzeAsync(clinicalBundle, workItem.ProcedureCode, Arg.Any<CancellationToken>())
+            .Returns(formData);
+
+        _workItemStore
+            .UpdateStatusAsync(workItemId, Arg.Any<WorkItemStatus>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var request = new RehydrateRequest
+        {
+            WorkItemId = workItemId,
+            AccessToken = null // Explicitly null
+        };
+
+        // Act
+        var result = await WorkItemEndpoints.RehydrateAsync(
+            workItemId,
+            request,
+            _workItemStore,
+            _fhirAggregator,
+            _intelligenceClient,
+            _logger,
+            CancellationToken.None);
+
+        // Assert
+        await _fhirAggregator.Received(1).AggregateClinicalDataAsync(
+            workItem.PatientId,
+            "placeholder-token",
+            Arg.Any<CancellationToken>());
     }
 
     #endregion
