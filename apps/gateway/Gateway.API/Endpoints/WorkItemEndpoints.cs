@@ -115,4 +115,121 @@ public static class WorkItemEndpoints
         // Otherwise, still missing data or needs more info
         return WorkItemStatus.MissingData;
     }
+
+    /// <summary>
+    /// Creates a new work item.
+    /// </summary>
+    /// <param name="request">The create work item request.</param>
+    /// <param name="workItemStore">The work item store service.</param>
+    /// <param name="logger">Logger for diagnostic output.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The created work item with 201 status.</returns>
+    public static async Task<IResult> CreateAsync(
+        [FromBody] CreateWorkItemRequest request,
+        [FromServices] IWorkItemStore workItemStore,
+        [FromServices] ILogger<WorkItem> logger,
+        CancellationToken cancellationToken)
+    {
+        var workItem = new WorkItem
+        {
+            Id = $"wi-{Guid.NewGuid():N}",
+            EncounterId = request.EncounterId,
+            PatientId = request.PatientId,
+            ServiceRequestId = request.ServiceRequestId,
+            ProcedureCode = request.ProcedureCode,
+            Status = request.Status ?? WorkItemStatus.MissingData,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+
+        await workItemStore.CreateAsync(workItem, cancellationToken);
+
+        logger.LogInformation("Created work item {WorkItemId} for encounter {EncounterId}",
+            workItem.Id, workItem.EncounterId);
+
+        return Results.Created($"/api/work-items/{workItem.Id}", workItem);
+    }
+
+    /// <summary>
+    /// Lists all work items with optional filters.
+    /// </summary>
+    /// <param name="encounterId">Optional encounter ID filter.</param>
+    /// <param name="status">Optional status filter.</param>
+    /// <param name="workItemStore">The work item store service.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>List of matching work items.</returns>
+    public static async Task<IResult> ListAsync(
+        [FromQuery] string? encounterId,
+        [FromQuery] WorkItemStatus? status,
+        [FromServices] IWorkItemStore workItemStore,
+        CancellationToken cancellationToken)
+    {
+        var items = await workItemStore.GetAllAsync(encounterId, status, cancellationToken);
+
+        return Results.Ok(new WorkItemListResponse
+        {
+            Items = items,
+            Total = items.Count
+        });
+    }
+
+    /// <summary>
+    /// Gets a work item by ID.
+    /// </summary>
+    /// <param name="id">The work item identifier.</param>
+    /// <param name="workItemStore">The work item store service.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The work item if found, 404 otherwise.</returns>
+    public static async Task<IResult> GetByIdAsync(
+        string id,
+        [FromServices] IWorkItemStore workItemStore,
+        CancellationToken cancellationToken)
+    {
+        var workItem = await workItemStore.GetByIdAsync(id, cancellationToken);
+        if (workItem is null)
+        {
+            return Results.NotFound(new ErrorResponse
+            {
+                Message = $"Work item '{id}' not found",
+                Code = "WORK_ITEM_NOT_FOUND"
+            });
+        }
+
+        return Results.Ok(workItem);
+    }
+
+    /// <summary>
+    /// Updates a work item's status.
+    /// </summary>
+    /// <param name="id">The work item identifier.</param>
+    /// <param name="request">The update status request.</param>
+    /// <param name="workItemStore">The work item store service.</param>
+    /// <param name="logger">Logger for diagnostic output.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The updated work item if found, 404 otherwise.</returns>
+    public static async Task<IResult> UpdateStatusAsync(
+        string id,
+        [FromBody] UpdateStatusRequest request,
+        [FromServices] IWorkItemStore workItemStore,
+        [FromServices] ILogger<WorkItem> logger,
+        CancellationToken cancellationToken)
+    {
+        var workItem = await workItemStore.GetByIdAsync(id, cancellationToken);
+        if (workItem is null)
+        {
+            return Results.NotFound(new ErrorResponse
+            {
+                Message = $"Work item '{id}' not found",
+                Code = "WORK_ITEM_NOT_FOUND"
+            });
+        }
+
+        await workItemStore.UpdateStatusAsync(id, request.Status, cancellationToken);
+
+        logger.LogInformation("Updated work item {WorkItemId} status to {Status}",
+            id, request.Status);
+
+        // Return updated work item
+        var updated = await workItemStore.GetByIdAsync(id, cancellationToken);
+        return Results.Ok(updated);
+    }
 }
