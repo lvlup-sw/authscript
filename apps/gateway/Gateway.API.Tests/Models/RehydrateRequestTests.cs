@@ -33,4 +33,31 @@ public class RehydrateRequestTests
         await Assert.That(request.WorkItemId).IsNotNull();
         await Assert.That(request.WorkItemId).IsNotEmpty();
     }
+
+    [Test]
+    public async Task RehydrateRequest_OptionalAccessToken_DefaultsToNull()
+    {
+        // Arrange & Act
+        var request = new RehydrateRequest
+        {
+            WorkItemId = "wi-001"
+        };
+
+        // Assert
+        await Assert.That(request.AccessToken).IsNull();
+    }
+
+    [Test]
+    public async Task RehydrateRequest_WithAccessToken_StoresValue()
+    {
+        // Arrange & Act
+        var request = new RehydrateRequest
+        {
+            WorkItemId = "wi-001",
+            AccessToken = "test-token-123"
+        };
+
+        // Assert
+        await Assert.That(request.AccessToken).IsEqualTo("test-token-123");
+    }
 }
