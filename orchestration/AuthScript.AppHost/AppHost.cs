@@ -88,6 +88,8 @@ var dashboard = builder
     .AddDockerfile("dashboard", "../..", "apps/dashboard/Dockerfile.build")
     .WithHttpEndpoint(port: 3000, targetPort: 80, name: "dashboard-ui")
     .WaitFor(gateway)
-    .WithExternalHttpEndpoints();
+    .WithExternalHttpEndpoints()
+    // Enable host.docker.internal resolution on Linux
+    .WithContainerRuntimeArgs("--add-host=host.docker.internal:host-gateway");
 
 builder.Build().Run();

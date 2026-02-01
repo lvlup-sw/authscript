@@ -33,15 +33,12 @@ var app = builder.Build();
 // ---------------------------------------------------------------------------
 // Middleware Pipeline
 // ---------------------------------------------------------------------------
-if (app.Environment.IsDevelopment())
+app.MapOpenApi();
+app.MapScalarApiReference(options =>
 {
-    app.MapOpenApi();
-    app.MapScalarApiReference(options =>
-    {
-        options.Title = "AuthScript Gateway API";
-        options.Theme = ScalarTheme.DeepSpace;
-    });
-}
+    options.Title = "AuthScript Gateway API";
+    options.Theme = ScalarTheme.DeepSpace;
+});
 
 app.UseCors();
 app.UseHealthChecks("/health");
