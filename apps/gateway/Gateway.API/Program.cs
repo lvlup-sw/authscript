@@ -67,5 +67,6 @@ app.UseHealthChecks("/health");
 app.MapAnalysisEndpoints();
 app.MapSseEndpoints();
 app.MapSubmitEndpoints();
+app.MapWorkItemEndpoints();
 
 app.Run();
