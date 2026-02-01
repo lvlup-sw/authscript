@@ -20,6 +20,12 @@ public sealed class NotificationHub : INotificationHub
     {
     }
 
+    /// <summary>
+    /// Gets the current number of active subscribers.
+    /// Useful for testing to verify subscriber registration.
+    /// </summary>
+    public int SubscriberCount => _subscribers.Count;
+
     /// <inheritdoc />
     public Task WriteAsync(Notification notification, CancellationToken ct)
     {

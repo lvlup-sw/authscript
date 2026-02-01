@@ -8,7 +8,7 @@ namespace Gateway.API.Tests.Endpoints;
 /// <summary>
 /// Tests for SSE streaming endpoints.
 /// </summary>
-public class SseEndpointsTests
+public sealed class SseEndpointsTests
 {
     [Test]
     public async Task SseEndpoint_Get_ReturnsTextEventStreamContentType()
@@ -84,13 +84,13 @@ public class SseEndpointsTests
             PatientId: "patient-789",
             Message: "Analysis completed");
 
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(300));
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
 
         // Start streaming (subscriber must be active before write)
         var streamTask = SseEndpoints.StreamEventsAsync(context, hub, cts.Token);
 
-        // Give subscriber time to register
-        await Task.Delay(50);
+        // Wait for subscriber to register (polling instead of fixed delay)
+        await WaitForSubscriberAsync(hub, TimeSpan.FromMilliseconds(200));
 
         // Write notification after subscriber is registered
         await hub.WriteAsync(notification, CancellationToken.None);
@@ -141,5 +141,14 @@ public class SseEndpointsTests
         var context = new DefaultHttpContext();
         context.Response.Body = new MemoryStream();
         return context;
+    }
+
+    private static async Task WaitForSubscriberAsync(NotificationHub hub, TimeSpan timeout)
+    {
+        var deadline = DateTimeOffset.UtcNow + timeout;
+        while (hub.SubscriberCount == 0 && DateTimeOffset.UtcNow < deadline)
+        {
+            await Task.Delay(10);
+        }
     }
 }
