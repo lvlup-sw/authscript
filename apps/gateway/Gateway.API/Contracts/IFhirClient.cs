@@ -83,4 +83,18 @@ public interface IFhirClient
         string documentId,
         string accessToken,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Searches for service requests (orders/referrals) for a patient.
+    /// </summary>
+    /// <param name="patientId">The FHIR Patient resource ID.</param>
+    /// <param name="encounterId">Optional encounter ID to filter by.</param>
+    /// <param name="accessToken">OAuth access token for authentication.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>List of service requests for the patient.</returns>
+    Task<List<ServiceRequestInfo>> SearchServiceRequestsAsync(
+        string patientId,
+        string? encounterId,
+        string accessToken,
+        CancellationToken cancellationToken = default);
 }
