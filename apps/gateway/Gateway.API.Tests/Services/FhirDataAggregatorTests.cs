@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Gateway.API.Configuration;
 using Gateway.API.Contracts;
 using Gateway.API.Models;
@@ -111,8 +112,8 @@ public class FhirDataAggregatorTests
         const string patientId = "patient-abc";
         const string accessToken = "test-token";
 
-        // Track call order to verify parallel execution
-        var callOrder = new List<string>();
+        // Track call order to verify parallel execution (thread-safe for parallel callbacks)
+        var callOrder = new ConcurrentBag<string>();
 
         _fhirClient.GetPatientAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(async _ =>

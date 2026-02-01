@@ -109,6 +109,8 @@ public class WorkItemEndpointsIntegrationTests
 
         var response = result.ReadAsJson<WorkItemListResponse>();
         await Assert.That(response).IsNotNull();
+        await Assert.That(response!.Items.All(i => i.Status == WorkItemStatus.Submitted)).IsTrue();
+        await Assert.That(response.Items.Any(i => i.EncounterId == "enc-filter-test")).IsTrue();
     }
 
     #endregion

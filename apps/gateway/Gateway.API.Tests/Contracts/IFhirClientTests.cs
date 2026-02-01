@@ -6,7 +6,7 @@ namespace Gateway.API.Tests.Contracts;
 /// <summary>
 /// Tests for the IFhirClient interface contract.
 /// </summary>
-public class IFhirClientTests
+public sealed class IFhirClientTests
 {
     [Test]
     public async Task IFhirClient_HasSearchServiceRequestsAsyncMethod()

@@ -2,7 +2,7 @@ using Gateway.API.Models;
 
 namespace Gateway.API.Tests.Models;
 
-public class UpdateStatusRequestTests
+public sealed class UpdateStatusRequestTests
 {
     [Test]
     public async Task UpdateStatusRequest_RequiredStatus_InitializesCorrectly()
@@ -20,6 +20,7 @@ public class UpdateStatusRequestTests
     [Test]
     [Arguments(WorkItemStatus.MissingData)]
     [Arguments(WorkItemStatus.ReadyForReview)]
+    [Arguments(WorkItemStatus.PayerRequirementsNotMet)]
     [Arguments(WorkItemStatus.Submitted)]
     [Arguments(WorkItemStatus.NoPaRequired)]
     public async Task UpdateStatusRequest_AllStatusValues_Accepted(WorkItemStatus status)

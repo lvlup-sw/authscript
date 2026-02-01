@@ -11,7 +11,7 @@ namespace Gateway.API.Tests.Endpoints;
 /// <summary>
 /// Tests for the WorkItemEndpoints API endpoints.
 /// </summary>
-public class WorkItemEndpointsTests
+public sealed class WorkItemEndpointsTests
 {
     private readonly IWorkItemStore _workItemStore;
     private readonly IFhirDataAggregator _fhirAggregator;

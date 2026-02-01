@@ -29,7 +29,7 @@ public interface IWorkItemStore
     /// <param name="id">The work item ID.</param>
     /// <param name="newStatus">The new status to set.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>True if update succeeded, false if work item not found or invalid transition.</returns>
+    /// <returns>True if update succeeded, false if work item not found.</returns>
     Task<bool> UpdateStatusAsync(string id, WorkItemStatus newStatus, CancellationToken cancellationToken = default);
 
     /// <summary>

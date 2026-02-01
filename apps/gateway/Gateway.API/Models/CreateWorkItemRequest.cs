@@ -26,7 +26,7 @@ public sealed record CreateWorkItemRequest
     public required string ProcedureCode { get; init; }
 
     /// <summary>
-    /// Initial status. Defaults to MissingData if not specified.
+    /// Optional initial status. If not specified, downstream logic assigns MissingData.
     /// </summary>
     public WorkItemStatus? Status { get; init; }
 }

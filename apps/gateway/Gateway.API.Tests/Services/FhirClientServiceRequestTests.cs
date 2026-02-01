@@ -179,6 +179,85 @@ public class FhirClientServiceRequestTests
     }
 
     [Test]
+    public async Task SearchServiceRequestsAsync_MissingStatus_DefaultsToUnknown()
+    {
+        // Arrange
+        const string fhirBundle = """
+            {
+                "resourceType": "Bundle",
+                "type": "searchset",
+                "entry": [
+                    {
+                        "resource": {
+                            "resourceType": "ServiceRequest",
+                            "id": "sr-no-status",
+                            "code": {
+                                "coding": [
+                                    {
+                                        "system": "http://www.ama-assn.org/go/cpt",
+                                        "code": "70553"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                ]
+            }
+            """;
+
+        var jsonDocument = JsonDocument.Parse(fhirBundle);
+        _httpClient.SearchAsync("ServiceRequest", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Result<JsonElement>.Success(jsonDocument.RootElement));
+
+        // Act
+        var serviceRequests = await _sut.SearchServiceRequestsAsync("patient-1", null, "token", CancellationToken.None);
+
+        // Assert
+        await Assert.That(serviceRequests.Count).IsEqualTo(1);
+        await Assert.That(serviceRequests[0].Status).IsEqualTo("unknown");
+    }
+
+    [Test]
+    public async Task SearchServiceRequestsAsync_NullStatus_DefaultsToUnknown()
+    {
+        // Arrange - JSON null value for status
+        const string fhirBundle = """
+            {
+                "resourceType": "Bundle",
+                "type": "searchset",
+                "entry": [
+                    {
+                        "resource": {
+                            "resourceType": "ServiceRequest",
+                            "id": "sr-null-status",
+                            "status": null,
+                            "code": {
+                                "coding": [
+                                    {
+                                        "system": "http://www.ama-assn.org/go/cpt",
+                                        "code": "70553"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                ]
+            }
+            """;
+
+        var jsonDocument = JsonDocument.Parse(fhirBundle);
+        _httpClient.SearchAsync("ServiceRequest", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Result<JsonElement>.Success(jsonDocument.RootElement));
+
+        // Act
+        var serviceRequests = await _sut.SearchServiceRequestsAsync("patient-1", null, "token", CancellationToken.None);
+
+        // Assert
+        await Assert.That(serviceRequests.Count).IsEqualTo(1);
+        await Assert.That(serviceRequests[0].Status).IsEqualTo("unknown");
+    }
+
+    [Test]
     public async Task SearchServiceRequestsAsync_ParsesAuthoredOn_Correctly()
     {
         // Arrange

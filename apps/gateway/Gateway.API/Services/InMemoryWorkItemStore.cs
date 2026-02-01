@@ -29,8 +29,9 @@ public sealed class InMemoryWorkItemStore : IWorkItemStore
     /// <inheritdoc />
     public Task<bool> UpdateStatusAsync(string id, WorkItemStatus newStatus, CancellationToken cancellationToken = default)
     {
-        // Use atomic TryUpdate to avoid race conditions
-        while (true)
+        const int maxRetries = 10;
+
+        for (var attempt = 0; attempt < maxRetries; attempt++)
         {
             if (!_store.TryGetValue(id, out var existing))
             {
@@ -50,6 +51,9 @@ public sealed class InMemoryWorkItemStore : IWorkItemStore
             }
             // If TryUpdate failed, another thread modified the entry - retry
         }
+
+        // Exhausted retries due to concurrent modifications
+        return Task.FromResult(false);
     }
 
     /// <inheritdoc />

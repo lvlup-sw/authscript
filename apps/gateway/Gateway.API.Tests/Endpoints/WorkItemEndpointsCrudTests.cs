@@ -10,7 +10,7 @@ namespace Gateway.API.Tests.Endpoints;
 /// <summary>
 /// Unit tests for WorkItem CRUD endpoints.
 /// </summary>
-public class WorkItemEndpointsCrudTests
+public sealed class WorkItemEndpointsCrudTests
 {
     private readonly IWorkItemStore _workItemStore;
     private readonly ILogger<WorkItem> _logger;
@@ -289,6 +289,51 @@ public class WorkItemEndpointsCrudTests
 
         // Assert
         await _workItemStore.Received(1).UpdateStatusAsync("wi-status", WorkItemStatus.ReadyForReview, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task UpdateStatusAsync_UpdateReturnsFalse_Returns404WithUpdateFailed()
+    {
+        // Arrange
+        var existing = CreateTestWorkItem("wi-race", "enc-race");
+        var request = new UpdateStatusRequest { Status = WorkItemStatus.Submitted };
+
+        _workItemStore.GetByIdAsync("wi-race", Arg.Any<CancellationToken>())
+            .Returns(existing);
+        _workItemStore.UpdateStatusAsync("wi-race", WorkItemStatus.Submitted, Arg.Any<CancellationToken>())
+            .Returns(false);
+
+        // Act
+        var result = await WorkItemEndpoints.UpdateStatusAsync("wi-race", request, _workItemStore, _logger, CancellationToken.None);
+
+        // Assert
+        var notFound = result as NotFound<ErrorResponse>;
+        await Assert.That(notFound).IsNotNull();
+        await Assert.That(notFound!.Value!.Code).IsEqualTo("WORK_ITEM_UPDATE_FAILED");
+        await Assert.That(notFound.Value.Message).Contains("modified or deleted");
+    }
+
+    [Test]
+    public async Task UpdateStatusAsync_ItemNullAfterUpdate_Returns404()
+    {
+        // Arrange
+        var existing = CreateTestWorkItem("wi-vanish", "enc-vanish");
+        var request = new UpdateStatusRequest { Status = WorkItemStatus.Submitted };
+
+        // First call returns existing item, second call (after update) returns null
+        _workItemStore.GetByIdAsync("wi-vanish", Arg.Any<CancellationToken>())
+            .Returns(existing, (WorkItem?)null);
+        _workItemStore.UpdateStatusAsync("wi-vanish", WorkItemStatus.Submitted, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        // Act
+        var result = await WorkItemEndpoints.UpdateStatusAsync("wi-vanish", request, _workItemStore, _logger, CancellationToken.None);
+
+        // Assert
+        var notFound = result as NotFound<ErrorResponse>;
+        await Assert.That(notFound).IsNotNull();
+        await Assert.That(notFound!.Value!.Code).IsEqualTo("WORK_ITEM_NOT_FOUND");
+        await Assert.That(notFound.Value.Message).Contains("not found after update");
     }
 
     #endregion

@@ -109,7 +109,15 @@ public static class WorkItemEndpoints
         var newStatus = DetermineStatus(analysisResult);
 
         // 5. Update work item status
-        await workItemStore.UpdateStatusAsync(id, newStatus, cancellationToken);
+        var updated = await workItemStore.UpdateStatusAsync(id, newStatus, cancellationToken);
+        if (!updated)
+        {
+            return Results.NotFound(new ErrorResponse
+            {
+                Message = $"Work item '{id}' not found or update failed",
+                Code = "WORK_ITEM_UPDATE_FAILED"
+            });
+        }
 
         logger.LogInformation(
             "Work item {WorkItemId} rehydrated. New status: {NewStatus}",
@@ -253,13 +261,30 @@ public static class WorkItemEndpoints
             });
         }
 
-        await workItemStore.UpdateStatusAsync(id, request.Status, cancellationToken);
+        var success = await workItemStore.UpdateStatusAsync(id, request.Status, cancellationToken);
+        if (!success)
+        {
+            return Results.NotFound(new ErrorResponse
+            {
+                Message = $"Work item '{id}' was modified or deleted",
+                Code = "WORK_ITEM_UPDATE_FAILED"
+            });
+        }
 
         logger.LogInformation("Updated work item {WorkItemId} status to {Status}",
             id, request.Status);
 
         // Return updated work item
-        var updated = await workItemStore.GetByIdAsync(id, cancellationToken);
-        return Results.Ok(updated);
+        var updatedItem = await workItemStore.GetByIdAsync(id, cancellationToken);
+        if (updatedItem is null)
+        {
+            return Results.NotFound(new ErrorResponse
+            {
+                Message = $"Work item '{id}' not found after update",
+                Code = "WORK_ITEM_NOT_FOUND"
+            });
+        }
+
+        return Results.Ok(updatedItem);
     }
 }

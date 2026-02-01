@@ -289,7 +289,8 @@ public sealed class FhirClient : IFhirClient
         if (code is null) return null;
 
         var resourceId = resource.TryGetProperty("id", out var id) ? id.GetString()! : Guid.NewGuid().ToString();
-        var status = resource.TryGetProperty("status", out var s) ? s.GetString()! : "unknown";
+        var rawStatus = resource.TryGetProperty("status", out var s) ? s.GetString() : null;
+        var status = string.IsNullOrWhiteSpace(rawStatus) ? "unknown" : rawStatus;
 
         return new ServiceRequestInfo
         {

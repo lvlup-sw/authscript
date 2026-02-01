@@ -3,7 +3,7 @@ namespace Gateway.API.Tests.Contracts;
 using Gateway.API.Contracts;
 using Gateway.API.Models;
 
-public class IWorkItemStoreTests
+public sealed class IWorkItemStoreTests
 {
     [Test]
     public async Task IWorkItemStore_HasRequiredMethods()

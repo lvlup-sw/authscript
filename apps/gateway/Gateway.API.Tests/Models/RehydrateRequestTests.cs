@@ -2,7 +2,7 @@ using Gateway.API.Models;
 
 namespace Gateway.API.Tests.Models;
 
-public class RehydrateRequestTests
+public sealed class RehydrateRequestTests
 {
     [Test]
     public async Task RehydrateRequest_RequiredProperties_InitializesCorrectly()
