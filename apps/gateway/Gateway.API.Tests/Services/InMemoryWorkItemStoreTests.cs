@@ -169,4 +169,101 @@ public class InMemoryWorkItemStoreTests
         await Assert.That(results).IsNotNull();
         await Assert.That(results.Count).IsEqualTo(0);
     }
+
+    [Test]
+    public async Task GetAllAsync_NoFilters_ReturnsAllItems()
+    {
+        // Arrange
+        var workItem1 = CreateWorkItem("wi-all-1", "enc-001", WorkItemStatus.MissingData);
+        var workItem2 = CreateWorkItem("wi-all-2", "enc-002", WorkItemStatus.ReadyForReview);
+        await _sut.CreateAsync(workItem1);
+        await _sut.CreateAsync(workItem2);
+
+        // Act
+        var results = await _sut.GetAllAsync();
+
+        // Assert
+        await Assert.That(results.Count).IsEqualTo(2);
+    }
+
+    [Test]
+    public async Task GetAllAsync_FilterByEncounterId_ReturnsMatching()
+    {
+        // Arrange
+        var workItem1 = CreateWorkItem("wi-enc-1", "enc-target", WorkItemStatus.MissingData);
+        var workItem2 = CreateWorkItem("wi-enc-2", "enc-other", WorkItemStatus.MissingData);
+        await _sut.CreateAsync(workItem1);
+        await _sut.CreateAsync(workItem2);
+
+        // Act
+        var results = await _sut.GetAllAsync(encounterId: "enc-target");
+
+        // Assert
+        await Assert.That(results.Count).IsEqualTo(1);
+        await Assert.That(results[0].Id).IsEqualTo("wi-enc-1");
+    }
+
+    [Test]
+    public async Task GetAllAsync_FilterByStatus_ReturnsMatching()
+    {
+        // Arrange
+        var workItem1 = CreateWorkItem("wi-status-1", "enc-001", WorkItemStatus.MissingData);
+        var workItem2 = CreateWorkItem("wi-status-2", "enc-002", WorkItemStatus.ReadyForReview);
+        await _sut.CreateAsync(workItem1);
+        await _sut.CreateAsync(workItem2);
+
+        // Act
+        var results = await _sut.GetAllAsync(status: WorkItemStatus.ReadyForReview);
+
+        // Assert
+        await Assert.That(results.Count).IsEqualTo(1);
+        await Assert.That(results[0].Id).IsEqualTo("wi-status-2");
+    }
+
+    [Test]
+    public async Task GetAllAsync_BothFilters_ReturnsCombinedMatch()
+    {
+        // Arrange
+        var workItem1 = CreateWorkItem("wi-both-1", "enc-target", WorkItemStatus.ReadyForReview);
+        var workItem2 = CreateWorkItem("wi-both-2", "enc-target", WorkItemStatus.MissingData);
+        var workItem3 = CreateWorkItem("wi-both-3", "enc-other", WorkItemStatus.ReadyForReview);
+        await _sut.CreateAsync(workItem1);
+        await _sut.CreateAsync(workItem2);
+        await _sut.CreateAsync(workItem3);
+
+        // Act
+        var results = await _sut.GetAllAsync(encounterId: "enc-target", status: WorkItemStatus.ReadyForReview);
+
+        // Assert
+        await Assert.That(results.Count).IsEqualTo(1);
+        await Assert.That(results[0].Id).IsEqualTo("wi-both-1");
+    }
+
+    [Test]
+    public async Task GetAllAsync_NoMatches_ReturnsEmptyList()
+    {
+        // Arrange
+        var workItem = CreateWorkItem("wi-no-match", "enc-001", WorkItemStatus.MissingData);
+        await _sut.CreateAsync(workItem);
+
+        // Act
+        var results = await _sut.GetAllAsync(encounterId: "enc-nonexistent");
+
+        // Assert
+        await Assert.That(results).IsEmpty();
+    }
+
+    private static WorkItem CreateWorkItem(string id, string encounterId, WorkItemStatus status)
+    {
+        return new WorkItem
+        {
+            Id = id,
+            EncounterId = encounterId,
+            PatientId = "pat-test",
+            ServiceRequestId = "sr-test",
+            Status = status,
+            ProcedureCode = "72148",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+    }
 }
