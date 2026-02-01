@@ -17,6 +17,49 @@ namespace Gateway.API;
 public static class DependencyExtensions
 {
     /// <summary>
+    /// Adds CORS policy for the dashboard.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddCorsPolicy(this IServiceCollection services)
+    {
+        services.AddCors(options =>
+        {
+            options.AddDefaultPolicy(policy =>
+            {
+                policy
+                    .WithOrigins("http://localhost:5173")
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .AllowCredentials();
+            });
+        });
+        return services;
+    }
+
+    /// <summary>
+    /// Adds OpenAPI documentation.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddApiDocumentation(this IServiceCollection services)
+    {
+        services.AddOpenApi();
+        return services;
+    }
+
+    /// <summary>
+    /// Adds health check monitoring.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddHealthMonitoring(this IServiceCollection services)
+    {
+        services.AddHealthChecks();
+        return services;
+    }
+
+    /// <summary>
     /// Adds Gateway services to the dependency injection container.
     /// </summary>
     /// <param name="services">The service collection.</param>
@@ -81,7 +124,9 @@ public static class DependencyExtensions
         });
 
         // Token strategy resolver (uses registered ITokenAcquisitionStrategy instances)
-        services.AddSingleton<ITokenStrategyResolver, TokenStrategyResolver>();
+        // Register both interface and concrete type for DI consumers that use either
+        services.AddSingleton<TokenStrategyResolver>();
+        services.AddSingleton<ITokenStrategyResolver>(sp => sp.GetRequiredService<TokenStrategyResolver>());
 
         // Authenticated FHIR HTTP client provider
         services.AddScoped<IFhirHttpClientProvider, FhirHttpClientProvider>();
@@ -157,9 +202,8 @@ public static class DependencyExtensions
         // Named HttpClient for token requests
         services.AddHttpClient("Athena");
 
-        // Token acquisition strategy and resolver
+        // Token acquisition strategy (resolver registered in AddFhirClients)
         services.AddSingleton<ITokenAcquisitionStrategy, AthenaTokenStrategy>();
-        services.AddSingleton<TokenStrategyResolver>();
 
         // Background polling service
         services.AddSingleton<AthenaPollingService>();

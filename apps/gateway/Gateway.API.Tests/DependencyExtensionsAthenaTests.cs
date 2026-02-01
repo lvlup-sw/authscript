@@ -69,6 +69,8 @@ public class DependencyExtensionsAthenaTests
         // Add mock IFhirHttpClient
         var mockFhirClient = Substitute.For<IFhirHttpClient>();
         services.AddSingleton(mockFhirClient);
+        // TokenStrategyResolver is registered by AddFhirClients; we need to register it manually here
+        services.AddSingleton<TokenStrategyResolver>();
         var config = BuildValidConfig();
 
         // Act

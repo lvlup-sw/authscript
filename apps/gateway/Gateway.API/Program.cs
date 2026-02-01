@@ -10,38 +10,23 @@ using Scalar.AspNetCore;
 var builder = WebApplication.CreateBuilder(args);
 
 // ---------------------------------------------------------------------------
-// Service Registration
+// Infrastructure (Aspire)
 // ---------------------------------------------------------------------------
-builder.Services.AddOpenApi();
-
-// Health checks
-builder.Services.AddHealthChecks();
-
-// Redis cache
 builder.AddRedisClient("redis");
-
-// PostgreSQL
 builder.AddNpgsqlDataSource("authscript");
 
-// Gateway services
-builder.Services.AddGatewayServices(builder.Configuration);
-builder.Services.AddFhirClients(builder.Configuration);
-builder.Services.AddIntelligenceClient(builder.Configuration);
-builder.Services.AddNotificationServices();
-builder.Services.AddAthenaServices(builder.Configuration);
-
-// CORS for dashboard
-builder.Services.AddCors(options =>
-{
-    options.AddDefaultPolicy(policy =>
-    {
-        policy
-            .WithOrigins("http://localhost:5173")
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
-    });
-});
+// ---------------------------------------------------------------------------
+// Service Registration
+// ---------------------------------------------------------------------------
+builder.Services
+    .AddApiDocumentation()
+    .AddHealthMonitoring()
+    .AddCorsPolicy()
+    .AddGatewayServices(builder.Configuration)
+    .AddFhirClients(builder.Configuration)
+    .AddIntelligenceClient(builder.Configuration)
+    .AddNotificationServices()
+    .AddAthenaServices(builder.Configuration);
 
 var app = builder.Build();
 
