@@ -35,4 +35,9 @@ public sealed record ClinicalBundle
     /// Gets the list of clinical documents (notes, reports, etc.).
     /// </summary>
     public List<DocumentInfo> Documents { get; init; } = [];
+
+    /// <summary>
+    /// Gets the list of service requests (orders/referrals) that may require prior authorization.
+    /// </summary>
+    public List<ServiceRequestInfo> ServiceRequests { get; init; } = [];
 }
