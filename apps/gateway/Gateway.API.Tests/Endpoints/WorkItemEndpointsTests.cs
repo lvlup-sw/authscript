@@ -253,7 +253,6 @@ public sealed class WorkItemEndpointsTests
 
         var request = new RehydrateRequest
         {
-            WorkItemId = workItemId,
             AccessToken = accessToken
         };
 
@@ -343,7 +342,6 @@ public sealed class WorkItemEndpointsTests
 
         var request = new RehydrateRequest
         {
-            WorkItemId = workItemId,
             AccessToken = null // Explicitly null
         };
 

@@ -76,7 +76,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "datamodel-code-generator", marker = "extra == 'dev'", specifier = ">=0.53.0" },
+    { name = "datamodel-code-generator", marker = "extra == 'dev'", specifier = "==0.53.0" },
     { name = "fastapi", specifier = ">=0.115.0" },
     { name = "google-generativeai", specifier = ">=0.8.0" },
     { name = "httpx", specifier = ">=0.28.0" },

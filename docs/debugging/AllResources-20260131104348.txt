@@ -1,0 +1,393 @@
+2026-02-01T06:42:38.8958940Z Waiting for resource 'postgres' to enter the 'Running' state.
+2026-02-01T06:42:38.8960068Z Waiting for resource 'gateway' to enter the 'Running' state.
+2026-02-01T06:42:38.8960160Z Waiting for resource 'postgres' to enter the 'Running' state.
+2026-02-01T06:42:38.8997015Z Waiting for resource 'authscript' to enter the 'Running' state.
+2026-02-01T06:42:38.8997098Z Waiting for resource 'authscript' to enter the 'Running' state.
+2026-02-01T06:42:38.8997599Z Waiting for resource 'redis' to enter the 'Running' state.
+2026-02-01T06:42:38.8997806Z Waiting for resource 'intelligence' to enter the 'Running' state.
+2026-02-01T06:42:38.9810000Z b34288f5e516b67b9c675320d8a73d8c2c693e574748b6dc4a9b024b81396fa2
+2026-02-01T06:42:38.9840000Z fece53f7cf20727a0f7274b644f5da53d2c170f16e4f735bde4354cf0a906614
+2026-02-01T06:42:40.4216890Z 
+2026-02-01T06:42:40.4220110Z PostgreSQL Database directory appears to contain a database; Skipping initialization
+2026-02-01T06:42:40.4220720Z 
+2026-02-01T06:42:40.4617600Z 2026-02-01 06:42:40.461 UTC [1] LOG:  starting PostgreSQL 17.6 (Debian 17.6-2.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+2026-02-01T06:42:40.4621510Z 2026-02-01 06:42:40.462 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2026-02-01T06:42:40.4621740Z 2026-02-01 06:42:40.462 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2026-02-01T06:42:40.4630450Z 2026-02-01 06:42:40.463 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2026-02-01T06:42:40.4648580Z 2026-02-01 06:42:40.464 UTC [24] LOG:  database system was shut down at 2026-01-27 04:27:52 UTC
+2026-02-01T06:42:40.4689860Z 2026-02-01 06:42:40.468 UTC [1] LOG:  database system is ready to accept connections
+2026-02-01T06:42:40.6219046Z Waiting for resource 'postgres' to become healthy.
+2026-02-01T06:42:40.6219356Z Waiting for resource 'authscript' to become healthy.
+2026-02-01T06:42:40.6219361Z Waiting for resource 'authscript' to become healthy.
+2026-02-01T06:42:40.6219364Z Waiting for resource 'postgres' to become healthy.
+2026-02-01T06:42:40.7507820Z Creating database 'authscript'
+2026-02-01T06:42:40.7517049Z Waiting for resource ready to execute for 'postgres'.
+2026-02-01T06:42:40.7517085Z Waiting for resource ready to execute for 'postgres'.
+2026-02-01T06:42:40.7518321Z Waiting for resource ready to execute for 'authscript'.
+2026-02-01T06:42:40.7518366Z Waiting for resource ready to execute for 'authscript'.
+2026-02-01T06:42:40.7519358Z Finished waiting for resource 'authscript'.
+2026-02-01T06:42:40.7519365Z Finished waiting for resource 'authscript'.
+2026-02-01T06:42:40.7526220Z 2026-02-01 06:42:40.752 UTC [28] ERROR:  database "authscript" already exists
+2026-02-01T06:42:40.7527340Z 2026-02-01 06:42:40.752 UTC [28] STATEMENT:  CREATE DATABASE "authscript"
+2026-02-01T06:42:40.7551279Z Database 'authscript' already exists
+2026-02-01T06:42:40.7564356Z Finished waiting for resource 'postgres'.
+2026-02-01T06:42:40.7564474Z Finished waiting for resource 'postgres'.
+2026-02-01T06:42:40.7810000Z [1/2] STEP 1/5: FROM ghcr.io/astral-sh/uv:0.5-python3.11-bookworm-slim AS builder
+2026-02-01T06:42:40.7880000Z [1/2] STEP 2/5: WORKDIR /app
+2026-02-01T06:42:40.8020000Z --> Using cache 405e5f9781343df3de20e6c062f90f7f9058fbce49ce6f3d7932cdd733d34f2f
+2026-02-01T06:42:40.8020000Z --> 405e5f978134
+2026-02-01T06:42:40.8040000Z [1/2] STEP 3/5: COPY pyproject.toml ./
+2026-02-01T06:42:40.9050000Z --> decbb6313aac
+2026-02-01T06:42:40.9070000Z [1/2] STEP 4/5: RUN --mount=type=cache,target=/root/.cache/uv     uv venv .venv &&     uv pip install --python .venv/bin/python -r pyproject.toml
+2026-02-01T06:42:41.0620000Z Using CPython 3.11.11 interpreter at: /usr/local/bin/python3
+2026-02-01T06:42:41.0630000Z Creating virtual environment at: .venv
+2026-02-01T06:42:42.4232070Z 2:C 01 Feb 2026 06:42:42.423 # WARNING Memory overcommit must be enabled! Without it, a background save or replication may fail under low memory condition. Being disabled, it can also cause failures without low memory condition, see https://github.com/jemalloc/jemalloc/issues/1328. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
+2026-02-01T06:42:42.4235460Z 2:C 01 Feb 2026 06:42:42.423 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+2026-02-01T06:42:42.4236000Z 2:C 01 Feb 2026 06:42:42.423 * Redis version=8.2.3, bits=64, commit=00000000, modified=1, pid=2, just started
+2026-02-01T06:42:42.4236410Z 2:C 01 Feb 2026 06:42:42.423 * Configuration loaded
+2026-02-01T06:42:42.4236740Z 2:M 01 Feb 2026 06:42:42.423 * monotonic clock: POSIX clock_gettime
+2026-02-01T06:42:42.4249330Z 2:M 01 Feb 2026 06:42:42.424 * Running mode=standalone, port=6380.
+2026-02-01T06:42:42.4285530Z 2:M 01 Feb 2026 06:42:42.428 * Server initialized
+2026-02-01T06:42:42.4287110Z 2:M 01 Feb 2026 06:42:42.428 * Ready to accept connections tcp
+2026-02-01T06:42:42.4287540Z 2:M 01 Feb 2026 06:42:42.428 * Ready to accept connections tls
+2026-02-01T06:42:42.6153325Z Waiting for resource 'redis' to become healthy.
+2026-02-01T06:42:42.7024329Z Waiting for resource ready to execute for 'redis'.
+2026-02-01T06:42:42.7024556Z Finished waiting for resource 'redis'.
+2026-02-01T06:42:43.8460000Z Resolved 57 packages in 2.77s
+2026-02-01T06:42:43.8610000Z Downloading openai (1.0MiB)
+2026-02-01T06:42:43.8780000Z Downloading cryptography (4.2MiB)
+2026-02-01T06:42:44.0030000Z  Downloaded openai
+2026-02-01T06:42:44.1340000Z  Downloaded cryptography
+2026-02-01T06:42:44.1340000Z Prepared 7 packages in 281ms
+2026-02-01T06:42:44.1420000Z warning: Failed to hardlink files; falling back to full copy. This may lead to degraded performance.
+2026-02-01T06:42:44.1420000Z          If the cache and target directories are on different filesystems, hardlinking may not be supported.
+2026-02-01T06:42:44.1420000Z          If this is intentional, set `export UV_LINK_MODE=copy` or use `--link-mode=copy` to suppress this warning.
+2026-02-01T06:42:44.4500000Z Installed 57 packages in 315ms
+2026-02-01T06:42:44.4500000Z  + annotated-doc==0.0.4
+2026-02-01T06:42:44.4500000Z  + annotated-types==0.7.0
+2026-02-01T06:42:44.4500000Z  + anyio==4.12.1
+2026-02-01T06:42:44.4500000Z  + certifi==2026.1.4
+2026-02-01T06:42:44.4500000Z  + cffi==2.0.0
+2026-02-01T06:42:44.4500000Z  + charset-normalizer==3.4.4
+2026-02-01T06:42:44.4500000Z  + click==8.3.1
+2026-02-01T06:42:44.4500000Z  + cryptography==46.0.4
+2026-02-01T06:42:44.4500000Z  + distro==1.9.0
+2026-02-01T06:42:44.4500000Z  + fastapi==0.128.0
+2026-02-01T06:42:44.4500000Z  + google-ai-generativelanguage==0.6.15
+2026-02-01T06:42:44.4500000Z  + google-api-core==2.29.0
+2026-02-01T06:42:44.4500000Z  + google-api-python-client==2.188.0
+2026-02-01T06:42:44.4500000Z  + google-auth==2.48.0
+2026-02-01T06:42:44.4500000Z  + google-auth-httplib2==0.3.0
+[sys] Added new ContainerNetworkConnection: ContainerName = redis-wkuhpkbs
+2026-02-01T06:42:44.4500000Z  + google-generativeai==0.8.6
+2026-02-01T06:42:44.4500000Z  + googleapis-common-protos==1.72.0
+2026-02-01T06:42:44.4500000Z  + grpcio==1.76.0
+2026-02-01T06:42:44.4500000Z  + grpcio-status==1.71.2
+2026-02-01T06:42:44.4500000Z  + h11==0.16.0
+2026-02-01T06:42:44.4500000Z  + httpcore==1.0.9
+2026-02-01T06:42:44.4500000Z  + httplib2==0.31.2
+2026-02-01T06:42:44.4500000Z  + httptools==0.7.1
+2026-02-01T06:42:44.4500000Z  + httpx==0.28.1
+2026-02-01T06:42:44.4500000Z  + idna==3.11
+2026-02-01T06:42:44.4500000Z  + jiter==0.12.0
+2026-02-01T06:42:44.4500000Z  + openai==2.16.0
+2026-02-01T06:42:44.4500000Z  + proto-plus==1.27.0
+2026-02-01T06:42:44.4500000Z  + protobuf==5.29.5
+2026-02-01T06:42:44.4500000Z  + psycopg==3.3.2
+2026-02-01T06:42:44.4500000Z  + psycopg-binary==3.3.2
+2026-02-01T06:42:44.4500000Z  + pyasn1==0.6.2
+2026-02-01T06:42:44.4500000Z  + pyasn1-modules==0.4.2
+2026-02-01T06:42:44.4500000Z  + pycparser==3.0
+2026-02-01T06:42:44.4500000Z  + pydantic==2.12.5
+2026-02-01T06:42:44.4500000Z  + pydantic-core==2.41.5
+2026-02-01T06:42:44.4500000Z  + pydantic-settings==2.12.0
+2026-02-01T06:42:44.4500000Z  + pymupdf==1.26.7
+2026-02-01T06:42:44.4500000Z  + pymupdf4llm==0.2.9
+2026-02-01T06:42:44.4500000Z  + pyparsing==3.3.2
+2026-02-01T06:42:44.4500000Z  + python-dotenv==1.2.1
+2026-02-01T06:42:44.4500000Z  + python-multipart==0.0.22
+2026-02-01T06:42:44.4500000Z  + pyyaml==6.0.3
+2026-02-01T06:42:44.4500000Z  + requests==2.32.5
+2026-02-01T06:42:44.4500000Z  + rsa==4.9.1
+2026-02-01T06:42:44.4500000Z  + sniffio==1.3.1
+2026-02-01T06:42:44.4500000Z  + starlette==0.50.0
+2026-02-01T06:42:44.4500000Z  + tabulate==0.9.0
+2026-02-01T06:42:44.4500000Z  + tqdm==4.67.2
+2026-02-01T06:42:44.4500000Z  + typing-extensions==4.15.0
+2026-02-01T06:42:44.4500000Z  + typing-inspection==0.4.2
+2026-02-01T06:42:44.4500000Z  + uritemplate==4.2.0
+2026-02-01T06:42:44.4500000Z  + urllib3==2.6.3
+2026-02-01T06:42:44.4500000Z  + uvicorn==0.40.0
+2026-02-01T06:42:44.4500000Z  + uvloop==0.22.1
+2026-02-01T06:42:44.4500000Z  + watchfiles==1.1.1
+2026-02-01T06:42:44.4510000Z  + websockets==16.0
+2026-02-01T06:42:45.5400000Z --> bcbed5647423
+2026-02-01T06:42:45.5420000Z [1/2] STEP 5/5: COPY src/ ./src/
+2026-02-01T06:42:45.6340000Z --> 51e65d5f9a3d
+2026-02-01T06:42:45.6360000Z [2/2] STEP 1/13: FROM python:3.11-slim-bookworm AS runtime
+2026-02-01T06:42:45.6400000Z [2/2] STEP 2/13: RUN groupadd --gid 1000 appgroup &&     useradd --uid 1000 --gid appgroup --shell /bin/bash --create-home appuser
+2026-02-01T06:42:45.6460000Z --> Using cache 08f688c66fba85659e7f41b86215f7d4aa4c4a92e266d33f79c7c6bd65cffcc1
+2026-02-01T06:42:45.6460000Z --> 08f688c66fba
+2026-02-01T06:42:45.6490000Z [2/2] STEP 3/13: WORKDIR /app
+2026-02-01T06:42:45.6610000Z --> Using cache 14964234e668c0e9d058df40601e1e45b696811695b0cf061b9fe53715c8005a
+2026-02-01T06:42:45.6610000Z --> 14964234e668
+2026-02-01T06:42:45.6630000Z [2/2] STEP 4/13: COPY --from=builder /app/.venv ./.venv
+2026-02-01T06:42:47.3200000Z --> b939e5a7b279
+2026-02-01T06:42:47.3210000Z [2/2] STEP 5/13: COPY --from=builder /app/src ./src
+2026-02-01T06:42:47.4510000Z --> 8a1f757efccf
+2026-02-01T06:42:47.4530000Z [2/2] STEP 6/13: ENV PATH="/app/.venv/bin:$PATH"
+2026-02-01T06:42:47.4870000Z --> dbfcaffca11e
+2026-02-01T06:42:47.4890000Z [2/2] STEP 7/13: ENV PYTHONUNBUFFERED=1
+2026-02-01T06:42:47.5250000Z --> 59516fb0e804
+2026-02-01T06:42:47.5290000Z [2/2] STEP 8/13: ENV PYTHONDONTWRITEBYTECODE=1
+2026-02-01T06:42:47.5650000Z --> 28c597860089
+2026-02-01T06:42:47.5680000Z [2/2] STEP 9/13: USER appuser
+2026-02-01T06:42:47.6400000Z --> 3ae03e6d5964
+2026-02-01T06:42:47.6420000Z [2/2] STEP 10/13: EXPOSE 8000
+2026-02-01T06:42:47.7140000Z --> 39d0a095ad17
+2026-02-01T06:42:47.7170000Z [2/2] STEP 11/13: HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+2026-02-01T06:42:47.7690000Z time="2026-01-31T22:42:47-08:00" level=warning msg="HEALTHCHECK is not supported for OCI image format and will be ignored. Must use `docker` format"
+2026-02-01T06:42:47.7860000Z --> ba5b03c7e690
+2026-02-01T06:42:47.7880000Z [2/2] STEP 12/13: CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+2026-02-01T06:42:47.8290000Z time="2026-01-31T22:42:47-08:00" level=warning msg="HEALTHCHECK is not supported for OCI image format and will be ignored. Must use `docker` format"
+2026-02-01T06:42:47.8460000Z --> 4d2b779bc147
+2026-02-01T06:42:47.8480000Z [2/2] STEP 13/13: LABEL "com.microsoft.developer.usvc-dev.build"="0.20.7" "com.microsoft.developer.usvc-dev.group-version"="usvc-dev.developer.microsoft.com/v1"
+2026-02-01T06:42:47.8970000Z time="2026-01-31T22:42:47-08:00" level=warning msg="HEALTHCHECK is not supported for OCI image format and will be ignored. Must use `docker` format"
+2026-02-01T06:42:47.8970000Z [2/2] COMMIT intelligence:4f387fe3ad8f527fba0ed3857255808f4ae703d8
+2026-02-01T06:42:47.9120000Z --> f5a3576d67b7
+2026-02-01T06:42:47.9120000Z Successfully tagged localhost/intelligence:4f387fe3ad8f527fba0ed3857255808f4ae703d8
+2026-02-01T06:42:48.0110000Z f5a3576d67b7f4cd77ba971091932b5789b3dc4178bb9f2e8f4f4faf81cb317b
+2026-02-01T06:42:50.1642513Z Waiting for resource ready to execute for 'intelligence'.
+2026-02-01T06:42:50.1642904Z Finished waiting for resource 'intelligence'.
+2026-02-01T06:42:50.5955140Z INFO:     Started server process [1]
+2026-02-01T06:42:50.5957250Z INFO:     Waiting for application startup.
+2026-02-01T06:42:50.5957570Z Starting AuthScript Intelligence Service v0.1.0
+2026-02-01T06:42:50.5957740Z Environment: production
+2026-02-01T06:42:50.5957920Z INFO:     Application startup complete.
+2026-02-01T06:42:50.5992220Z INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2026-02-01T06:42:50.8258696Z Waiting for resource ready to execute for 'gateway'.
+2026-02-01T06:42:50.8259399Z Finished waiting for resource 'gateway'.
+2026-02-01T06:42:50.8450000Z [1/2] STEP 1/10: FROM docker.io/library/node:22-alpine AS builder
+2026-02-01T06:42:50.8510000Z [1/2] STEP 2/10: WORKDIR /app
+2026-02-01T06:42:50.8660000Z --> Using cache 67e7ca38d42169c174db16b2e751499cc11a6bb52411eae4690e381644c0d8a6
+2026-02-01T06:42:50.8660000Z --> 67e7ca38d421
+2026-02-01T06:42:50.8690000Z [1/2] STEP 3/10: COPY package.json package-lock.json ./
+2026-02-01T06:42:50.9440000Z --> Using cache 3bf8dde283ec1fd69925618087a6f04d4f71d953fc408d8f0f02484fb46d2552
+2026-02-01T06:42:50.9440000Z --> 3bf8dde283ec
+2026-02-01T06:42:50.9460000Z [1/2] STEP 4/10: COPY shared/types ./shared/types
+2026-02-01T06:42:51.0670000Z --> a00eaca004e1
+2026-02-01T06:42:51.0730000Z [1/2] STEP 5/10: COPY shared/validation ./shared/validation
+2026-02-01T06:42:51.1840000Z --> aee03dd0b908
+2026-02-01T06:42:51.1880000Z [1/2] STEP 6/10: COPY apps/dashboard/package.json ./apps/dashboard/
+2026-02-01T06:42:51.2920000Z --> 00a71781c282
+2026-02-01T06:42:51.2940000Z [1/2] STEP 7/10: RUN --mount=type=cache,target=/root/.npm     npm ci --workspace=apps/dashboard --workspace=shared/types --workspace=shared/validation
+2026-02-01T06:42:52.0550000Z /home/reedsalus/Documents/code/prior-auth/apps/gateway/Gateway.API/bin/Debug/net10.0/Gateway.API
+2026-02-01T06:42:52.1890000Z =info: Gateway.API.Services.Polling.AthenaPollingService[0]
+2026-02-01T06:42:52.1890000Z       AthenaPollingService starting
+2026-02-01T06:42:52.1910000Z info: System.Net.Http.HttpClient.Athena.LogicalHandler[100]
+2026-02-01T06:42:52.1910000Z       Start processing HTTP request POST https://api.preview.platform.athenahealth.com/oauth2/v1/token
+2026-02-01T06:42:52.1920000Z info: System.Net.Http.HttpClient.Athena.ClientHandler[100]
+2026-02-01T06:42:52.1920000Z       Sending HTTP request POST https://api.preview.platform.athenahealth.com/oauth2/v1/token
+2026-02-01T06:42:52.2000000Z info: Microsoft.Hosting.Lifetime[14]
+2026-02-01T06:42:52.2000000Z       Now listening on: http://localhost:37199
+2026-02-01T06:42:52.2000000Z info: Microsoft.Hosting.Lifetime[0]
+2026-02-01T06:42:52.2000000Z       Application started. Press Ctrl+C to shut down.
+2026-02-01T06:42:52.2000000Z info: Microsoft.Hosting.Lifetime[0]
+2026-02-01T06:42:52.2000000Z       Hosting environment: Production
+2026-02-01T06:42:52.2000000Z info: Microsoft.Hosting.Lifetime[0]
+2026-02-01T06:42:52.2000000Z       Content root path: /home/reedsalus/Documents/code/prior-auth/apps/gateway/Gateway.API
+2026-02-01T06:42:52.6370000Z info: System.Net.Http.HttpClient.Athena.ClientHandler[101]
+2026-02-01T06:42:52.6370000Z       Received HTTP response headers after 437.4134ms - 400
+2026-02-01T06:42:52.6370000Z info: System.Net.Http.HttpClient.Athena.LogicalHandler[101]
+2026-02-01T06:42:52.6370000Z       End processing HTTP request after 447.2569ms - 400
+2026-02-01T06:42:52.6380000Z warn: Gateway.API.Services.Polling.AthenaPollingService[0]
+2026-02-01T06:42:52.6380000Z       Unable to acquire Athena access token for polling
+2026-02-01T06:42:54.5040000Z 
+2026-02-01T06:42:54.5040000Z added 456 packages, and audited 460 packages in 3s
+2026-02-01T06:42:54.5040000Z 
+2026-02-01T06:42:54.5040000Z 101 packages are looking for funding
+2026-02-01T06:42:54.5040000Z   run `npm fund` for details
+2026-02-01T06:42:54.5050000Z 
+2026-02-01T06:42:54.5050000Z found 0 vulnerabilities
+[sys] Added new ContainerNetworkConnection: ContainerName = postgres-nwfcxhuc
+2026-02-01T06:42:56.2880000Z --> 527ee7808cd9
+2026-02-01T06:42:56.2900000Z [1/2] STEP 8/10: RUN npm run build -w shared/types && npm run build -w shared/validation
+2026-02-01T06:42:56.5300000Z 
+2026-02-01T06:42:56.5300000Z > @authscript/types@0.1.0 build
+2026-02-01T06:42:56.5300000Z > tsc
+2026-02-01T06:42:56.5300000Z 
+2026-02-01T06:42:57.6390000Z info: System.Net.Http.HttpClient.Athena.LogicalHandler[100]
+2026-02-01T06:42:57.6390000Z       Start processing HTTP request POST https://api.preview.platform.athenahealth.com/oauth2/v1/token
+2026-02-01T06:42:57.6390000Z info: System.Net.Http.HttpClient.Athena.ClientHandler[100]
+2026-02-01T06:42:57.6390000Z       Sending HTTP request POST https://api.preview.platform.athenahealth.com/oauth2/v1/token
+2026-02-01T06:42:57.9920000Z info: System.Net.Http.HttpClient.Athena.ClientHandler[101]
+2026-02-01T06:42:57.9920000Z       Received HTTP response headers after 352.8631ms - 400
+2026-02-01T06:42:57.9920000Z info: System.Net.Http.HttpClient.Athena.LogicalHandler[101]
+2026-02-01T06:42:57.9920000Z       End processing HTTP request after 352.9773ms - 400
+2026-02-01T06:42:57.9920000Z warn: Gateway.API.Services.Polling.AthenaPollingService[0]
+2026-02-01T06:42:57.9920000Z       Unable to acquire Athena access token for polling
+2026-02-01T06:42:59.1070000Z 
+2026-02-01T06:42:59.1070000Z > @authscript/validation@0.1.0 build
+2026-02-01T06:42:59.1070000Z > tsc
+2026-02-01T06:42:59.1070000Z 
+2026-02-01T06:42:59.9220000Z --> f18f5fc0c2c1
+2026-02-01T06:42:59.9260000Z [1/2] STEP 9/10: COPY apps/dashboard ./apps/dashboard
+2026-02-01T06:43:00.0350000Z --> 6a1b8f2a1e05
+2026-02-01T06:43:00.0370000Z [1/2] STEP 10/10: RUN npm run build -w apps/dashboard
+2026-02-01T06:43:00.2340000Z 
+2026-02-01T06:43:00.2340000Z > authscript-dashboard@0.1.0 build
+2026-02-01T06:43:00.2340000Z > tsc && vite build
+2026-02-01T06:43:00.2340000Z 
+2026-02-01T06:43:02.1630000Z vite v6.4.1 building for production...
+2026-02-01T06:43:02.2110000Z transforming...
+2026-02-01T06:43:02.9930000Z info: System.Net.Http.HttpClient.Athena.LogicalHandler[100]
+2026-02-01T06:43:02.9930000Z       Start processing HTTP request POST https://api.preview.platform.athenahealth.com/oauth2/v1/token
+2026-02-01T06:43:02.9930000Z info: System.Net.Http.HttpClient.Athena.ClientHandler[100]
+2026-02-01T06:43:02.9930000Z       Sending HTTP request POST https://api.preview.platform.athenahealth.com/oauth2/v1/token
+2026-02-01T06:43:03.1750000Z info: System.Net.Http.HttpClient.Athena.ClientHandler[101]
+2026-02-01T06:43:03.1750000Z       Received HTTP response headers after 181.7982ms - 400
+2026-02-01T06:43:03.1750000Z info: System.Net.Http.HttpClient.Athena.LogicalHandler[101]
+2026-02-01T06:43:03.1750000Z       End processing HTTP request after 181.8919ms - 400
+2026-02-01T06:43:03.1750000Z warn: Gateway.API.Services.Polling.AthenaPollingService[0]
+2026-02-01T06:43:03.1750000Z       Unable to acquire Athena access token for polling
+2026-02-01T06:43:03.2190000Z ✓ 1791 modules transformed.
+2026-02-01T06:43:03.3260000Z rendering chunks...
+2026-02-01T06:43:03.3300000Z computing gzip size...
+2026-02-01T06:43:03.3390000Z dist/index.html                   0.49 kB │ gzip:   0.32 kB
+2026-02-01T06:43:03.3390000Z dist/assets/index-DT0jeGy8.css   39.66 kB │ gzip:   7.46 kB
+2026-02-01T06:43:03.3390000Z dist/assets/index-B5LGySFH.js   372.88 kB │ gzip: 115.54 kB
+2026-02-01T06:43:03.3390000Z ✓ built in 1.16s
+2026-02-01T06:43:03.5300000Z --> d7cf409011b2
+2026-02-01T06:43:03.5320000Z [2/2] STEP 1/7: FROM docker.io/library/nginx:1.27-alpine
+2026-02-01T06:43:03.5360000Z [2/2] STEP 2/7: COPY --from=builder /app/apps/dashboard/dist /usr/share/nginx/html
+2026-02-01T06:43:03.6190000Z --> Using cache 10484c7ef1dcd8ea872996ab702f174e258d0e89761c9cb1e35d81eea2a1fb01
+2026-02-01T06:43:03.6190000Z --> 10484c7ef1dc
+2026-02-01T06:43:03.6240000Z [2/2] STEP 3/7: COPY apps/dashboard/nginx.conf /etc/nginx/conf.d/default.conf
+2026-02-01T06:43:03.7070000Z --> Using cache 669a97f68f1d5021199a996326447a36871f7579507030fa37b22f3afd95161f
+2026-02-01T06:43:03.7070000Z --> 669a97f68f1d
+2026-02-01T06:43:03.7090000Z [2/2] STEP 4/7: EXPOSE 80
+2026-02-01T06:43:03.7280000Z --> Using cache 46117dc3ac0441713e1f3304012bad359f76b90c4f053f396722883b5619b95f
+2026-02-01T06:43:03.7280000Z --> 46117dc3ac04
+2026-02-01T06:43:03.7310000Z [2/2] STEP 5/7: HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3     CMD wget --no-verbose --tries=1 --spider http://localhost/health || exit 1
+2026-02-01T06:43:03.7510000Z --> Using cache 7ea7a4948380701f196eeb4bfa37e9e7967fee7c648f3db482d42e10ced686dd
+2026-02-01T06:43:03.7510000Z --> 7ea7a4948380
+2026-02-01T06:43:03.7530000Z [2/2] STEP 6/7: CMD ["nginx", "-g", "daemon off;"]
+2026-02-01T06:43:03.7680000Z --> Using cache 5bb871a4fd04725b0f1e9abc2db1297a47921ffbe984bda4eb32f9ca129d197f
+2026-02-01T06:43:03.7680000Z --> 5bb871a4fd04
+2026-02-01T06:43:03.7710000Z [2/2] STEP 7/7: LABEL "com.microsoft.developer.usvc-dev.build"="0.20.7" "com.microsoft.developer.usvc-dev.group-version"="usvc-dev.developer.microsoft.com/v1"
+2026-02-01T06:43:03.7940000Z --> Using cache 1419a9766c2834b2d084dd14f55dd87d571b035229d56811af5ce6a4c4577027
+2026-02-01T06:43:03.7940000Z [2/2] COMMIT dashboard:36785d8319c6e7e90133b08a14da2de9bb787b33
+2026-02-01T06:43:03.8080000Z --> 1419a9766c28
+2026-02-01T06:43:03.8080000Z Successfully tagged localhost/dashboard:36785d8319c6e7e90133b08a14da2de9bb787b33
+2026-02-01T06:43:03.8080000Z Successfully tagged localhost/dashboard:1735908701765438d32a8b4cd85fa0881542895f
+2026-02-01T06:43:03.8080000Z Successfully tagged localhost/dashboard:1f42bd4a945efd603ac453b026be4069acd960e4
+2026-02-01T06:43:03.9790000Z 1419a9766c2834b2d084dd14f55dd87d571b035229d56811af5ce6a4c4577027
+[sys] Added new ContainerNetworkConnection: ContainerName = dashboard-uggvputj
+[sys] Failed to start Container: ContainerName = dashboard-uggvputj, ContainerId = 2643e30f21be:
+[sys] container 'dashboard-uggvputj' start failed (exit code 1)
+[sys] not all requested objects were returned
+[sys] not all containers were started, expected 1 but got 0
+[sys] Added new ContainerNetworkConnection: ContainerName = intelligence-qdsanenp
+2026-02-01T06:43:05.8811420Z /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+2026-02-01T06:43:05.8813720Z /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+2026-02-01T06:43:05.8816350Z /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+2026-02-01T06:43:05.8850800Z 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+2026-02-01T06:43:05.8965030Z 10-listen-on-ipv6-by-default.sh: info: /etc/nginx/conf.d/default.conf differs from the packaged version
+2026-02-01T06:43:05.8965920Z /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+2026-02-01T06:43:05.8966990Z /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+2026-02-01T06:43:05.8984550Z /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+2026-02-01T06:43:05.8993070Z /docker-entrypoint.sh: Configuration complete; ready for start up
+2026-02-01T06:43:05.9041210Z 2026/02/01 06:43:05 [emerg] 1#1: host not found in upstream "gateway" in /etc/nginx/conf.d/default.conf:28
+2026-02-01T06:43:05.9041570Z nginx: [emerg] host not found in upstream "gateway" in /etc/nginx/conf.d/default.conf:28
+2026-02-01T06:43:08.1750000Z info: System.Net.Http.HttpClient.Athena.LogicalHandler[100]
+2026-02-01T06:43:08.1750000Z       Start processing HTTP request POST https://api.preview.platform.athenahealth.com/oauth2/v1/token
+2026-02-01T06:43:08.1750000Z info: System.Net.Http.HttpClient.Athena.ClientHandler[100]
+2026-02-01T06:43:08.1750000Z       Sending HTTP request POST https://api.preview.platform.athenahealth.com/oauth2/v1/token
+2026-02-01T06:43:08.5370000Z info: System.Net.Http.HttpClient.Athena.ClientHandler[101]
+2026-02-01T06:43:08.5370000Z       Received HTTP response headers after 361.7727ms - 400
+2026-02-01T06:43:08.5370000Z info: System.Net.Http.HttpClient.Athena.LogicalHandler[101]
+2026-02-01T06:43:08.5370000Z       End processing HTTP request after 361.8546ms - 400
+2026-02-01T06:43:08.5370000Z warn: Gateway.API.Services.Polling.AthenaPollingService[0]
+2026-02-01T06:43:08.5370000Z       Unable to acquire Athena access token for polling
+2026-02-01T06:43:12.7000000Z info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+2026-02-01T06:43:12.7000000Z       Request starting HTTP/1.1 GET http://localhost:5000/ - - -
+2026-02-01T06:43:12.7650000Z info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+2026-02-01T06:43:12.7650000Z       Request finished HTTP/1.1 GET http://localhost:5000/ - 404 0 - 63.9651ms
+2026-02-01T06:43:12.7650000Z info: Microsoft.AspNetCore.Hosting.Diagnostics[16]
+2026-02-01T06:43:12.7650000Z       Request reached the end of the middleware pipeline without being handled by application code. Request path: GET http://localhost:5000/, Response status code: 404
+2026-02-01T06:43:13.5380000Z info: System.Net.Http.HttpClient.Athena.LogicalHandler[100]
+2026-02-01T06:43:13.5380000Z       Start processing HTTP request POST https://api.preview.platform.athenahealth.com/oauth2/v1/token
+2026-02-01T06:43:13.5380000Z info: System.Net.Http.HttpClient.Athena.ClientHandler[100]
+2026-02-01T06:43:13.5380000Z       Sending HTTP request POST https://api.preview.platform.athenahealth.com/oauth2/v1/token
+2026-02-01T06:43:13.7190000Z info: System.Net.Http.HttpClient.Athena.ClientHandler[101]
+2026-02-01T06:43:13.7190000Z       Received HTTP response headers after 179.5773ms - 400
+2026-02-01T06:43:13.7190000Z info: System.Net.Http.HttpClient.Athena.LogicalHandler[101]
+2026-02-01T06:43:13.7190000Z       End processing HTTP request after 179.74ms - 400
+2026-02-01T06:43:13.7190000Z warn: Gateway.API.Services.Polling.AthenaPollingService[0]
+2026-02-01T06:43:13.7190000Z       Unable to acquire Athena access token for polling
+2026-02-01T06:43:17.5840000Z info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+2026-02-01T06:43:17.5840000Z       Request starting HTTP/1.1 GET http://localhost:5000/scalar/v1 - - -
+2026-02-01T06:43:17.5840000Z info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+2026-02-01T06:43:17.5840000Z       Request finished HTTP/1.1 GET http://localhost:5000/scalar/v1 - 404 0 - 0.3428ms
+2026-02-01T06:43:17.5840000Z info: Microsoft.AspNetCore.Hosting.Diagnostics[16]
+2026-02-01T06:43:17.5840000Z       Request reached the end of the middleware pipeline without being handled by application code. Request path: GET http://localhost:5000/scalar/v1, Response status code: 404
+2026-02-01T06:43:18.7180000Z info: System.Net.Http.HttpClient.Athena.LogicalHandler[100]
+2026-02-01T06:43:18.7180000Z       Start processing HTTP request POST https://api.preview.platform.athenahealth.com/oauth2/v1/token
+2026-02-01T06:43:18.7180000Z info: System.Net.Http.HttpClient.Athena.ClientHandler[100]
+2026-02-01T06:43:18.7180000Z       Sending HTTP request POST https://api.preview.platform.athenahealth.com/oauth2/v1/token
+2026-02-01T06:43:19.0990000Z info: System.Net.Http.HttpClient.Athena.ClientHandler[101]
+2026-02-01T06:43:19.0990000Z       Received HTTP response headers after 381.7075ms - 400
+2026-02-01T06:43:19.0990000Z info: System.Net.Http.HttpClient.Athena.LogicalHandler[101]
+2026-02-01T06:43:19.0990000Z       End processing HTTP request after 381.7731ms - 400
+2026-02-01T06:43:19.0990000Z warn: Gateway.API.Services.Polling.AthenaPollingService[0]
+2026-02-01T06:43:19.0990000Z       Unable to acquire Athena access token for polling
+2026-02-01T06:43:24.1000000Z info: System.Net.Http.HttpClient.Athena.LogicalHandler[100]
+2026-02-01T06:43:24.1000000Z       Start processing HTTP request POST https://api.preview.platform.athenahealth.com/oauth2/v1/token
+2026-02-01T06:43:24.1000000Z info: System.Net.Http.HttpClient.Athena.ClientHandler[100]
+2026-02-01T06:43:24.1000000Z       Sending HTTP request POST https://api.preview.platform.athenahealth.com/oauth2/v1/token
+2026-02-01T06:43:24.1840000Z info: System.Net.Http.HttpClient.Athena.ClientHandler[101]
+2026-02-01T06:43:24.1840000Z       Received HTTP response headers after 85.0046ms - 429
+2026-02-01T06:43:24.1840000Z info: System.Net.Http.HttpClient.Athena.LogicalHandler[101]
+2026-02-01T06:43:24.1840000Z       End processing HTTP request after 85.1582ms - 429
+2026-02-01T06:43:24.1840000Z warn: Gateway.API.Services.Polling.AthenaPollingService[0]
+2026-02-01T06:43:24.1840000Z       Unable to acquire Athena access token for polling
+2026-02-01T06:43:29.1840000Z info: System.Net.Http.HttpClient.Athena.LogicalHandler[100]
+2026-02-01T06:43:29.1840000Z       Start processing HTTP request POST https://api.preview.platform.athenahealth.com/oauth2/v1/token
+2026-02-01T06:43:29.1840000Z info: System.Net.Http.HttpClient.Athena.ClientHandler[100]
+2026-02-01T06:43:29.1840000Z       Sending HTTP request POST https://api.preview.platform.athenahealth.com/oauth2/v1/token
+2026-02-01T06:43:29.2570000Z info: System.Net.Http.HttpClient.Athena.ClientHandler[101]
+2026-02-01T06:43:29.2570000Z       Received HTTP response headers after 72.5991ms - 429
+2026-02-01T06:43:29.2570000Z info: System.Net.Http.HttpClient.Athena.LogicalHandler[101]
+2026-02-01T06:43:29.2570000Z       End processing HTTP request after 72.7017ms - 429
+2026-02-01T06:43:29.2570000Z warn: Gateway.API.Services.Polling.AthenaPollingService[0]
+2026-02-01T06:43:29.2570000Z       Unable to acquire Athena access token for polling
+2026-02-01T06:43:34.2580000Z info: System.Net.Http.HttpClient.Athena.LogicalHandler[100]
+2026-02-01T06:43:34.2580000Z       Start processing HTTP request POST https://api.preview.platform.athenahealth.com/oauth2/v1/token
+2026-02-01T06:43:34.2580000Z info: System.Net.Http.HttpClient.Athena.ClientHandler[100]
+2026-02-01T06:43:34.2580000Z       Sending HTTP request POST https://api.preview.platform.athenahealth.com/oauth2/v1/token
+2026-02-01T06:43:34.3530000Z info: System.Net.Http.HttpClient.Athena.ClientHandler[101]
+2026-02-01T06:43:34.3530000Z       Received HTTP response headers after 96.6742ms - 429
+2026-02-01T06:43:34.3530000Z info: System.Net.Http.HttpClient.Athena.LogicalHandler[101]
+2026-02-01T06:43:34.3530000Z       End processing HTTP request after 96.7621ms - 429
+2026-02-01T06:43:34.3530000Z warn: Gateway.API.Services.Polling.AthenaPollingService[0]
+2026-02-01T06:43:34.3530000Z       Unable to acquire Athena access token for polling
+2026-02-01T06:43:39.3550000Z info: System.Net.Http.HttpClient.Athena.LogicalHandler[100]
+2026-02-01T06:43:39.3550000Z       Start processing HTTP request POST https://api.preview.platform.athenahealth.com/oauth2/v1/token
+2026-02-01T06:43:39.3550000Z info: System.Net.Http.HttpClient.Athena.ClientHandler[100]
+2026-02-01T06:43:39.3550000Z       Sending HTTP request POST https://api.preview.platform.athenahealth.com/oauth2/v1/token
+2026-02-01T06:43:39.4290000Z info: System.Net.Http.HttpClient.Athena.ClientHandler[101]
+2026-02-01T06:43:39.4290000Z       Received HTTP response headers after 75.3008ms - 429
+2026-02-01T06:43:39.4290000Z info: System.Net.Http.HttpClient.Athena.LogicalHandler[101]
+2026-02-01T06:43:39.4290000Z       End processing HTTP request after 75.4025ms - 429
+2026-02-01T06:43:39.4290000Z warn: Gateway.API.Services.Polling.AthenaPollingService[0]
+2026-02-01T06:43:39.4290000Z       Unable to acquire Athena access token for polling
+2026-02-01T06:43:44.4300000Z info: System.Net.Http.HttpClient.Athena.LogicalHandler[100]
+2026-02-01T06:43:44.4300000Z       Start processing HTTP request POST https://api.preview.platform.athenahealth.com/oauth2/v1/token
+2026-02-01T06:43:44.4300000Z info: System.Net.Http.HttpClient.Athena.ClientHandler[100]
+2026-02-01T06:43:44.4300000Z       Sending HTTP request POST https://api.preview.platform.athenahealth.com/oauth2/v1/token
+2026-02-01T06:43:44.5040000Z info: System.Net.Http.HttpClient.Athena.ClientHandler[101]
+2026-02-01T06:43:44.5040000Z       Received HTTP response headers after 74.5315ms - 429
+2026-02-01T06:43:44.5040000Z info: System.Net.Http.HttpClient.Athena.LogicalHandler[101]
+2026-02-01T06:43:44.5040000Z       End processing HTTP request after 74.6097ms - 429
+2026-02-01T06:43:44.5040000Z warn: Gateway.API.Services.Polling.AthenaPollingService[0]
+2026-02-01T06:43:44.5040000Z       Unable to acquire Athena access token for polling

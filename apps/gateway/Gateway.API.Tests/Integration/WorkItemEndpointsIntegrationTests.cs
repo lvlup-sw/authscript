@@ -211,7 +211,7 @@ public class WorkItemEndpointsIntegrationTests
     {
         await _fixture.Host.Scenario(s =>
         {
-            s.Post.Json(new RehydrateRequest { WorkItemId = "nonexistent-id" })
+            s.Post.Json(new RehydrateRequest())
                 .ToUrl("/api/work-items/nonexistent-id/rehydrate");
             s.StatusCodeShouldBe(404);
         }).ConfigureAwait(false);
@@ -238,11 +238,7 @@ public class WorkItemEndpointsIntegrationTests
         // Rehydrate with access token
         var result = await _fixture.Host.Scenario(s =>
         {
-            s.Post.Json(new RehydrateRequest
-                {
-                    WorkItemId = created!.Id,
-                    AccessToken = "test-access-token"
-                })
+            s.Post.Json(new RehydrateRequest { AccessToken = "test-access-token" })
                 .ToUrl($"/api/work-items/{created!.Id}/rehydrate");
             s.StatusCodeShouldBeOk();
         }).ConfigureAwait(false);

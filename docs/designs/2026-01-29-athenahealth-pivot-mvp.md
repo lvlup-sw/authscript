@@ -99,7 +99,16 @@ public sealed class AthenaTokenStrategy : ITokenAcquisitionStrategy
 
 #### 2. Gateway - Encounter Polling Service
 
-New `IHostedService` for encounter detection:
+New `IHostedService` for encounter detection. The service polls for finished encounters; ServiceRequest resources are fetched during hydration to identify orders requiring PA.
+
+**Trigger Flow:**
+```
+Poll Encounter?status=finished
+  └─► Queue encounter ID
+      └─► EncounterProcessor hydrates clinical bundle (including ServiceRequest)
+          └─► Intelligence service filters for PA-requiring CPT codes
+              └─► Create work item per qualifying order
+```
 
 ```csharp
 public sealed class AthenaPollingService : BackgroundService
@@ -113,6 +122,7 @@ public sealed class AthenaPollingService : BackgroundService
 
             foreach (var encounter in newEncounters)
             {
+                // Queue for processing; hydration fetches ServiceRequest
                 await _processingQueue.EnqueueAsync(encounter.Id);
             }
 
@@ -122,6 +132,12 @@ public sealed class AthenaPollingService : BackgroundService
     }
 }
 ```
+
+**Why Encounter-First (not Order-First):**
+- Clinical documentation is complete when encounter is finished
+- Provider has finalized treatment decisions
+- LLM has maximum context for PA form generation
+- Simpler deduplication (by encounter ID)
 
 #### 3. Gateway - SSE Notification Hub
 
@@ -563,6 +579,51 @@ stateDiagram-v2
     Error --> Idle: Dismissed
 ```
 
+#### Work Item States and User Workflow
+
+**State Machine:**
+
+```mermaid
+stateDiagram-v2
+    [*] --> NoAction: No PA-requiring orders
+    [*] --> ReadyForReview: All data complete
+    [*] --> MissingData: Required fields incomplete
+
+    MissingData --> ReadyForReview: User clicks "Update" + data found
+    MissingData --> PayerReqNotMet: User marks as unsubmittable
+
+    ReadyForReview --> Submitted: User approves
+
+    Submitted --> [*]
+    PayerReqNotMet --> [*]
+    NoAction --> [*]
+```
+
+**Work Item States:**
+
+| State | Description | User Actions |
+|-------|-------------|--------------|
+| `NO_PA_REQUIRED` | AI determined no orders need PA | None (auto-closed) |
+| `READY_FOR_REVIEW` | Form complete, awaiting approval | Review, Edit, Approve |
+| `MISSING_DATA` | Required fields incomplete | "Update with New Data", "Payer Requirements Not Met" |
+| `PAYER_REQUIREMENTS_NOT_MET` | User marked as unsubmittable | None (terminal) |
+| `SUBMITTED` | PDF written to chart | None (user faxes manually) |
+
+**User Workflow Paths (from Product Team):**
+
+**Path A: Data Complete**
+1. Work item appears in "Ready for Review" queue
+2. User reviews pre-filled form for accuracy
+3. User edits fields if needed
+4. User clicks "Approve" → PDF written to chart
+5. User opens document in athenaNet and faxes to payer
+
+**Path B: Data Incomplete**
+1. Work item appears in "Missing Data" queue
+2. User reviews what's missing
+3. **Option 1:** User clicks "Update with New Data" → system re-fetches from EHR → re-analyzes
+4. **Option 2:** User clicks "Payer Requirements Not Met" → work item closed
+
 #### Pending Items (Require Wireframes/Environment)
 
 - [ ] Visual design for embedded app chrome (athenahealth style compliance)
@@ -570,6 +631,7 @@ stateDiagram-v2
 - [ ] Mobile/responsive layout requirements
 - [ ] Error state designs (auth failure, analysis failure, network issues)
 - [ ] Provider feedback capture UI (for accuracy improvement loop)
+- [ ] "Copy Payer Fax Number" action (from reconciliation doc)
 
 ### Data Flow
 
@@ -581,22 +643,50 @@ sequenceDiagram
     participant I as Intelligence
     participant D as Dashboard
 
-    P->>A: 1. Sign encounter
-    G->>A: 2. Poll GET /Encounter (every 3-5s)
-    A-->>G: 3. New finished encounter
+    P->>A: 1. Sign encounter (marks as finished)
+    G->>A: 2. Poll GET /Encounter?status=finished (every 3-5s)
+    A-->>G: 3. New finished encounter detected
     G->>A: 4. Hydrate patient context (parallel)
-    Note over G,A: GET /Patient, /Condition, /Observation, /DocumentReference
-    A-->>G: 5. Clinical data bundle
+    Note over G,A: GET /Patient, /Condition, /Observation, /DocumentReference, /ServiceRequest
+    A-->>G: 5. Clinical data bundle (includes orders)
     G->>I: 6. POST /analyze (FHIR bundle)
-    I->>I: 7. LLM extracts rationale, matches policy
-    I-->>G: 8. PA form data (JSON)
-    G->>G: 9. Stamp PDF (iText7)
-    G->>D: 10. SSE notification "Ready for Review"
-    D-->>P: 11. "PA Draft Ready" appears in chart
-    P->>D: 12. Review and confirm
+    I->>I: 7a. Filter ServiceRequests for PA-requiring CPT codes
+    I->>I: 7b. LLM extracts facts, evaluates criteria
+    I-->>G: 8. PA form data (JSON) with work item status
+    alt All data complete
+        G->>D: 9a. SSE notification "Ready for Review"
+    else Missing required data
+        G->>D: 9b. SSE notification "Missing Data"
+    end
+    D-->>P: 10. Work item appears in dashboard
+    P->>D: 11. Review form, edit if needed
+    P->>D: 12. Approve for submission
     D->>G: 13. POST /submit
-    G->>A: 14. POST /DocumentReference (PDF binary)
-    A-->>P: 15. PDF in patient chart
+    G->>G: 14. Stamp PDF (iText7)
+    G->>A: 15. POST /DocumentReference (PDF binary)
+    A-->>P: 16. PDF in patient chart (user faxes manually)
+```
+
+### Missing Data Re-Hydration Flow
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant D as Dashboard
+    participant G as Gateway
+    participant A as athenahealth
+    participant I as Intelligence
+
+    U->>D: Click "Update with New Data"
+    D->>G: POST /work-items/{id}/rehydrate
+    G->>A: GET /DocumentReference (new notes)
+    G->>A: GET /Observation (new labs)
+    A-->>G: Updated clinical data
+    G->>I: POST /analyze (updated bundle)
+    I->>I: Re-evaluate criteria with new data
+    I-->>G: Updated PA form + status
+    G->>D: SSE notification (status may change)
+    D-->>U: Work item refreshed
 ```
 
 ### Certified API Mapping
@@ -608,7 +698,10 @@ sequenceDiagram
 | `GET /Condition` | Problem list | `system/Condition.read` |
 | `GET /Observation` | Labs, vitals | `system/Observation.read` |
 | `GET /DocumentReference` | Clinical notes | `system/DocumentReference.read` |
+| `GET /ServiceRequest` | Orders/referrals (Intent to Treat) | `system/ServiceRequest.read` |
 | `POST /DocumentReference` | PDF write-back | `system/DocumentReference.write` |
+
+> **Note:** ServiceRequest is confirmed available in athenahealth's FHIR R4 Certified API tier per their [Implementation Guide](https://sb.docs.mydata.athenahealth.com/fhir-r4/index.html).
 
 ### Validated API Constraints
 
@@ -648,11 +741,45 @@ Safety Margin:
 | Component | Status | Changes Needed |
 |-----------|--------|----------------|
 | `ITokenAcquisitionStrategy` | In progress (Epic plan) | Add athena implementation |
-| `IFhirClient` | Exists, abstracted | None |
+| `IFhirClient` | Exists, abstracted | Add `SearchServiceRequestsAsync()` method |
+| `ClinicalBundle` | Exists | Add `ServiceRequests` property |
+| `FhirDataAggregator` | Exists | Add ServiceRequest fetch to parallel hydration |
 | Intelligence service | Exists (stubbed) | Implement LangGraph pipeline |
 | Dashboard | Exists (stubbed) | Implement SMART OAuth, SSE client |
 | PDF generation (iText7) | Exists | None |
 | PostgreSQL (Aspire) | Exists | Add pgvector extension, policy tables |
+
+### Required Model Changes
+
+**`ClinicalBundle`** — Add ServiceRequest collection:
+```csharp
+/// <summary>
+/// Gets the list of orders/referrals (ServiceRequest resources).
+/// Used to identify treatments requiring prior authorization.
+/// </summary>
+public List<ServiceRequestInfo> ServiceRequests { get; init; } = [];
+```
+
+**`ServiceRequestInfo`** — New model (to be created):
+```csharp
+public sealed record ServiceRequestInfo
+{
+    public required string Id { get; init; }
+    public required string Status { get; init; }  // active, completed, cancelled
+    public required CodeableConcept Code { get; init; }  // CPT code
+    public string? EncounterId { get; init; }
+    public DateTimeOffset? AuthoredOn { get; init; }
+}
+```
+
+**`IFhirClient`** — Add method:
+```csharp
+Task<List<ServiceRequestInfo>> SearchServiceRequestsAsync(
+    string patientId,
+    string? encounterId,
+    string accessToken,
+    CancellationToken ct = default);
+```
 
 ### New Components
 
@@ -663,17 +790,23 @@ Safety Margin:
 | `AthenaPollingService` | Gateway | P0 |
 | SSE notification hub | Gateway | P1 |
 | DocumentReference write endpoint | Gateway | P1 |
+| Work item state management | Gateway | P1 |
+| Re-hydration endpoint (`POST /work-items/{id}/rehydrate`) | Gateway | P1 |
 | **Intelligence** | | |
 | LangGraph analysis pipeline | Intelligence | P0 |
 | Policy vector store (pgvector) | Intelligence | P0 |
 | Clinical fact extraction stage | Intelligence | P0 |
 | Criteria evaluation stage | Intelligence | P0 |
+| ServiceRequest CPT filtering | Intelligence | P0 |
 | Streaming analysis endpoint | Intelligence | P1 |
 | **Dashboard** | | |
 | SMART OAuth flow (athenahealth) | Dashboard | P0 |
 | SSE client hook | Dashboard | P1 |
 | Evidence/form data wiring | Dashboard | P1 |
 | Submit action endpoint | Dashboard | P1 |
+| "Update with New Data" action | Dashboard | P1 |
+| "Payer Requirements Not Met" action | Dashboard | P1 |
+| Copy payer fax number action | Dashboard | P2 |
 
 ### Configuration
 
@@ -700,7 +833,10 @@ Safety Margin:
 | `AthenaTokenStrategy` | OAuth flow, token caching, refresh |
 | `AthenaPollingService` | Interval timing, deduplication |
 | SSE hub | Client connection, message serialization |
+| Work item state transitions | Valid transitions, invalid transition rejection |
+| Re-hydration endpoint | Fetches new data, triggers re-analysis |
 | **Intelligence** | |
+| ServiceRequest CPT filtering | Identifies PA-requiring codes, ignores others |
 | Policy retrieval | Vector search accuracy, filtering by procedure code |
 | Fact extraction | Schema compliance, source citation accuracy |
 | Criteria evaluation | MET/NOT_MET/UNCLEAR logic, evidence linking |
@@ -708,6 +844,7 @@ Safety Margin:
 | **Dashboard** | |
 | SMART OAuth | State management, token storage, redirect handling |
 | SSE hook | Connection lifecycle, event parsing, reconnection |
+| Work item actions | Update, Payer Req Not Met, Submit |
 
 ### Integration Tests (Sandbox)
 
@@ -833,3 +970,4 @@ Scripted walkthrough with sandbox data:
 - [Architecture Proposal](../pitch/authscript-pivot-architecture-proposal.md)
 - [Viability Addendum](../pitch/viability-addendum.md)
 - [Epic FHIR Integration Design](2026-01-28-epic-fhir-integration.md)
+- [Design Reconciliation](../pitch/design-reconciliation.md) - Product workflow alignment
