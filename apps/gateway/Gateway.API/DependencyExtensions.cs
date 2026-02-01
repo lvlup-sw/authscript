@@ -54,6 +54,9 @@ public static class DependencyExtensions
         services.AddScoped<IPdfFormStamper, PdfFormStamper>();
         services.AddSingleton<IAnalysisResultStore, AnalysisResultStore>();
 
+        // Work item storage (in-memory for MVP)
+        services.AddSingleton<IWorkItemStore, InMemoryWorkItemStore>();
+
         return services;
     }
 
