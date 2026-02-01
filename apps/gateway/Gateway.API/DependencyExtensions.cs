@@ -55,6 +55,9 @@ public static class DependencyExtensions
         services.AddSingleton<IAnalysisResultStore, AnalysisResultStore>();
         services.AddSingleton<IWorkItemStore, InMemoryWorkItemStore>();
 
+        // Work item storage (in-memory for MVP)
+        services.AddSingleton<IWorkItemStore, InMemoryWorkItemStore>();
+
         return services;
     }
 
