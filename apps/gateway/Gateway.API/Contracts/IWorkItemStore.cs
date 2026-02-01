@@ -39,4 +39,16 @@ public interface IWorkItemStore
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>List of work items associated with the encounter.</returns>
     Task<List<WorkItem>> GetByEncounterAsync(string encounterId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves all work items, optionally filtered.
+    /// </summary>
+    /// <param name="encounterId">Optional encounter ID filter.</param>
+    /// <param name="status">Optional status filter.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>List of matching work items.</returns>
+    Task<List<WorkItem>> GetAllAsync(
+        string? encounterId = null,
+        WorkItemStatus? status = null,
+        CancellationToken cancellationToken = default);
 }
