@@ -18,6 +18,34 @@ public static class WorkItemEndpoints
         var group = app.MapGroup("/api/work-items")
             .WithTags("WorkItems");
 
+        // CREATE
+        group.MapPost("/", CreateAsync)
+            .WithName("CreateWorkItem")
+            .WithSummary("Create a new work item")
+            .Produces<WorkItem>(StatusCodes.Status201Created)
+            .ProducesValidationProblem();
+
+        // LIST
+        group.MapGet("/", ListAsync)
+            .WithName("ListWorkItems")
+            .WithSummary("List all work items")
+            .Produces<WorkItemListResponse>(StatusCodes.Status200OK);
+
+        // GET BY ID
+        group.MapGet("/{id}", GetByIdAsync)
+            .WithName("GetWorkItem")
+            .WithSummary("Get work item by ID")
+            .Produces<WorkItem>(StatusCodes.Status200OK)
+            .Produces<ErrorResponse>(StatusCodes.Status404NotFound);
+
+        // UPDATE STATUS
+        group.MapPut("/{id}/status", UpdateStatusAsync)
+            .WithName("UpdateWorkItemStatus")
+            .WithSummary("Update work item status")
+            .Produces<WorkItem>(StatusCodes.Status200OK)
+            .Produces<ErrorResponse>(StatusCodes.Status404NotFound);
+
+        // REHYDRATE
         group.MapPost("/{id}/rehydrate", RehydrateAsync)
             .WithName("RehydrateWorkItem")
             .WithSummary("Re-fetch clinical data and re-analyze work item")
