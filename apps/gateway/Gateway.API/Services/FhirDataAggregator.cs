@@ -7,7 +7,7 @@ namespace Gateway.API.Services;
 
 /// <summary>
 /// Aggregates clinical data from FHIR API by performing parallel queries
-/// for patient demographics, conditions, observations, procedures, and documents.
+/// for patient demographics, conditions, observations, procedures, documents, and service requests.
 /// </summary>
 public sealed class FhirDataAggregator : IFhirDataAggregator
 {
@@ -48,8 +48,9 @@ public sealed class FhirDataAggregator : IFhirDataAggregator
         var observationsTask = _fhirClient.SearchObservationsAsync(patientId, observationSince, accessToken, cancellationToken);
         var proceduresTask = _fhirClient.SearchProceduresAsync(patientId, procedureSince, accessToken, cancellationToken);
         var documentsTask = _fhirClient.SearchDocumentsAsync(patientId, accessToken, cancellationToken);
+        var serviceRequestsTask = _fhirClient.SearchServiceRequestsAsync(patientId, null, accessToken, cancellationToken);
 
-        await Task.WhenAll(patientTask, conditionsTask, observationsTask, proceduresTask, documentsTask);
+        await Task.WhenAll(patientTask, conditionsTask, observationsTask, proceduresTask, documentsTask, serviceRequestsTask);
 
         var bundle = new ClinicalBundle
         {
@@ -58,15 +59,17 @@ public sealed class FhirDataAggregator : IFhirDataAggregator
             Conditions = await conditionsTask,
             Observations = await observationsTask,
             Procedures = await proceduresTask,
-            Documents = await documentsTask
+            Documents = await documentsTask,
+            ServiceRequests = await serviceRequestsTask
         };
 
         _logger.LogInformation(
-            "Aggregated data: {Conditions} conditions, {Observations} observations, {Procedures} procedures, {Documents} documents",
+            "Aggregated data: {Conditions} conditions, {Observations} observations, {Procedures} procedures, {Documents} documents, {ServiceRequests} service requests",
             bundle.Conditions.Count,
             bundle.Observations.Count,
             bundle.Procedures.Count,
-            bundle.Documents.Count);
+            bundle.Documents.Count,
+            bundle.ServiceRequests.Count);
 
         return bundle;
     }
