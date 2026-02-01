@@ -169,13 +169,34 @@ public sealed class FhirClient : IFhirClient
     }
 
     /// <inheritdoc />
-    public Task<List<ServiceRequestInfo>> SearchServiceRequestsAsync(
+    public async Task<List<ServiceRequestInfo>> SearchServiceRequestsAsync(
         string patientId,
         string? encounterId,
         string accessToken,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var query = $"patient={patientId}";
+        if (!string.IsNullOrEmpty(encounterId))
+        {
+            query += $"&encounter={encounterId}";
+        }
+
+        var result = await _httpClient.SearchAsync(
+            "ServiceRequest",
+            query,
+            accessToken,
+            cancellationToken);
+
+        if (result.IsFailure)
+        {
+            _logger.LogWarning(
+                "Failed to search service requests for {PatientId}: {Error}",
+                patientId,
+                result.Error?.Message);
+            return [];
+        }
+
+        return ExtractResourcesFromBundle(result.Value!, MapServiceRequest);
     }
 
     #region Bundle Extraction
@@ -259,6 +280,24 @@ public sealed class FhirClient : IFhirClient
             Type = type?.display ?? type?.code ?? "Unknown",
             ContentType = ExtractContentType(resource),
             Title = ExtractDocumentTitle(resource)
+        };
+    }
+
+    private static ServiceRequestInfo? MapServiceRequest(JsonElement resource)
+    {
+        var code = ExtractCodeableConcept(resource, "code");
+        if (code is null) return null;
+
+        var resourceId = resource.TryGetProperty("id", out var id) ? id.GetString()! : Guid.NewGuid().ToString();
+        var status = resource.TryGetProperty("status", out var s) ? s.GetString()! : "unknown";
+
+        return new ServiceRequestInfo
+        {
+            Id = resourceId,
+            Status = status,
+            Code = code,
+            EncounterId = ExtractEncounterId(resource),
+            AuthoredOn = ExtractDateTimeOffset(resource, "authoredOn")
         };
     }
 
@@ -381,6 +420,58 @@ public sealed class FhirClient : IFhirClient
             }
         }
         return null;
+    }
+
+    private static CodeableConcept? ExtractCodeableConcept(JsonElement resource, string property)
+    {
+        if (!resource.TryGetProperty(property, out var codeableConcept)) return null;
+
+        var codings = new List<Coding>();
+        if (codeableConcept.TryGetProperty("coding", out var codingsArray))
+        {
+            foreach (var coding in codingsArray.EnumerateArray())
+            {
+                codings.Add(new Coding
+                {
+                    System = coding.TryGetProperty("system", out var sys) ? sys.GetString() : null,
+                    Code = coding.TryGetProperty("code", out var code) ? code.GetString() : null,
+                    Display = coding.TryGetProperty("display", out var display) ? display.GetString() : null
+                });
+            }
+        }
+
+        return new CodeableConcept
+        {
+            Coding = codings.Count > 0 ? codings : null,
+            Text = codeableConcept.TryGetProperty("text", out var text) ? text.GetString() : null
+        };
+    }
+
+    private static string? ExtractEncounterId(JsonElement resource)
+    {
+        if (!resource.TryGetProperty("encounter", out var encounter)) return null;
+        if (!encounter.TryGetProperty("reference", out var reference)) return null;
+
+        var refStr = reference.GetString();
+        if (string.IsNullOrEmpty(refStr)) return null;
+
+        // Parse "Encounter/{id}" format
+        const string prefix = "Encounter/";
+        if (refStr.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return refStr[prefix.Length..];
+        }
+
+        return null;
+    }
+
+    private static DateTimeOffset? ExtractDateTimeOffset(JsonElement resource, string property)
+    {
+        if (!resource.TryGetProperty(property, out var value)) return null;
+        var str = value.GetString();
+        if (string.IsNullOrEmpty(str)) return null;
+
+        return DateTimeOffset.TryParse(str, out var result) ? result : null;
     }
 
     #endregion
