@@ -61,4 +61,25 @@ public sealed class InMemoryWorkItemStore : IWorkItemStore
 
         return Task.FromResult(matches);
     }
+
+    /// <inheritdoc />
+    public Task<List<WorkItem>> GetAllAsync(
+        string? encounterId = null,
+        WorkItemStatus? status = null,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _store.Values.AsEnumerable();
+
+        if (!string.IsNullOrEmpty(encounterId))
+        {
+            query = query.Where(w => w.EncounterId == encounterId);
+        }
+
+        if (status.HasValue)
+        {
+            query = query.Where(w => w.Status == status.Value);
+        }
+
+        return Task.FromResult(query.ToList());
+    }
 }
