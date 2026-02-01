@@ -53,8 +53,6 @@ public static class DependencyExtensions
         services.AddScoped<IFhirDataAggregator, FhirDataAggregator>();
         services.AddScoped<IPdfFormStamper, PdfFormStamper>();
         services.AddSingleton<IAnalysisResultStore, AnalysisResultStore>();
-        services.AddSingleton<IWorkItemStore, InMemoryWorkItemStore>();
-
         // Work item storage (in-memory for MVP)
         services.AddSingleton<IWorkItemStore, InMemoryWorkItemStore>();
 

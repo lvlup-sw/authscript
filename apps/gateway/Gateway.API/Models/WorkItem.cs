@@ -3,7 +3,7 @@ namespace Gateway.API.Models;
 /// <summary>
 /// Represents a prior authorization work item that tracks the lifecycle of a PA request.
 /// </summary>
-public record WorkItem
+public sealed record WorkItem
 {
     /// <summary>
     /// Unique identifier for the work item.

@@ -59,8 +59,10 @@ public static class WorkItemEndpoints
             id, workItem.PatientId);
 
         // 2. Re-hydrate clinical data (using patient ID from work item)
-        // TODO: Get access token from token store or request - using placeholder for MVP
-        var accessToken = "placeholder-token";
+        // MVP: Token management is handled by the polling service which stores tokens.
+        // Production: Inject ITokenStrategyResolver to get valid token for the patient's practice.
+        // See: https://github.com/anthropics/prior-auth/issues/19 for token provider implementation.
+        var accessToken = "placeholder-token"; // TODO(#19): Replace with ITokenStrategyResolver
 
         var clinicalBundle = await fhirAggregator.AggregateClinicalDataAsync(
             workItem.PatientId,

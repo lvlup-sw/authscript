@@ -29,19 +29,27 @@ public sealed class InMemoryWorkItemStore : IWorkItemStore
     /// <inheritdoc />
     public Task<bool> UpdateStatusAsync(string id, WorkItemStatus newStatus, CancellationToken cancellationToken = default)
     {
-        if (!_store.TryGetValue(id, out var existing))
+        // Use atomic TryUpdate to avoid race conditions
+        while (true)
         {
-            return Task.FromResult(false);
+            if (!_store.TryGetValue(id, out var existing))
+            {
+                return Task.FromResult(false);
+            }
+
+            var updated = existing with
+            {
+                Status = newStatus,
+                UpdatedAt = DateTimeOffset.UtcNow
+            };
+
+            // Atomically update only if the value hasn't changed since we read it
+            if (_store.TryUpdate(id, updated, existing))
+            {
+                return Task.FromResult(true);
+            }
+            // If TryUpdate failed, another thread modified the entry - retry
         }
-
-        var updated = existing with
-        {
-            Status = newStatus,
-            UpdatedAt = DateTimeOffset.UtcNow
-        };
-
-        _store[id] = updated;
-        return Task.FromResult(true);
     }
 
     /// <inheritdoc />
