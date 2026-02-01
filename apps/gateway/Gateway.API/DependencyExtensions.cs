@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Gateway.API.Configuration;
 using Gateway.API.Contracts;
 using Gateway.API.Contracts.Http;
@@ -38,13 +39,20 @@ public static class DependencyExtensions
     }
 
     /// <summary>
-    /// Adds OpenAPI documentation.
+    /// Adds OpenAPI documentation and configures JSON serialization.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddApiDocumentation(this IServiceCollection services)
     {
         services.AddOpenApi();
+
+        // Configure JSON to use string names for enums (accepts both string and int on input)
+        services.ConfigureHttpJsonOptions(options =>
+        {
+            options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        });
+
         return services;
     }
 
