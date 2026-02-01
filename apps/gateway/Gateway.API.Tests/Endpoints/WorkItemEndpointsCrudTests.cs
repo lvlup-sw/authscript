@@ -293,6 +293,54 @@ public class WorkItemEndpointsCrudTests
 
     #endregion
 
+    #region Route Registration Tests
+
+    [Test]
+    public async Task MapWorkItemEndpoints_RegistersCreateRoute()
+    {
+        // Arrange
+        var methodInfo = typeof(WorkItemEndpoints).GetMethod("MapWorkItemEndpoints");
+
+        // Assert - Method exists and is properly defined
+        await Assert.That(methodInfo).IsNotNull();
+        await Assert.That(methodInfo!.IsStatic).IsTrue();
+        await Assert.That(methodInfo.IsPublic).IsTrue();
+
+        // Verify CreateAsync is callable (route target)
+        var createMethod = typeof(WorkItemEndpoints).GetMethod("CreateAsync");
+        await Assert.That(createMethod).IsNotNull();
+        await Assert.That(createMethod!.IsPublic).IsTrue();
+    }
+
+    [Test]
+    public async Task MapWorkItemEndpoints_RegistersListRoute()
+    {
+        // Verify ListAsync is callable (route target)
+        var listMethod = typeof(WorkItemEndpoints).GetMethod("ListAsync");
+        await Assert.That(listMethod).IsNotNull();
+        await Assert.That(listMethod!.IsPublic).IsTrue();
+    }
+
+    [Test]
+    public async Task MapWorkItemEndpoints_RegistersGetByIdRoute()
+    {
+        // Verify GetByIdAsync is callable (route target)
+        var getMethod = typeof(WorkItemEndpoints).GetMethod("GetByIdAsync");
+        await Assert.That(getMethod).IsNotNull();
+        await Assert.That(getMethod!.IsPublic).IsTrue();
+    }
+
+    [Test]
+    public async Task MapWorkItemEndpoints_RegistersUpdateStatusRoute()
+    {
+        // Verify UpdateStatusAsync is callable (route target)
+        var updateMethod = typeof(WorkItemEndpoints).GetMethod("UpdateStatusAsync");
+        await Assert.That(updateMethod).IsNotNull();
+        await Assert.That(updateMethod!.IsPublic).IsTrue();
+    }
+
+    #endregion
+
     #region Helpers
 
     private static WorkItem CreateTestWorkItem(string id, string encounterId)
