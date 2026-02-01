@@ -39,6 +39,10 @@ app.MapScalarApiReference(options =>
 {
     options.Title = "AuthScript Gateway API";
     options.Theme = ScalarTheme.DeepSpace;
+    options.Authentication = new ScalarAuthenticationOptions
+    {
+        PreferredSecuritySchemes = ["ApiKey"],
+    };
 });
 
 app.UseCors();

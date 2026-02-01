@@ -62,7 +62,10 @@ public static class DependencyExtensions
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddApiDocumentation(this IServiceCollection services)
     {
-        services.AddOpenApi();
+        services.AddOpenApi(options =>
+        {
+            options.AddDocumentTransformer<ApiKeySecuritySchemeTransformer>();
+        });
 
         // Configure JSON to use string names for enums (accepts both string and int on input)
         services.ConfigureHttpJsonOptions(options =>
@@ -154,7 +157,9 @@ public static class DependencyExtensions
             });
 
         // FHIR token provider (manages OAuth tokens for FHIR API calls)
-        services.AddScoped<IFhirTokenProvider, FhirTokenProvider>();
+        // Singleton because FhirTokenProvider is stateless and its dependencies
+        // (ITokenStrategyResolver, ILogger) are also singletons
+        services.AddSingleton<IFhirTokenProvider, FhirTokenProvider>();
 
         // High-level FHIR client (uses IFhirHttpClient)
         services.AddScoped<IFhirClient, FhirClient>();
