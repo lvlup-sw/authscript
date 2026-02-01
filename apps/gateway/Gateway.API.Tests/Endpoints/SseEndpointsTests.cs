@@ -150,5 +150,11 @@ public sealed class SseEndpointsTests
         {
             await Task.Delay(10);
         }
+
+        if (hub.SubscriberCount == 0)
+        {
+            throw new TimeoutException(
+                $"No subscriber registered within {timeout.TotalMilliseconds}ms timeout period.");
+        }
     }
 }
