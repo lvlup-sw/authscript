@@ -8,6 +8,7 @@ namespace Gateway.API.Services;
 /// <summary>
 /// Aggregates clinical data from FHIR API by performing parallel queries
 /// for patient demographics, conditions, observations, procedures, documents, and service requests.
+/// Token management is handled internally via IFhirTokenProvider.
 /// </summary>
 public sealed class FhirDataAggregator : IFhirDataAggregator
 {
@@ -34,7 +35,6 @@ public sealed class FhirDataAggregator : IFhirDataAggregator
     /// <inheritdoc />
     public async Task<ClinicalBundle> AggregateClinicalDataAsync(
         string patientId,
-        string accessToken,
         CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Aggregating clinical data for patient {PatientId}", patientId);
@@ -43,12 +43,12 @@ public sealed class FhirDataAggregator : IFhirDataAggregator
         var procedureSince = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(-_options.ProcedureLookbackMonths));
 
         // Parallel FHIR fetches for performance
-        var patientTask = _fhirClient.GetPatientAsync(patientId, accessToken, cancellationToken);
-        var conditionsTask = _fhirClient.SearchConditionsAsync(patientId, accessToken, cancellationToken);
-        var observationsTask = _fhirClient.SearchObservationsAsync(patientId, observationSince, accessToken, cancellationToken);
-        var proceduresTask = _fhirClient.SearchProceduresAsync(patientId, procedureSince, accessToken, cancellationToken);
-        var documentsTask = _fhirClient.SearchDocumentsAsync(patientId, accessToken, cancellationToken);
-        var serviceRequestsTask = _fhirClient.SearchServiceRequestsAsync(patientId, null, accessToken, cancellationToken);
+        var patientTask = _fhirClient.GetPatientAsync(patientId, cancellationToken);
+        var conditionsTask = _fhirClient.SearchConditionsAsync(patientId, cancellationToken);
+        var observationsTask = _fhirClient.SearchObservationsAsync(patientId, observationSince, cancellationToken);
+        var proceduresTask = _fhirClient.SearchProceduresAsync(patientId, procedureSince, cancellationToken);
+        var documentsTask = _fhirClient.SearchDocumentsAsync(patientId, cancellationToken);
+        var serviceRequestsTask = _fhirClient.SearchServiceRequestsAsync(patientId, null, cancellationToken);
 
         await Task.WhenAll(patientTask, conditionsTask, observationsTask, proceduresTask, documentsTask, serviceRequestsTask);
 

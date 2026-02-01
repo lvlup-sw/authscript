@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Gateway.API.Configuration;
 using Gateway.API.Contracts;
 using Gateway.API.Contracts.Http;
+using Gateway.API.Filters;
 using Gateway.API.Services;
 using Gateway.API.Services.Decorators;
 using Gateway.API.Services.Fhir;
@@ -9,6 +10,7 @@ using Gateway.API.Services.Http;
 using Gateway.API.Services.Notifications;
 using Gateway.API.Services.Polling;
 using Microsoft.Extensions.Caching.Hybrid;
+using Microsoft.Extensions.Options;
 
 namespace Gateway.API;
 
@@ -35,6 +37,21 @@ public static class DependencyExtensions
                     .AllowCredentials();
             });
         });
+        return services;
+    }
+
+    /// <summary>
+    /// Adds API key authentication services.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddApiKeyAuthentication(this IServiceCollection services)
+    {
+        services.AddOptions<ApiKeySettings>()
+            .BindConfiguration(ApiKeySettings.SectionName);
+
+        services.AddSingleton<IApiKeyValidator, ApiKeyValidator>();
+
         return services;
     }
 
@@ -71,34 +88,26 @@ public static class DependencyExtensions
     /// Adds Gateway services to the dependency injection container.
     /// </summary>
     /// <param name="services">The service collection.</param>
-    /// <param name="configuration">The configuration.</param>
     /// <returns>The service collection for chaining.</returns>
-    public static IServiceCollection AddGatewayServices(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddGatewayServices(this IServiceCollection services)
     {
         // Configuration options with validation
         services.AddOptions<ClinicalQueryOptions>()
-            .Bind(configuration.GetSection(ClinicalQueryOptions.SectionName))
+            .BindConfiguration(ClinicalQueryOptions.SectionName)
             .Validate(o => o.IsValid(), "ClinicalQueryOptions validation failed");
 
         services.AddOptions<Configuration.DocumentOptions>()
-            .Bind(configuration.GetSection(Configuration.DocumentOptions.SectionName))
+            .BindConfiguration(Configuration.DocumentOptions.SectionName)
             .Validate(o => o.IsValid(), "DocumentOptions validation failed");
 
         services.AddOptions<CachingSettings>()
-            .Bind(configuration.GetSection(CachingSettings.SectionName))
+            .BindConfiguration(CachingSettings.SectionName)
             .Validate(o => o.IsValid(), "CachingSettings validation failed");
 
         // HybridCache for two-tier caching (L1 in-memory + L2 Redis)
-        var cachingSettings = configuration.GetSection(CachingSettings.SectionName)
-            .Get<CachingSettings>() ?? new CachingSettings();
-        services.AddHybridCache(options =>
-        {
-            options.DefaultEntryOptions = new HybridCacheEntryOptions
-            {
-                Expiration = cachingSettings.Duration,
-                LocalCacheExpiration = cachingSettings.LocalCacheDuration
-            };
-        });
+        // Configured via IConfigureOptions<HybridCacheOptions>
+        services.AddHybridCache();
+        services.AddSingleton<IConfigureOptions<HybridCacheOptions>, ConfigureHybridCacheOptions>();
 
         // Application services
         services.AddScoped<IFhirDataAggregator, FhirDataAggregator>();
@@ -112,24 +121,20 @@ public static class DependencyExtensions
 
     /// <summary>
     /// Adds FHIR HTTP clients to the dependency injection container.
-    /// Uses athenahealth FHIR base URL from configuration.
+    /// Uses athenahealth FHIR base URL from AthenaOptions.
     /// </summary>
     /// <param name="services">The service collection.</param>
-    /// <param name="configuration">The configuration.</param>
     /// <returns>The service collection for chaining.</returns>
-    public static IServiceCollection AddFhirClients(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddFhirClients(this IServiceCollection services)
     {
-        var fhirBaseUrl = configuration["Athena:FhirBaseUrl"];
-        if (string.IsNullOrWhiteSpace(fhirBaseUrl))
-        {
-            throw new InvalidOperationException("Athena:FhirBaseUrl must be configured.");
-        }
-
         // Named HTTP client for FHIR API (used by FhirHttpClientProvider)
-        services.AddHttpClient(FhirHttpClientProvider.HttpClientName, client =>
-        {
-            client.BaseAddress = new Uri(fhirBaseUrl);
-        });
+        // Base URL configured via IOptions<AthenaOptions>
+        services.AddHttpClient(FhirHttpClientProvider.HttpClientName)
+            .ConfigureHttpClient((sp, client) =>
+            {
+                var options = sp.GetRequiredService<IOptions<AthenaOptions>>().Value;
+                client.BaseAddress = new Uri(options.FhirBaseUrl);
+            });
 
         // Token strategy resolver (uses registered ITokenAcquisitionStrategy instances)
         // Register both interface and concrete type for DI consumers that use either
@@ -140,10 +145,16 @@ public static class DependencyExtensions
         services.AddScoped<IFhirHttpClientProvider, FhirHttpClientProvider>();
 
         // Low-level FHIR HTTP client (typed client with base URL)
-        services.AddHttpClient<IFhirHttpClient, FhirHttpClient>(client =>
-        {
-            client.BaseAddress = new Uri(fhirBaseUrl);
-        });
+        // Base URL configured via IOptions<AthenaOptions>
+        services.AddHttpClient<IFhirHttpClient, FhirHttpClient>()
+            .ConfigureHttpClient((sp, client) =>
+            {
+                var options = sp.GetRequiredService<IOptions<AthenaOptions>>().Value;
+                client.BaseAddress = new Uri(options.FhirBaseUrl);
+            });
+
+        // FHIR token provider (manages OAuth tokens for FHIR API calls)
+        services.AddScoped<IFhirTokenProvider, FhirTokenProvider>();
 
         // High-level FHIR client (uses IFhirHttpClient)
         services.AddScoped<IFhirClient, FhirClient>();
@@ -156,27 +167,22 @@ public static class DependencyExtensions
 
     /// <summary>
     /// Adds the Intelligence client to the dependency injection container.
-    /// Optionally wraps with caching decorator based on configuration.
+    /// Wraps with caching decorator (decorator checks Enabled setting at runtime).
     /// </summary>
     /// <remarks>
     /// STUB: Currently registers a stub implementation that returns mock data.
     /// Production will add HttpClient configuration for the Intelligence service.
     /// </remarks>
     /// <param name="services">The service collection.</param>
-    /// <param name="configuration">The configuration.</param>
     /// <returns>The service collection for chaining.</returns>
-    public static IServiceCollection AddIntelligenceClient(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddIntelligenceClient(this IServiceCollection services)
     {
         // STUB: Register stub implementation without HTTP client
         // Production will use: services.AddHttpClient<IIntelligenceClient, IntelligenceClient>(...)
         services.AddScoped<IIntelligenceClient, IntelligenceClient>();
 
-        // Apply caching decorator if enabled
-        var cachingSettings = configuration.GetSection(CachingSettings.SectionName).Get<CachingSettings>();
-        if (cachingSettings?.Enabled == true)
-        {
-            services.Decorate<IIntelligenceClient, CachingIntelligenceClient>();
-        }
+        // Apply caching decorator (checks Enabled setting at runtime)
+        services.Decorate<IIntelligenceClient, CachingIntelligenceClient>();
 
         return services;
     }
@@ -198,13 +204,12 @@ public static class DependencyExtensions
     /// Adds athenahealth-specific services to the dependency injection container.
     /// </summary>
     /// <param name="services">The service collection.</param>
-    /// <param name="configuration">The configuration.</param>
     /// <returns>The service collection for chaining.</returns>
-    public static IServiceCollection AddAthenaServices(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddAthenaServices(this IServiceCollection services)
     {
         // Configuration options with validation
         services.AddOptions<AthenaOptions>()
-            .Bind(configuration.GetSection(AthenaOptions.SectionName))
+            .BindConfiguration(AthenaOptions.SectionName)
             .Validate(o => o.IsValid(), "AthenaOptions validation failed");
 
         // Named HttpClient for token requests

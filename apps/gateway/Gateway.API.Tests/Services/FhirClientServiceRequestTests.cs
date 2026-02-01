@@ -72,11 +72,11 @@ public class FhirClientServiceRequestTests
             """;
 
         var jsonDocument = JsonDocument.Parse(fhirBundle);
-        _httpClient.SearchAsync("ServiceRequest", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _httpClient.SearchAsync("ServiceRequest", Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Result<JsonElement>.Success(jsonDocument.RootElement));
 
         // Act
-        var serviceRequests = await _sut.SearchServiceRequestsAsync("patient-1", null, "token", CancellationToken.None);
+        var serviceRequests = await _sut.SearchServiceRequestsAsync("patient-1", null, CancellationToken.None);
 
         // Assert
         await Assert.That(serviceRequests.Count).IsEqualTo(2);
@@ -119,11 +119,11 @@ public class FhirClientServiceRequestTests
             """;
 
         var jsonDocument = JsonDocument.Parse(fhirBundle);
-        _httpClient.SearchAsync("ServiceRequest", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _httpClient.SearchAsync("ServiceRequest", Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Result<JsonElement>.Success(jsonDocument.RootElement));
 
         // Act
-        var serviceRequests = await _sut.SearchServiceRequestsAsync("patient-1", null, "token", CancellationToken.None);
+        var serviceRequests = await _sut.SearchServiceRequestsAsync("patient-1", null, CancellationToken.None);
 
         // Assert
         await Assert.That(serviceRequests.Count).IsEqualTo(1);
@@ -150,17 +150,16 @@ public class FhirClientServiceRequestTests
             """;
 
         var jsonDocument = JsonDocument.Parse(fhirBundle);
-        _httpClient.SearchAsync("ServiceRequest", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _httpClient.SearchAsync("ServiceRequest", Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Result<JsonElement>.Success(jsonDocument.RootElement));
 
         // Act
-        await _sut.SearchServiceRequestsAsync("patient-1", "enc-789", "token", CancellationToken.None);
+        await _sut.SearchServiceRequestsAsync("patient-1", "enc-789", CancellationToken.None);
 
         // Assert - verify the query includes encounter filter
         await _httpClient.Received(1).SearchAsync(
             "ServiceRequest",
             "patient=patient-1&encounter=enc-789",
-            "token",
             Arg.Any<CancellationToken>());
     }
 
@@ -168,11 +167,11 @@ public class FhirClientServiceRequestTests
     public async Task SearchServiceRequestsAsync_OnFailure_ReturnsEmptyList()
     {
         // Arrange
-        _httpClient.SearchAsync("ServiceRequest", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _httpClient.SearchAsync("ServiceRequest", Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Result<JsonElement>.Failure(FhirError.Network("Connection failed")));
 
         // Act
-        var serviceRequests = await _sut.SearchServiceRequestsAsync("patient-1", null, "token", CancellationToken.None);
+        var serviceRequests = await _sut.SearchServiceRequestsAsync("patient-1", null, CancellationToken.None);
 
         // Assert
         await Assert.That(serviceRequests).IsEmpty();
@@ -206,11 +205,11 @@ public class FhirClientServiceRequestTests
             """;
 
         var jsonDocument = JsonDocument.Parse(fhirBundle);
-        _httpClient.SearchAsync("ServiceRequest", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _httpClient.SearchAsync("ServiceRequest", Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Result<JsonElement>.Success(jsonDocument.RootElement));
 
         // Act
-        var serviceRequests = await _sut.SearchServiceRequestsAsync("patient-1", null, "token", CancellationToken.None);
+        var serviceRequests = await _sut.SearchServiceRequestsAsync("patient-1", null, CancellationToken.None);
 
         // Assert
         await Assert.That(serviceRequests.Count).IsEqualTo(1);
@@ -246,11 +245,11 @@ public class FhirClientServiceRequestTests
             """;
 
         var jsonDocument = JsonDocument.Parse(fhirBundle);
-        _httpClient.SearchAsync("ServiceRequest", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _httpClient.SearchAsync("ServiceRequest", Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Result<JsonElement>.Success(jsonDocument.RootElement));
 
         // Act
-        var serviceRequests = await _sut.SearchServiceRequestsAsync("patient-1", null, "token", CancellationToken.None);
+        var serviceRequests = await _sut.SearchServiceRequestsAsync("patient-1", null, CancellationToken.None);
 
         // Assert
         await Assert.That(serviceRequests.Count).IsEqualTo(1);
@@ -287,11 +286,11 @@ public class FhirClientServiceRequestTests
             """;
 
         var jsonDocument = JsonDocument.Parse(fhirBundle);
-        _httpClient.SearchAsync("ServiceRequest", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _httpClient.SearchAsync("ServiceRequest", Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Result<JsonElement>.Success(jsonDocument.RootElement));
 
         // Act
-        var serviceRequests = await _sut.SearchServiceRequestsAsync("patient-1", null, "token", CancellationToken.None);
+        var serviceRequests = await _sut.SearchServiceRequestsAsync("patient-1", null, CancellationToken.None);
 
         // Assert
         await Assert.That(serviceRequests.Count).IsEqualTo(1);

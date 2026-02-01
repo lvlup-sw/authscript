@@ -60,11 +60,11 @@ public class FhirClientTests
             """;
 
         var jsonDocument = JsonDocument.Parse(fhirBundle);
-        _httpClient.SearchAsync("Condition", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _httpClient.SearchAsync("Condition", Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Result<JsonElement>.Success(jsonDocument.RootElement));
 
         // Act
-        var conditions = await _sut.SearchConditionsAsync("patient-1", "token", CancellationToken.None);
+        var conditions = await _sut.SearchConditionsAsync("patient-1", CancellationToken.None);
 
         // Assert
         await Assert.That(conditions.Count).IsEqualTo(1);
@@ -101,11 +101,11 @@ public class FhirClientTests
             """;
 
         var jsonDocument = JsonDocument.Parse(fhirBundle);
-        _httpClient.SearchAsync("Condition", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _httpClient.SearchAsync("Condition", Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Result<JsonElement>.Success(jsonDocument.RootElement));
 
         // Act
-        var conditions = await _sut.SearchConditionsAsync("patient-1", "token", CancellationToken.None);
+        var conditions = await _sut.SearchConditionsAsync("patient-1", CancellationToken.None);
 
         // Assert
         await Assert.That(conditions.Count).IsEqualTo(1);
@@ -155,11 +155,11 @@ public class FhirClientTests
             """;
 
         var jsonDocument = JsonDocument.Parse(fhirBundle);
-        _httpClient.SearchAsync("Condition", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _httpClient.SearchAsync("Condition", Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Result<JsonElement>.Success(jsonDocument.RootElement));
 
         // Act
-        var conditions = await _sut.SearchConditionsAsync("patient-1", "token", CancellationToken.None);
+        var conditions = await _sut.SearchConditionsAsync("patient-1", CancellationToken.None);
 
         // Assert - should take the first coding entry
         await Assert.That(conditions.Count).IsEqualTo(1);

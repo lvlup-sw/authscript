@@ -200,11 +200,11 @@ public static class AnalysisEndpoints
             await resultStore.SetCachedPdfAsync(transactionId, pdfBytes, cancellationToken);
         }
 
+        // Upload to FHIR server (token management handled internally)
         var result = await documentUploader.UploadDocumentAsync(
             pdfBytes,
             request.PatientId,
             request.EncounterId,
-            request.AccessToken,
             cancellationToken);
 
         if (result.IsFailure)

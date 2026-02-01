@@ -27,10 +27,9 @@ public sealed class FhirClient : IFhirClient
     /// <inheritdoc />
     public async Task<PatientInfo?> GetPatientAsync(
         string patientId,
-        string accessToken,
         CancellationToken cancellationToken = default)
     {
-        var result = await _httpClient.ReadAsync("Patient", patientId, accessToken, cancellationToken);
+        var result = await _httpClient.ReadAsync("Patient", patientId, cancellationToken);
 
         if (result.IsFailure)
         {
@@ -55,13 +54,11 @@ public sealed class FhirClient : IFhirClient
     /// <inheritdoc />
     public async Task<List<ConditionInfo>> SearchConditionsAsync(
         string patientId,
-        string accessToken,
         CancellationToken cancellationToken = default)
     {
         var result = await _httpClient.SearchAsync(
             "Condition",
             $"patient={patientId}&clinical-status=active",
-            accessToken,
             cancellationToken);
 
         if (result.IsFailure)
@@ -80,13 +77,11 @@ public sealed class FhirClient : IFhirClient
     public async Task<List<ObservationInfo>> SearchObservationsAsync(
         string patientId,
         DateOnly since,
-        string accessToken,
         CancellationToken cancellationToken = default)
     {
         var result = await _httpClient.SearchAsync(
             "Observation",
             $"patient={patientId}&category=laboratory&date=ge{since:yyyy-MM-dd}",
-            accessToken,
             cancellationToken);
 
         if (result.IsFailure)
@@ -105,13 +100,11 @@ public sealed class FhirClient : IFhirClient
     public async Task<List<ProcedureInfo>> SearchProceduresAsync(
         string patientId,
         DateOnly since,
-        string accessToken,
         CancellationToken cancellationToken = default)
     {
         var result = await _httpClient.SearchAsync(
             "Procedure",
             $"patient={patientId}&date=ge{since:yyyy-MM-dd}",
-            accessToken,
             cancellationToken);
 
         if (result.IsFailure)
@@ -129,13 +122,11 @@ public sealed class FhirClient : IFhirClient
     /// <inheritdoc />
     public async Task<List<DocumentInfo>> SearchDocumentsAsync(
         string patientId,
-        string accessToken,
         CancellationToken cancellationToken = default)
     {
         var result = await _httpClient.SearchAsync(
             "DocumentReference",
             $"patient={patientId}&status=current",
-            accessToken,
             cancellationToken);
 
         if (result.IsFailure)
@@ -153,10 +144,9 @@ public sealed class FhirClient : IFhirClient
     /// <inheritdoc />
     public async Task<byte[]?> GetDocumentContentAsync(
         string documentId,
-        string accessToken,
         CancellationToken cancellationToken = default)
     {
-        var result = await _httpClient.ReadBinaryAsync(documentId, accessToken, cancellationToken);
+        var result = await _httpClient.ReadBinaryAsync(documentId, cancellationToken);
 
         if (!result.IsFailure) return result.Value;
 
@@ -172,7 +162,6 @@ public sealed class FhirClient : IFhirClient
     public async Task<List<ServiceRequestInfo>> SearchServiceRequestsAsync(
         string patientId,
         string? encounterId,
-        string accessToken,
         CancellationToken cancellationToken = default)
     {
         var query = $"patient={patientId}";
@@ -184,7 +173,6 @@ public sealed class FhirClient : IFhirClient
         var result = await _httpClient.SearchAsync(
             "ServiceRequest",
             query,
-            accessToken,
             cancellationToken);
 
         if (result.IsFailure)

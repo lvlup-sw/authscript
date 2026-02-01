@@ -22,14 +22,12 @@ public sealed class IFhirClientTests
         await Assert.That(method!.ReturnType).IsEqualTo(typeof(Task<List<ServiceRequestInfo>>));
 
         var parameters = method.GetParameters();
-        await Assert.That(parameters.Length).IsEqualTo(4);
+        await Assert.That(parameters.Length).IsEqualTo(3);
         await Assert.That(parameters[0].Name).IsEqualTo("patientId");
         await Assert.That(parameters[0].ParameterType).IsEqualTo(typeof(string));
         await Assert.That(parameters[1].Name).IsEqualTo("encounterId");
         await Assert.That(parameters[1].ParameterType).IsEqualTo(typeof(string));
-        await Assert.That(parameters[2].Name).IsEqualTo("accessToken");
-        await Assert.That(parameters[2].ParameterType).IsEqualTo(typeof(string));
-        await Assert.That(parameters[3].Name).IsEqualTo("cancellationToken");
-        await Assert.That(parameters[3].ParameterType).IsEqualTo(typeof(CancellationToken));
+        await Assert.That(parameters[2].Name).IsEqualTo("cancellationToken");
+        await Assert.That(parameters[2].ParameterType).IsEqualTo(typeof(CancellationToken));
     }
 }

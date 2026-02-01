@@ -32,17 +32,17 @@ public class FhirDataAggregatorTests
         _logger = Substitute.For<ILogger<FhirDataAggregator>>();
 
         // Default mock returns for all methods
-        _fhirClient.GetPatientAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _fhirClient.GetPatientAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<PatientInfo?>(CreateTestPatient()));
-        _fhirClient.SearchConditionsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _fhirClient.SearchConditionsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new List<ConditionInfo>()));
-        _fhirClient.SearchObservationsAsync(Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _fhirClient.SearchObservationsAsync(Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new List<ObservationInfo>()));
-        _fhirClient.SearchProceduresAsync(Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _fhirClient.SearchProceduresAsync(Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new List<ProcedureInfo>()));
-        _fhirClient.SearchDocumentsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _fhirClient.SearchDocumentsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new List<DocumentInfo>()));
-        _fhirClient.SearchServiceRequestsAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _fhirClient.SearchServiceRequestsAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new List<ServiceRequestInfo>()));
 
         _sut = new FhirDataAggregator(_fhirClient, _options, _logger);
@@ -53,8 +53,6 @@ public class FhirDataAggregatorTests
     {
         // Arrange
         const string patientId = "patient-123";
-        const string accessToken = "test-token";
-
         var expectedServiceRequests = new List<ServiceRequestInfo>
         {
             new ServiceRequestInfo
@@ -74,11 +72,11 @@ public class FhirDataAggregatorTests
             }
         };
 
-        _fhirClient.SearchServiceRequestsAsync(patientId, Arg.Any<string?>(), accessToken, Arg.Any<CancellationToken>())
+        _fhirClient.SearchServiceRequestsAsync(patientId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(expectedServiceRequests));
 
         // Act
-        var result = await _sut.AggregateClinicalDataAsync(patientId, accessToken, CancellationToken.None);
+        var result = await _sut.AggregateClinicalDataAsync(patientId, CancellationToken.None);
 
         // Assert
         await Assert.That(result.ServiceRequests).IsNotEmpty();
@@ -92,16 +90,14 @@ public class FhirDataAggregatorTests
     {
         // Arrange
         const string patientId = "patient-789";
-        const string accessToken = "test-token";
 
         // Act
-        await _sut.AggregateClinicalDataAsync(patientId, accessToken, CancellationToken.None);
+        await _sut.AggregateClinicalDataAsync(patientId, CancellationToken.None);
 
         // Assert
         await _fhirClient.Received(1).SearchServiceRequestsAsync(
             patientId,
             Arg.Any<string?>(),
-            accessToken,
             Arg.Any<CancellationToken>());
     }
 
@@ -110,26 +106,25 @@ public class FhirDataAggregatorTests
     {
         // Arrange
         const string patientId = "patient-abc";
-        const string accessToken = "test-token";
 
         // Track call order to verify parallel execution (thread-safe for parallel callbacks)
         var callOrder = new ConcurrentBag<string>();
 
-        _fhirClient.GetPatientAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _fhirClient.GetPatientAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(async _ =>
             {
                 callOrder.Add("Patient");
                 await Task.Delay(10);
                 return CreateTestPatient();
             });
-        _fhirClient.SearchConditionsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _fhirClient.SearchConditionsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(async _ =>
             {
                 callOrder.Add("Conditions");
                 await Task.Delay(10);
                 return new List<ConditionInfo>();
             });
-        _fhirClient.SearchServiceRequestsAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _fhirClient.SearchServiceRequestsAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(async _ =>
             {
                 callOrder.Add("ServiceRequests");
@@ -138,7 +133,7 @@ public class FhirDataAggregatorTests
             });
 
         // Act
-        await _sut.AggregateClinicalDataAsync(patientId, accessToken, CancellationToken.None);
+        await _sut.AggregateClinicalDataAsync(patientId, CancellationToken.None);
 
         // Assert - All methods should have been called
         await Assert.That(callOrder).Contains("Patient");
@@ -149,7 +144,6 @@ public class FhirDataAggregatorTests
         await _fhirClient.Received(1).SearchServiceRequestsAsync(
             patientId,
             Arg.Any<string?>(),
-            accessToken,
             Arg.Any<CancellationToken>());
     }
 

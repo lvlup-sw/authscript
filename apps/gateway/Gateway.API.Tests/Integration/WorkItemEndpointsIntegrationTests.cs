@@ -10,6 +10,7 @@ namespace Gateway.API.Tests.Integration;
 [ClassDataSource<GatewayAlbaBootstrap>(Shared = SharedType.PerTestSession)]
 public class WorkItemEndpointsIntegrationTests
 {
+    private const string ApiKeyHeader = "X-API-Key";
     private readonly GatewayAlbaBootstrap _fixture;
 
     /// <summary>
@@ -21,6 +22,8 @@ public class WorkItemEndpointsIntegrationTests
         _fixture = fixture;
     }
 
+    private void AddApiKey(Scenario s) => s.WithRequestHeader(ApiKeyHeader, GatewayAlbaBootstrap.TestApiKey);
+
     #region POST /api/work-items (Create)
 
     [Test]
@@ -28,6 +31,7 @@ public class WorkItemEndpointsIntegrationTests
     {
         var result = await _fixture.Host.Scenario(s =>
         {
+            AddApiKey(s);
             s.Post.Json(new CreateWorkItemRequest
             {
                 EncounterId = "enc-integration-1",
@@ -50,6 +54,7 @@ public class WorkItemEndpointsIntegrationTests
     {
         var result = await _fixture.Host.Scenario(s =>
         {
+            AddApiKey(s);
             s.Post.Json(new CreateWorkItemRequest
             {
                 EncounterId = "enc-custom-status",
@@ -74,6 +79,7 @@ public class WorkItemEndpointsIntegrationTests
     {
         var result = await _fixture.Host.Scenario(s =>
         {
+            AddApiKey(s);
             s.Get.Url("/api/work-items");
             s.StatusCodeShouldBeOk();
         }).ConfigureAwait(false);
@@ -89,6 +95,7 @@ public class WorkItemEndpointsIntegrationTests
         // First create a work item with specific status
         await _fixture.Host.Scenario(s =>
         {
+            AddApiKey(s);
             s.Post.Json(new CreateWorkItemRequest
             {
                 EncounterId = "enc-filter-test",
@@ -103,6 +110,7 @@ public class WorkItemEndpointsIntegrationTests
         // List with status filter
         var result = await _fixture.Host.Scenario(s =>
         {
+            AddApiKey(s);
             s.Get.Url("/api/work-items?status=Submitted");
             s.StatusCodeShouldBeOk();
         }).ConfigureAwait(false);
@@ -123,6 +131,7 @@ public class WorkItemEndpointsIntegrationTests
         // First create a work item
         var createResult = await _fixture.Host.Scenario(s =>
         {
+            AddApiKey(s);
             s.Post.Json(new CreateWorkItemRequest
             {
                 EncounterId = "enc-get-by-id",
@@ -138,6 +147,7 @@ public class WorkItemEndpointsIntegrationTests
         // Get by ID
         var result = await _fixture.Host.Scenario(s =>
         {
+            AddApiKey(s);
             s.Get.Url($"/api/work-items/{created!.Id}");
             s.StatusCodeShouldBeOk();
         }).ConfigureAwait(false);
@@ -152,6 +162,7 @@ public class WorkItemEndpointsIntegrationTests
     {
         await _fixture.Host.Scenario(s =>
         {
+            AddApiKey(s);
             s.Get.Url("/api/work-items/nonexistent-id");
             s.StatusCodeShouldBe(404);
         }).ConfigureAwait(false);
@@ -167,6 +178,7 @@ public class WorkItemEndpointsIntegrationTests
         // First create a work item
         var createResult = await _fixture.Host.Scenario(s =>
         {
+            AddApiKey(s);
             s.Post.Json(new CreateWorkItemRequest
             {
                 EncounterId = "enc-update-status",
@@ -182,6 +194,7 @@ public class WorkItemEndpointsIntegrationTests
         // Update status
         var result = await _fixture.Host.Scenario(s =>
         {
+            AddApiKey(s);
             s.Put.Json(new UpdateStatusRequest { Status = WorkItemStatus.Submitted })
                 .ToUrl($"/api/work-items/{created!.Id}/status");
             s.StatusCodeShouldBeOk();
@@ -196,6 +209,7 @@ public class WorkItemEndpointsIntegrationTests
     {
         await _fixture.Host.Scenario(s =>
         {
+            AddApiKey(s);
             s.Put.Json(new UpdateStatusRequest { Status = WorkItemStatus.Submitted })
                 .ToUrl("/api/work-items/nonexistent-id/status");
             s.StatusCodeShouldBe(404);
@@ -211,8 +225,8 @@ public class WorkItemEndpointsIntegrationTests
     {
         await _fixture.Host.Scenario(s =>
         {
-            s.Post.Json(new RehydrateRequest())
-                .ToUrl("/api/work-items/nonexistent-id/rehydrate");
+            AddApiKey(s);
+            s.Post.Url("/api/work-items/nonexistent-id/rehydrate");
             s.StatusCodeShouldBe(404);
         }).ConfigureAwait(false);
     }
@@ -223,6 +237,7 @@ public class WorkItemEndpointsIntegrationTests
         // First create a work item
         var createResult = await _fixture.Host.Scenario(s =>
         {
+            AddApiKey(s);
             s.Post.Json(new CreateWorkItemRequest
             {
                 EncounterId = "enc-rehydrate",
@@ -235,11 +250,11 @@ public class WorkItemEndpointsIntegrationTests
 
         var created = createResult.ReadAsJson<WorkItem>();
 
-        // Rehydrate with access token
+        // Rehydrate (no body needed - token managed internally)
         var result = await _fixture.Host.Scenario(s =>
         {
-            s.Post.Json(new RehydrateRequest { AccessToken = "test-access-token" })
-                .ToUrl($"/api/work-items/{created!.Id}/rehydrate");
+            AddApiKey(s);
+            s.Post.Url($"/api/work-items/{created!.Id}/rehydrate");
             s.StatusCodeShouldBeOk();
         }).ConfigureAwait(false);
 

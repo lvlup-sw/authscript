@@ -2,7 +2,6 @@ using System.Text.Json;
 using System.Threading.Channels;
 using Gateway.API.Configuration;
 using Gateway.API.Contracts;
-using Gateway.API.Services.Http;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -11,13 +10,13 @@ namespace Gateway.API.Services.Polling;
 
 /// <summary>
 /// Background service that polls athenahealth for finished encounters.
+/// Token management is handled internally by FhirHttpClient via IFhirTokenProvider.
 /// </summary>
 public sealed class AthenaPollingService : BackgroundService, IEncounterPollingService
 {
     private static readonly TimeSpan DefaultPurgeAge = TimeSpan.FromHours(24);
 
     private readonly IFhirHttpClient _fhirClient;
-    private readonly TokenStrategyResolver _tokenResolver;
     private readonly AthenaOptions _options;
     private readonly ILogger<AthenaPollingService> _logger;
     private readonly Dictionary<string, DateTimeOffset> _processedEncounters = new();
@@ -30,17 +29,14 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
     /// Initializes a new instance of the <see cref="AthenaPollingService"/> class.
     /// </summary>
     /// <param name="fhirClient">The FHIR HTTP client for API calls.</param>
-    /// <param name="tokenResolver">Token strategy resolver for acquiring access tokens.</param>
     /// <param name="options">Configuration options for athenahealth.</param>
     /// <param name="logger">Logger instance.</param>
     public AthenaPollingService(
         IFhirHttpClient fhirClient,
-        TokenStrategyResolver tokenResolver,
         IOptions<AthenaOptions> options,
         ILogger<AthenaPollingService> logger)
     {
         _fhirClient = fhirClient;
-        _tokenResolver = tokenResolver;
         _options = options.Value;
         _logger = logger;
         _encounterChannel = Channel.CreateUnbounded<string>(new UnboundedChannelOptions
@@ -164,25 +160,23 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
 
     private async Task PollForFinishedEncountersAsync(CancellationToken ct)
     {
-        // Acquire token dynamically via strategy
-        var strategy = _tokenResolver.Resolve();
-        var accessToken = strategy is not null
-            ? await strategy.AcquireTokenAsync(ct)
-            : null;
-
-        if (string.IsNullOrWhiteSpace(accessToken))
-        {
-            _logger.LogWarning("Unable to acquire Athena access token for polling");
-            return;
-        }
-
         // Capture timestamp BEFORE the search to avoid missing encounters created during the request
         var pollStart = DateTimeOffset.UtcNow;
         var query = $"status=finished&date=gt{_lastCheck:O}";
 
         _logger.LogDebug("Polling for encounters with query: {Query}", query);
 
-        var result = await _fhirClient.SearchAsync("Encounter", query, accessToken, ct);
+        Result<JsonElement> result;
+        try
+        {
+            result = await _fhirClient.SearchAsync("Encounter", query, ct);
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Token acquisition failed
+            _logger.LogWarning("Unable to acquire Athena access token for polling: {Message}", ex.Message);
+            return;
+        }
 
         if (result.IsFailure)
         {

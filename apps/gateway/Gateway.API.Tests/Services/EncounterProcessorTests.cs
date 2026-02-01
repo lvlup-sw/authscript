@@ -19,7 +19,6 @@ public class EncounterProcessorTests
     private readonly IPdfFormStamper _pdfStamper;
     private readonly IAnalysisResultStore _resultStore;
     private readonly INotificationHub _notificationHub;
-    private readonly ITokenAcquisitionStrategy _tokenStrategy;
     private readonly ILogger<EncounterProcessor> _logger;
     private readonly EncounterProcessor _sut;
 
@@ -30,13 +29,7 @@ public class EncounterProcessorTests
         _pdfStamper = Substitute.For<IPdfFormStamper>();
         _resultStore = Substitute.For<IAnalysisResultStore>();
         _notificationHub = Substitute.For<INotificationHub>();
-        _tokenStrategy = Substitute.For<ITokenAcquisitionStrategy>();
         _logger = Substitute.For<ILogger<EncounterProcessor>>();
-
-        // Default token strategy behavior: returns a valid token
-        _tokenStrategy.CanHandle.Returns(true);
-        _tokenStrategy.AcquireTokenAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<string?>("test-access-token"));
 
         _sut = new EncounterProcessor(
             _aggregator,
@@ -44,7 +37,6 @@ public class EncounterProcessorTests
             _pdfStamper,
             _resultStore,
             _notificationHub,
-            _tokenStrategy,
             _logger);
     }
 
@@ -67,7 +59,6 @@ public class EncounterProcessorTests
         // Assert
         await _aggregator.Received(1).AggregateClinicalDataAsync(
             patientId,
-            Arg.Any<string>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -130,7 +121,7 @@ public class EncounterProcessorTests
 
         var clinicalBundle = CreateTestBundle(patientId);
 
-        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(clinicalBundle));
         _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("Intelligence service unavailable"));
@@ -151,7 +142,7 @@ public class EncounterProcessorTests
 
         var clinicalBundle = CreateTestBundle(patientId);
 
-        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(clinicalBundle));
         _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("Intelligence service unavailable"));
@@ -178,7 +169,7 @@ public class EncounterProcessorTests
 
         var clinicalBundle = CreateTestBundle(patientId);
 
-        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(clinicalBundle));
         _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Unexpected internal error"));
@@ -205,7 +196,7 @@ public class EncounterProcessorTests
 
         var clinicalBundle = CreateTestBundle(patientId);
 
-        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(clinicalBundle));
         _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Sensitive internal error with stack details"));
@@ -289,83 +280,13 @@ public class EncounterProcessorTests
             Arg.Any<CancellationToken>());
     }
 
-    [Test]
-    public async Task ProcessEncounterAsync_WhenTokenUnavailable_ReturnsEarlyWithoutProcessing()
-    {
-        // Arrange
-        const string encounterId = "enc-123";
-        const string patientId = "patient-456";
-
-        _tokenStrategy.CanHandle.Returns(true);
-        _tokenStrategy.AcquireTokenAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<string?>(null));
-
-        // Act
-        await _sut.ProcessEncounterAsync(encounterId, patientId, CancellationToken.None);
-
-        // Assert - No further processing should occur
-        await _aggregator.DidNotReceive().AggregateClinicalDataAsync(
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task ProcessEncounterAsync_WhenStrategyCannotHandle_ReturnsEarlyWithoutProcessing()
-    {
-        // Arrange
-        const string encounterId = "enc-123";
-        const string patientId = "patient-456";
-
-        _tokenStrategy.CanHandle.Returns(false);
-
-        // Act
-        await _sut.ProcessEncounterAsync(encounterId, patientId, CancellationToken.None);
-
-        // Assert - No further processing should occur
-        await _aggregator.DidNotReceive().AggregateClinicalDataAsync(
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<CancellationToken>());
-        // Token acquisition should not even be attempted when CanHandle is false
-        await _tokenStrategy.DidNotReceive().AcquireTokenAsync(Arg.Any<CancellationToken>());
-    }
-
-    [Test]
-    public async Task ProcessEncounterAsync_AcquiresTokenViaStrategy_PassesToAggregator()
-    {
-        // Arrange
-        const string encounterId = "enc-123";
-        const string patientId = "patient-456";
-        const string expectedToken = "acquired-token-123";
-
-        _tokenStrategy.CanHandle.Returns(true);
-        _tokenStrategy.AcquireTokenAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<string?>(expectedToken));
-
-        var clinicalBundle = CreateTestBundle(patientId);
-        var formData = CreateTestFormData();
-        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
-
-        SetupSuccessfulMocks(patientId, clinicalBundle, formData, pdfBytes);
-
-        // Act
-        await _sut.ProcessEncounterAsync(encounterId, patientId, CancellationToken.None);
-
-        // Assert - Token should be passed to aggregator
-        await _aggregator.Received(1).AggregateClinicalDataAsync(
-            patientId,
-            expectedToken,
-            Arg.Any<CancellationToken>());
-    }
-
     private void SetupSuccessfulMocks(
         string patientId,
         ClinicalBundle clinicalBundle,
         PAFormData formData,
         byte[] pdfBytes)
     {
-        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<string>(), Arg.Any<CancellationToken>())
+        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(clinicalBundle));
         _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(formData));

@@ -16,6 +16,11 @@ namespace Gateway.API.Tests.Integration;
 public sealed class GatewayAlbaBootstrap : IAsyncInitializer, IAsyncDisposable
 {
     /// <summary>
+    /// Test API key for integration tests.
+    /// </summary>
+    public const string TestApiKey = "test-api-key";
+
+    /// <summary>
     /// Gets the Alba host for making HTTP requests.
     /// </summary>
     public IAlbaHost Host { get; private set; } = null!;
@@ -30,6 +35,8 @@ public sealed class GatewayAlbaBootstrap : IAsyncInitializer, IAsyncDisposable
             {
                 configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
                 {
+                    // API key configuration
+                    ["ApiKey:ValidApiKeys:0"] = TestApiKey,
                     // Athena configuration (required by AthenaOptions.IsValid())
                     ["Athena:ClientId"] = "test-client-id",
                     ["Athena:ClientSecret"] = "test-client-secret",
@@ -47,6 +54,14 @@ public sealed class GatewayAlbaBootstrap : IAsyncInitializer, IAsyncDisposable
 
             config.ConfigureServices(services =>
             {
+                // Replace IFhirTokenProvider with mock returning test token
+                var mockTokenProvider = Substitute.For<IFhirTokenProvider>();
+                mockTokenProvider
+                    .GetTokenAsync(Arg.Any<CancellationToken>())
+                    .Returns(Task.FromResult("test-access-token"));
+                services.RemoveAll<IFhirTokenProvider>();
+                services.AddSingleton(mockTokenProvider);
+
                 // Replace IFhirClient with mock to avoid real FHIR calls
                 services.RemoveAll<IFhirClient>();
                 services.AddSingleton(Substitute.For<IFhirClient>());
@@ -54,7 +69,7 @@ public sealed class GatewayAlbaBootstrap : IAsyncInitializer, IAsyncDisposable
                 // Replace IFhirDataAggregator with mock returning empty clinical bundle
                 var mockAggregator = Substitute.For<IFhirDataAggregator>();
                 mockAggregator
-                    .AggregateClinicalDataAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                    .AggregateClinicalDataAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
                     .Returns(Task.FromResult(CreateEmptyClinicalBundle()));
                 services.RemoveAll<IFhirDataAggregator>();
                 services.AddSingleton(mockAggregator);

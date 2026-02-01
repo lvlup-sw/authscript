@@ -32,9 +32,10 @@ public class DependencyExtensionsAthenaTests
                 ["Athena:TokenEndpoint"] = "https://api.athena.test/oauth2/token"
             })
             .Build();
+        services.AddSingleton<IConfiguration>(config);
 
         // Act
-        services.AddAthenaServices(config);
+        services.AddAthenaServices();
         var provider = services.BuildServiceProvider();
         var options = provider.GetRequiredService<IOptions<AthenaOptions>>();
 
@@ -49,9 +50,10 @@ public class DependencyExtensionsAthenaTests
         var services = new ServiceCollection();
         services.AddHttpClient();
         var config = BuildValidConfig();
+        services.AddSingleton<IConfiguration>(config);
 
         // Act
-        services.AddAthenaServices(config);
+        services.AddAthenaServices();
         var provider = services.BuildServiceProvider();
         var strategy = provider.GetService<ITokenAcquisitionStrategy>();
 
@@ -72,9 +74,10 @@ public class DependencyExtensionsAthenaTests
         // TokenStrategyResolver is registered by AddFhirClients; we need to register it manually here
         services.AddSingleton<TokenStrategyResolver>();
         var config = BuildValidConfig();
+        services.AddSingleton<IConfiguration>(config);
 
         // Act
-        services.AddAthenaServices(config);
+        services.AddAthenaServices();
         var provider = services.BuildServiceProvider();
         var hostedServices = provider.GetServices<IHostedService>();
 
@@ -95,9 +98,10 @@ public class DependencyExtensionsAthenaTests
         services.AddSingleton(Substitute.For<IAnalysisResultStore>());
         services.AddSingleton(Substitute.For<INotificationHub>());
         var config = BuildValidConfig();
+        services.AddSingleton<IConfiguration>(config);
 
         // Act
-        services.AddAthenaServices(config);
+        services.AddAthenaServices();
         var provider = services.BuildServiceProvider();
         var processor = provider.GetService<IEncounterProcessor>();
 
@@ -111,9 +115,10 @@ public class DependencyExtensionsAthenaTests
         // Arrange
         var services = new ServiceCollection();
         var config = BuildValidConfig();
+        services.AddSingleton<IConfiguration>(config);
 
         // Act
-        services.AddAthenaServices(config);
+        services.AddAthenaServices();
         var provider = services.BuildServiceProvider();
         var factory = provider.GetRequiredService<IHttpClientFactory>();
         var client = factory.CreateClient("Athena");

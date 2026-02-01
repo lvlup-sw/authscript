@@ -22,11 +22,12 @@ builder.Services
     .AddApiDocumentation()
     .AddHealthMonitoring()
     .AddCorsPolicy()
-    .AddGatewayServices(builder.Configuration)
-    .AddFhirClients(builder.Configuration)
-    .AddIntelligenceClient(builder.Configuration)
-    .AddNotificationServices()
-    .AddAthenaServices(builder.Configuration);
+    .AddApiKeyAuthentication()
+    .AddAthenaServices()      // Must be before AddFhirClients (registers AthenaOptions)
+    .AddGatewayServices()
+    .AddFhirClients()         // Uses IOptions<AthenaOptions> for base URL
+    .AddIntelligenceClient()
+    .AddNotificationServices();
 
 var app = builder.Build();
 

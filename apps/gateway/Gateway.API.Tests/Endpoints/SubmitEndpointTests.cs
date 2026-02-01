@@ -38,7 +38,6 @@ public class SubmitEndpointTests
                 Arg.Any<byte[]>(),
                 Arg.Any<string>(),
                 Arg.Any<string?>(),
-                Arg.Any<string>(),
                 Arg.Any<CancellationToken>())
             .Returns(Result<string>.Success("doc-456"));
 
@@ -65,7 +64,6 @@ public class SubmitEndpointTests
                 Arg.Any<byte[]>(),
                 Arg.Any<string>(),
                 Arg.Any<string?>(),
-                Arg.Any<string>(),
                 Arg.Any<CancellationToken>())
             .Returns(Result<string>.Success("doc-456"));
 
@@ -77,7 +75,6 @@ public class SubmitEndpointTests
             pdfBytes,
             request.PatientId,
             request.EncounterId,
-            request.AccessToken,
             Arg.Any<CancellationToken>());
     }
 
@@ -122,7 +119,6 @@ public class SubmitEndpointTests
                 Arg.Any<byte[]>(),
                 Arg.Any<string>(),
                 Arg.Any<string?>(),
-                Arg.Any<string>(),
                 Arg.Any<CancellationToken>())
             .Returns(Result<string>.Success(documentId));
 
@@ -161,7 +157,6 @@ public class SubmitEndpointTests
                 Arg.Any<byte[]>(),
                 Arg.Any<string>(),
                 Arg.Any<string?>(),
-                Arg.Any<string>(),
                 Arg.Any<CancellationToken>())
             .Returns(Result<string>.Success("doc-456"));
 
@@ -181,8 +176,7 @@ public class SubmitEndpointTests
         var request = new SubmitRequest
         {
             PatientId = "patient-123",
-            EncounterId = null,
-            AccessToken = "bearer-token"
+            EncounterId = null
         };
 
         // When EncounterId is null, cache key should be transactionId only
@@ -193,7 +187,6 @@ public class SubmitEndpointTests
                 Arg.Any<byte[]>(),
                 Arg.Any<string>(),
                 Arg.Any<string?>(),
-                Arg.Any<string>(),
                 Arg.Any<CancellationToken>())
             .Returns(Result<string>.Success("doc-456"));
 
@@ -211,8 +204,7 @@ public class SubmitEndpointTests
         return new SubmitRequest
         {
             PatientId = "patient-123",
-            EncounterId = "encounter-456",
-            AccessToken = "bearer-token"
+            EncounterId = "encounter-456"
         };
     }
 

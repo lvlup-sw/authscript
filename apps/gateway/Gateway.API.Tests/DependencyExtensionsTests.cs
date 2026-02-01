@@ -17,9 +17,10 @@ public class DependencyExtensionsTests
         var services = new ServiceCollection();
         services.AddLogging();
         var config = CreateTestConfiguration();
+        services.AddSingleton<IConfiguration>(config);
 
         // Act
-        services.AddGatewayServices(config);
+        services.AddGatewayServices();
         var provider = services.BuildServiceProvider();
         var workItemStore = provider.GetService<IWorkItemStore>();
 
