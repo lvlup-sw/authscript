@@ -168,6 +168,16 @@ public sealed class FhirClient : IFhirClient
         return null;
     }
 
+    /// <inheritdoc />
+    public Task<List<ServiceRequestInfo>> SearchServiceRequestsAsync(
+        string patientId,
+        string? encounterId,
+        string accessToken,
+        CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
+    }
+
     #region Bundle Extraction
 
     private static List<T> ExtractResourcesFromBundle<T>(
