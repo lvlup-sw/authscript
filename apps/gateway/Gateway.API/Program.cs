@@ -15,7 +15,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Infrastructure (Aspire)
 // ---------------------------------------------------------------------------
 builder.AddRedisClient("redis");
-builder.AddNpgsqlDbContext<GatewayDbContext>("authscript");
+builder.AddDatabaseMigration<GatewayDbContext>("authscript");
 
 // ---------------------------------------------------------------------------
 // Service Registration
@@ -33,21 +33,6 @@ builder.Services
     .AddNotificationServices();
 
 var app = builder.Build();
-
-// ---------------------------------------------------------------------------
-// Database Migrations (Development)
-// ---------------------------------------------------------------------------
-if (app.Environment.IsDevelopment())
-{
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<GatewayDbContext>();
-
-    // Only run migrations for relational providers (not in-memory for tests)
-    if (db.Database.IsRelational())
-    {
-        await db.Database.MigrateAsync();
-    }
-}
 
 // ---------------------------------------------------------------------------
 // Middleware Pipeline

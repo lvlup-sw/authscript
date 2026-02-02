@@ -15,6 +15,7 @@ using Gateway.API.Services.Fhir;
 using Gateway.API.Services.Http;
 using Gateway.API.Services.Notifications;
 using Gateway.API.Services.Polling;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Options;
 using Gateway.API.Data;
@@ -261,5 +262,55 @@ public static class DependencyExtensions
         services.AddScoped<IEncounterProcessor, EncounterProcessor>();
 
         return services;
+    }
+
+    /// <summary>
+    /// Adds database migration services for a specific DbContext.
+    /// Runs migrations automatically on startup via a background service.
+    /// </summary>
+    /// <typeparam name="TContext">The DbContext type to configure.</typeparam>
+    /// <param name="builder">The host application builder.</param>
+    /// <param name="connectionName">The Aspire connection name to use.</param>
+    /// <param name="setupAction">Optional configuration for migration options.</param>
+    /// <returns>The modified host application builder for chaining.</returns>
+    public static IHostApplicationBuilder AddDatabaseMigration<TContext>(
+        this IHostApplicationBuilder builder,
+        string connectionName,
+        Action<MigrationServiceOptions>? setupAction = null)
+        where TContext : DbContext
+    {
+        // Add PostgreSQL context using Aspire pattern
+        builder.AddNpgsqlDbContext<TContext>(connectionName,
+            configureDbContextOptions: options =>
+            {
+                options.UseNpgsql();
+
+                // Enable detailed logging in Development only
+                if (builder.Environment.IsDevelopment())
+                {
+                    options.EnableSensitiveDataLogging();
+                    options.EnableDetailedErrors();
+                }
+            });
+
+        // Configure options
+        builder.Services.AddOptions<MigrationServiceOptions>();
+        if (setupAction is not null)
+        {
+            builder.Services.Configure(setupAction);
+        }
+
+        // Add migration service as hosted service
+        builder.Services.AddHostedService<MigrationService<TContext>>();
+
+        // Add migration health check
+        builder.Services.AddHealthChecks()
+            .AddCheck<MigrationHealthCheck>("migrations", tags: ["ready"]);
+
+        // Add OpenTelemetry tracing for migrations
+        builder.Services.AddOpenTelemetry()
+            .WithTracing(tracing => tracing.AddSource(MigrationService<TContext>.ActivitySourceName));
+
+        return builder;
     }
 }
