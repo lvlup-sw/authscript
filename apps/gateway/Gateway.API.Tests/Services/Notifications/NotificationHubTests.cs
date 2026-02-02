@@ -89,7 +89,7 @@ public class NotificationHubTests
             PatientId: "patient-002",
             Message: "Analysis completed");
 
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         var readNotifications = new List<Notification>();
 
         // Act - Start reading first
@@ -102,8 +102,8 @@ public class NotificationHubTests
             }
         }, cts.Token);
 
-        // Give subscriber time to register
-        await Task.Delay(50);
+        // Wait for subscriber to register (poll instead of fixed delay)
+        await WaitForSubscribersAsync(hub, expectedCount: 1, cts.Token);
 
         await hub.WriteAsync(notification1, CancellationToken.None);
         await hub.WriteAsync(notification2, CancellationToken.None);
@@ -135,7 +135,7 @@ public class NotificationHubTests
             PatientId: "patient-broadcast",
             Message: "Broadcast message");
 
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         var subscriber1Notifications = new List<Notification>();
         var subscriber2Notifications = new List<Notification>();
         var subscriber3Notifications = new List<Notification>();
@@ -168,8 +168,8 @@ public class NotificationHubTests
             }
         }, cts.Token);
 
-        // Give all subscribers time to register
-        await Task.Delay(50);
+        // Wait for all subscribers to register (poll instead of fixed delay)
+        await WaitForSubscribersAsync(hub, expectedCount: 3, cts.Token);
 
         // Write a single notification
         await hub.WriteAsync(notification, CancellationToken.None);
@@ -344,6 +344,17 @@ public class NotificationHubTests
         {
             await Assert.That(subscriber1Messages[i].TransactionId).IsEqualTo($"txn-multi-{i}");
             await Assert.That(subscriber2Messages[i].TransactionId).IsEqualTo($"txn-multi-{i}");
+        }
+    }
+
+    /// <summary>
+    /// Helper to reliably wait for subscribers to register instead of using fixed delays.
+    /// </summary>
+    private static async Task WaitForSubscribersAsync(NotificationHub hub, int expectedCount, CancellationToken ct)
+    {
+        while (hub.SubscriberCount < expectedCount && !ct.IsCancellationRequested)
+        {
+            await Task.Delay(10, ct);
         }
     }
 }
