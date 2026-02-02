@@ -16,6 +16,7 @@ namespace Gateway.API.Services;
 /// </summary>
 public sealed class InMemoryPatientRegistry : IPatientRegistry
 {
+    private static readonly TimeSpan ExpirationTime = TimeSpan.FromHours(12);
     private readonly ConcurrentDictionary<string, RegisteredPatient> _patients = new();
 
     /// <inheritdoc/>
@@ -35,7 +36,11 @@ public sealed class InMemoryPatientRegistry : IPatientRegistry
     /// <inheritdoc/>
     public Task<IReadOnlyList<RegisteredPatient>> GetActiveAsync(CancellationToken ct = default)
     {
-        throw new NotImplementedException();
+        var cutoff = DateTimeOffset.UtcNow - ExpirationTime;
+        var active = _patients.Values
+            .Where(p => p.RegisteredAt > cutoff)
+            .ToList();
+        return Task.FromResult<IReadOnlyList<RegisteredPatient>>(active);
     }
 
     /// <inheritdoc/>

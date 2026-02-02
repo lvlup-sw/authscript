@@ -67,4 +67,64 @@ public class InMemoryPatientRegistryTests
         var retrieved = await _registry.GetAsync("patient-123");
         await Assert.That(retrieved!.EncounterId).IsEqualTo("encounter-2");
     }
+
+    [Test]
+    public async Task GetAsync_NonExistentPatient_ReturnsNull()
+    {
+        // Act
+        var result = await _registry.GetAsync("non-existent-id");
+
+        // Assert
+        await Assert.That(result).IsNull();
+    }
+
+    [Test]
+    public async Task GetActiveAsync_ReturnsAllActivePatients()
+    {
+        // Arrange
+        var patient1 = CreatePatient("p1");
+        var patient2 = CreatePatient("p2");
+        await _registry.RegisterAsync(patient1);
+        await _registry.RegisterAsync(patient2);
+
+        // Act
+        var active = await _registry.GetActiveAsync();
+
+        // Assert
+        await Assert.That(active.Count).IsEqualTo(2);
+    }
+
+    [Test]
+    public async Task GetActiveAsync_FiltersExpiredPatients()
+    {
+        // Arrange - create patient with old RegisteredAt
+        var expiredPatient = new RegisteredPatient
+        {
+            PatientId = "expired",
+            EncounterId = "enc",
+            PracticeId = "prac",
+            WorkItemId = "wi",
+            RegisteredAt = DateTimeOffset.UtcNow.AddHours(-13) // 13 hours ago = expired
+        };
+        var activePatient = CreatePatient("active");
+
+        await _registry.RegisterAsync(expiredPatient);
+        await _registry.RegisterAsync(activePatient);
+
+        // Act
+        var active = await _registry.GetActiveAsync();
+
+        // Assert
+        await Assert.That(active.Count).IsEqualTo(1);
+        await Assert.That(active[0].PatientId).IsEqualTo("active");
+    }
+
+    private static RegisteredPatient CreatePatient(string patientId) => new()
+    {
+        PatientId = patientId,
+        EncounterId = $"enc-{patientId}",
+        PracticeId = "practice-1",
+        WorkItemId = $"wi-{patientId}",
+        RegisteredAt = DateTimeOffset.UtcNow
+    };
 }
