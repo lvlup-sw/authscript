@@ -65,12 +65,16 @@ public sealed class FhirDataAggregator : IFhirDataAggregator
         };
 
         _logger.LogInformation(
-            "Aggregated data: {Conditions} conditions, {Observations} observations, {Procedures} procedures, {Documents} documents, {ServiceRequests} service requests",
+            "Aggregated clinical data for patient: Conditions={ConditionCount}, " +
+            "Observations={ObservationCount}, Procedures={ProcedureCount}, " +
+            "Documents={DocumentCount}, ServiceRequests={ServiceRequestCount}, " +
+            "HasPatientDemographics={HasPatient}",
             bundle.Conditions.Count,
             bundle.Observations.Count,
             bundle.Procedures.Count,
             bundle.Documents.Count,
-            bundle.ServiceRequests.Count);
+            bundle.ServiceRequests.Count,
+            bundle.Patient is not null);
 
         return bundle;
     }
