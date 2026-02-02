@@ -141,14 +141,9 @@ The current implementation only provides a `POST /api/work-items/{id}/rehydrate`
 }
 ```
 
-#### POST /api/work-items/{id}/rehydrate (Modified)
+#### POST /api/work-items/{id}/rehydrate
 
-**Request (NEW — accepts optional token):**
-```json
-{
-  "accessToken": "eyJ..."  // Optional - uses token resolver if not provided
-}
-```
+**Request:** No request body required. Token management is handled internally via `IFhirTokenProvider`.
 
 **Response (200 OK):**
 ```json
@@ -341,51 +336,9 @@ public static void MapWorkItemEndpoints(this IEndpointRouteBuilder app)
 
 ---
 
-### Task 4: Modify RehydrateRequest for Token
+### Task 4: Token Management
 
-**File:** `apps/gateway/Gateway.API/Models/RehydrateRequest.cs`
-
-```csharp
-namespace Gateway.API.Models;
-
-/// <summary>
-/// Request for triggering re-hydration of clinical data for a work item.
-/// </summary>
-public sealed record RehydrateRequest
-{
-    /// <summary>
-    /// Gets the ID of the work item to re-hydrate.
-    /// </summary>
-    public required string WorkItemId { get; init; }
-
-    /// <summary>
-    /// Optional OAuth access token. If not provided, uses token resolver.
-    /// For preview/testing when token resolver is not configured.
-    /// </summary>
-    public string? AccessToken { get; init; }
-}
-```
-
-**Update RehydrateAsync endpoint:**
-```csharp
-public static async Task<IResult> RehydrateAsync(
-    string id,
-    [FromBody] RehydrateRequest? request,
-    [FromServices] IWorkItemStore workItemStore,
-    [FromServices] IFhirDataAggregator fhirAggregator,
-    [FromServices] IIntelligenceClient intelligenceClient,
-    [FromServices] ILogger<RehydrateResponse> logger,
-    CancellationToken cancellationToken)
-{
-    // ... existing work item lookup ...
-
-    // Use provided token or fall back to placeholder
-    // Production: Inject ITokenStrategyResolver as fallback
-    var accessToken = request?.AccessToken ?? "placeholder-token";
-
-    // ... rest of implementation ...
-}
-```
+**NOTE:** Token management is now handled internally via `IFhirTokenProvider`. The rehydrate endpoint no longer accepts an `accessToken` parameter. Token acquisition is automatic.
 
 ---
 
@@ -925,7 +878,7 @@ Task 1 → Task 2 → Task 3 → Task 4 → Task 6
 - [ ] `GET /api/work-items` lists all work items with optional filters
 - [ ] `GET /api/work-items/{id}` returns work item or 404
 - [ ] `PUT /api/work-items/{id}/status` updates status or returns 404
-- [ ] `POST /api/work-items/{id}/rehydrate` accepts optional `accessToken`
+- [ ] `POST /api/work-items/{id}/rehydrate` triggers re-analysis (no request body needed)
 - [ ] All unit tests pass (TUnit)
 - [ ] All integration tests pass (Alba)
 - [ ] Can create, retrieve, update, and rehydrate work items in preview environment

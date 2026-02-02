@@ -5,6 +5,7 @@
 // =============================================================================
 
 using Gateway.API.Contracts;
+using Gateway.API.Filters;
 using Gateway.API.Models;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
@@ -23,7 +24,8 @@ public static class PatientEndpoints
     public static void MapPatientEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/patients")
-            .WithTags("Patients");
+            .WithTags("Patients")
+            .AddEndpointFilter<ApiKeyEndpointFilter>();
 
         group.MapPost("/register", RegisterAsync)
             .WithName("RegisterPatient")

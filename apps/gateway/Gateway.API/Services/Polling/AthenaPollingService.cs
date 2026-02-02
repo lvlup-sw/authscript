@@ -49,7 +49,7 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
         _encounterChannel = Channel.CreateUnbounded<EncounterCompletedEvent>(new UnboundedChannelOptions
         {
             SingleReader = true,
-            SingleWriter = true
+            SingleWriter = false
         });
     }
 
@@ -207,6 +207,13 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
     {
         try
         {
+            // Skip if already processed
+            if (IsEncounterProcessed(patient.EncounterId))
+            {
+                _logger.LogDebug("Skipping already processed encounter {EncounterId}", patient.EncounterId);
+                return;
+            }
+
             // Build per-patient query using AthenaQueryBuilder
             var query = AthenaQueryBuilder.BuildEncounterQuery(
                 patient.PatientId,
@@ -237,6 +244,12 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
             // Check for status transition to "finished"
             if (status == "finished" && patient.CurrentEncounterStatus != "finished")
             {
+                // Mark encounter as processed to prevent duplicate emissions
+                lock (_lock)
+                {
+                    _processedEncounters[patient.EncounterId] = DateTimeOffset.UtcNow;
+                }
+
                 _logger.LogInformation("Encounter completed for patient {PatientId}", patient.PatientId);
 
                 // Emit full event to channel

@@ -1,6 +1,7 @@
 using Gateway.API.Contracts;
 using Gateway.API.Filters;
 using Gateway.API.Models;
+using Gateway.API.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Gateway.API.Endpoints;
@@ -88,21 +89,32 @@ public static class WorkItemEndpoints
             "Rehydrating work item {WorkItemId} for patient {PatientId}",
             id, workItem.PatientId);
 
-        // 2. Fetch clinical data (token management handled internally by IFhirTokenProvider)
+        // 2. Validate ProcedureCode before analysis
+        if (string.IsNullOrWhiteSpace(workItem.ProcedureCode))
+        {
+            logger.LogWarning("Work item {WorkItemId} missing ProcedureCode", id);
+            return Results.BadRequest(new ErrorResponse
+            {
+                Message = $"Work item '{id}' missing ProcedureCode",
+                Code = "WORK_ITEM_MISSING_PROCEDURE_CODE"
+            });
+        }
+
+        // 3. Fetch clinical data (token management handled internally by IFhirTokenProvider)
         var clinicalBundle = await fhirAggregator.AggregateClinicalDataAsync(
             workItem.PatientId,
             cancellationToken);
 
-        // 3. Re-analyze with intelligence service
+        // 4. Re-analyze with intelligence service
         var analysisResult = await intelligenceClient.AnalyzeAsync(
             clinicalBundle,
             workItem.ProcedureCode,
             cancellationToken);
 
-        // 4. Determine new status based on analysis
+        // 5. Determine new status based on analysis
         var newStatus = DetermineStatus(analysisResult);
 
-        // 5. Update work item status
+        // 6. Update work item status
         var updated = await workItemStore.UpdateStatusAsync(id, newStatus, cancellationToken);
         if (!updated)
         {
@@ -130,23 +142,8 @@ public static class WorkItemEndpoints
     /// </summary>
     /// <param name="analysisResult">The PA form data from analysis.</param>
     /// <returns>The appropriate work item status.</returns>
-    private static WorkItemStatus DetermineStatus(PAFormData analysisResult)
-    {
-        // If recommendation is "no_pa_required", set status accordingly
-        if (analysisResult.Recommendation == "no_pa_required")
-        {
-            return WorkItemStatus.NoPaRequired;
-        }
-
-        // If confidence is high enough and recommendation is approve, ready for review
-        if (analysisResult.ConfidenceScore >= 0.8 && analysisResult.Recommendation == "approve")
-        {
-            return WorkItemStatus.ReadyForReview;
-        }
-
-        // Otherwise, still missing data or needs more info
-        return WorkItemStatus.MissingData;
-    }
+    private static WorkItemStatus DetermineStatus(PAFormData analysisResult) =>
+        RecommendationMapper.MapToStatus(analysisResult.Recommendation, analysisResult.ConfidenceScore);
 
     /// <summary>
     /// Creates a new work item.

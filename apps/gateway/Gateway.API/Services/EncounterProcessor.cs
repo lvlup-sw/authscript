@@ -87,13 +87,7 @@ public sealed class EncounterProcessor : IEncounterProcessor
                 formData.ConfidenceScore);
 
             // Step 3: Determine work item status based on recommendation
-            var status = formData.Recommendation switch
-            {
-                "APPROVE" or "DENY" => WorkItemStatus.ReadyForReview,
-                "NEEDS_INFO" => WorkItemStatus.MissingData,
-                "NOT_REQUIRED" => WorkItemStatus.NoPaRequired,
-                _ => WorkItemStatus.ReadyForReview
-            };
+            var status = RecommendationMapper.MapToStatus(formData.Recommendation, formData.ConfidenceScore);
 
             // Step 4: Update work item with ServiceRequestId, ProcedureCode, and status
             var existingWorkItem = await _workItemStore.GetByIdAsync(evt.WorkItemId, ct);
@@ -112,7 +106,19 @@ public sealed class EncounterProcessor : IEncounterProcessor
                     Status = status,
                     UpdatedAt = DateTimeOffset.UtcNow
                 };
-                await _workItemStore.UpdateAsync(evt.WorkItemId, updatedWorkItem, ct);
+                var updateSuccess = await _workItemStore.UpdateAsync(evt.WorkItemId, updatedWorkItem, ct);
+
+                if (!updateSuccess)
+                {
+                    _logger.LogWarning("Work item {WorkItemId} update failed", evt.WorkItemId);
+                    await _notificationHub.WriteAsync(new Notification(
+                        Type: "PROCESSING_ERROR",
+                        TransactionId: transactionId,
+                        EncounterId: evt.EncounterId,
+                        PatientId: evt.PatientId,
+                        Message: "Work item update failed"), ct);
+                    return;
+                }
 
                 _logger.LogInformation(
                     "Updated work item {WorkItemId} to status {Status} with ServiceRequestId {ServiceRequestId} and ProcedureCode {ProcedureCode}",
@@ -124,7 +130,19 @@ public sealed class EncounterProcessor : IEncounterProcessor
             else
             {
                 // Fallback to just updating status if work item not found (shouldn't happen in normal flow)
-                await _workItemStore.UpdateStatusAsync(evt.WorkItemId, status, ct);
+                var statusUpdateSuccess = await _workItemStore.UpdateStatusAsync(evt.WorkItemId, status, ct);
+
+                if (!statusUpdateSuccess)
+                {
+                    _logger.LogWarning("Work item {WorkItemId} status update failed", evt.WorkItemId);
+                    await _notificationHub.WriteAsync(new Notification(
+                        Type: "PROCESSING_ERROR",
+                        TransactionId: transactionId,
+                        EncounterId: evt.EncounterId,
+                        PatientId: evt.PatientId,
+                        Message: "Work item status update failed"), ct);
+                    return;
+                }
 
                 _logger.LogWarning(
                     "Work item {WorkItemId} not found for full update, updated status only to {Status}",

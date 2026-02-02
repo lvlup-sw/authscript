@@ -557,6 +557,12 @@ public class EncounterProcessorTests
 
         SetupSuccessfulMocks(evt.PatientId, clinicalBundle, formData, pdfBytes);
 
+        // Configure work item store for fallback path (work item not found)
+        _workItemStore.GetByIdAsync(evt.WorkItemId, Arg.Any<CancellationToken>())
+            .Returns((WorkItem?)null);
+        _workItemStore.UpdateStatusAsync(evt.WorkItemId, Arg.Any<WorkItemStatus>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
         // Act
         await _sut.ProcessAsync(evt, CancellationToken.None);
 
@@ -891,6 +897,10 @@ public class EncounterProcessorTests
         // Work item not found, will use fallback UpdateStatusAsync
         _workItemStore.GetByIdAsync(evt.WorkItemId, Arg.Any<CancellationToken>())
             .Returns((WorkItem?)null);
+
+        // UpdateStatusAsync must return true for processing to continue
+        _workItemStore.UpdateStatusAsync(evt.WorkItemId, Arg.Any<WorkItemStatus>(), Arg.Any<CancellationToken>())
+            .Returns(true);
 
         // Act
         await _sut.ProcessAsync(evt, CancellationToken.None);
