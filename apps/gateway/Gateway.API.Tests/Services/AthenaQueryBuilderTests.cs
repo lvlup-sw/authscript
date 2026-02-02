@@ -11,7 +11,7 @@ using Gateway.API.Services;
 /// <summary>
 /// Tests for the AthenaQueryBuilder utility.
 /// </summary>
-public class AthenaQueryBuilderTests
+public sealed class AthenaQueryBuilderTests
 {
     [Test]
     public async Task BuildEncounterQuery_FormatsAhPracticeCorrectly()

@@ -22,6 +22,12 @@ public sealed class InMemoryPatientRegistry : IPatientRegistry
     /// <inheritdoc/>
     public Task RegisterAsync(RegisteredPatient patient, CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(patient);
+        if (string.IsNullOrWhiteSpace(patient.PatientId))
+        {
+            throw new ArgumentException("PatientId is required.", nameof(patient));
+        }
+
         _patients[patient.PatientId] = patient;
         return Task.CompletedTask;
     }

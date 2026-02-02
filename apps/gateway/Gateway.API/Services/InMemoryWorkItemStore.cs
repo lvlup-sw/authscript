@@ -59,6 +59,11 @@ public sealed class InMemoryWorkItemStore : IWorkItemStore
     /// <inheritdoc />
     public Task<bool> UpdateAsync(string id, WorkItem updated, CancellationToken cancellationToken = default)
     {
+        if (updated.Id != id)
+        {
+            throw new ArgumentException($"Updated work item Id '{updated.Id}' must match the provided id '{id}'", nameof(updated));
+        }
+
         const int maxRetries = 10;
 
         for (var attempt = 0; attempt < maxRetries; attempt++)

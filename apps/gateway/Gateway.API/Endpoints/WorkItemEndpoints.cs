@@ -143,8 +143,10 @@ public static class WorkItemEndpoints
     /// </summary>
     /// <param name="analysisResult">The PA form data from analysis.</param>
     /// <returns>The appropriate work item status.</returns>
-    private static WorkItemStatus DetermineStatus(PAFormData analysisResult) =>
-        RecommendationMapper.MapToStatus(analysisResult.Recommendation, analysisResult.ConfidenceScore);
+    private static WorkItemStatus DetermineStatus(PAFormData analysisResult)
+    {
+        return RecommendationMapper.MapToStatus(analysisResult.Recommendation, analysisResult.ConfidenceScore);
+    }
 
     /// <summary>
     /// Creates a new work item.

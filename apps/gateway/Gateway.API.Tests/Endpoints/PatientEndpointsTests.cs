@@ -71,8 +71,7 @@ public sealed class PatientEndpointsTests
             .Returns("workitem-id-1");
 
         RegisteredPatient? capturedPatient = null;
-        _patientRegistry.RegisterAsync(Arg.Do<RegisteredPatient>(p => capturedPatient = p), Arg.Any<CancellationToken>())
-            .Returns(Task.CompletedTask);
+        _patientRegistry.RegisterAsync(Arg.Do<RegisteredPatient>(p => capturedPatient = p), Arg.Any<CancellationToken>());
 
         // Act
         await PatientEndpoints.RegisterAsync(request, _workItemStore, _patientRegistry);
