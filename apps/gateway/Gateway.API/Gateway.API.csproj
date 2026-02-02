@@ -15,6 +15,7 @@
     <!-- Aspire Service Defaults -->
     <PackageReference Include="Aspire.StackExchange.Redis" Version="13.1.0" />
     <PackageReference Include="Aspire.Npgsql" Version="13.1.0" />
+    <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.1.0" />
 
     <!-- FHIR Client -->
     <PackageReference Include="Hl7.Fhir.R4" Version="5.10.3" />
