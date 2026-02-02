@@ -95,13 +95,40 @@ public sealed class EncounterProcessor : IEncounterProcessor
                 _ => WorkItemStatus.ReadyForReview
             };
 
-            // Step 4: Update work item status
-            await _workItemStore.UpdateStatusAsync(evt.WorkItemId, status, ct);
+            // Step 4: Update work item with ServiceRequestId, ProcedureCode, and status
+            var existingWorkItem = await _workItemStore.GetByIdAsync(evt.WorkItemId, ct);
+            if (existingWorkItem is not null)
+            {
+                // Extract ServiceRequestId from the first active ServiceRequest in the bundle
+                var serviceRequestId = clinicalBundle.ServiceRequests
+                    .FirstOrDefault(sr => sr.Status == "active")?.Id;
 
-            _logger.LogInformation(
-                "Updated work item {WorkItemId} to status {Status}",
-                evt.WorkItemId,
-                status);
+                var updatedWorkItem = existingWorkItem with
+                {
+                    ServiceRequestId = serviceRequestId,
+                    ProcedureCode = formData.ProcedureCode,
+                    Status = status,
+                    UpdatedAt = DateTimeOffset.UtcNow
+                };
+                await _workItemStore.UpdateAsync(evt.WorkItemId, updatedWorkItem, ct);
+
+                _logger.LogInformation(
+                    "Updated work item {WorkItemId} to status {Status} with ServiceRequestId {ServiceRequestId} and ProcedureCode {ProcedureCode}",
+                    evt.WorkItemId,
+                    status,
+                    serviceRequestId,
+                    formData.ProcedureCode);
+            }
+            else
+            {
+                // Fallback to just updating status if work item not found (shouldn't happen in normal flow)
+                await _workItemStore.UpdateStatusAsync(evt.WorkItemId, status, ct);
+
+                _logger.LogWarning(
+                    "Work item {WorkItemId} not found for full update, updated status only to {Status}",
+                    evt.WorkItemId,
+                    status);
+            }
 
             // Step 5: Generate PDF from form data
             var pdfBytes = await _pdfStamper.StampFormAsync(formData, ct);

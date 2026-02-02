@@ -593,5 +593,153 @@ public class EncounterProcessorTests
             Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task ProcessAsync_AnalysisComplete_UpdatesWorkItemWithServiceRequestId()
+    {
+        // Arrange
+        var evt = CreateEvent();
+        var clinicalBundle = CreateTestBundle(evt.PatientId);
+        clinicalBundle = clinicalBundle with
+        {
+            ServiceRequests =
+            [
+                new ServiceRequestInfo
+                {
+                    Id = "sr-from-bundle-123",
+                    Status = "active",
+                    Code = new CodeableConcept
+                    {
+                        Coding = [new Coding { Code = "72148", Display = "MRI Lumbar Spine" }],
+                        Text = "MRI Lumbar Spine"
+                    }
+                }
+            ]
+        };
+        var formData = CreateFormData("APPROVE");
+        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+
+        _aggregator.AggregateClinicalDataAsync(evt.PatientId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(clinicalBundle));
+        _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(formData));
+        _pdfStamper.StampFormAsync(Arg.Any<PAFormData>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(pdfBytes));
+
+        var existingWorkItem = new WorkItem
+        {
+            Id = evt.WorkItemId,
+            PatientId = evt.PatientId,
+            EncounterId = evt.EncounterId,
+            Status = WorkItemStatus.Pending,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _workItemStore.GetByIdAsync(evt.WorkItemId, Arg.Any<CancellationToken>())
+            .Returns(existingWorkItem);
+
+        WorkItem? capturedWorkItem = null;
+        _workItemStore.UpdateAsync(evt.WorkItemId, Arg.Do<WorkItem>(wi => capturedWorkItem = wi), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        // Act
+        await _sut.ProcessAsync(evt, CancellationToken.None);
+
+        // Assert
+        await Assert.That(capturedWorkItem).IsNotNull();
+        await Assert.That(capturedWorkItem!.ServiceRequestId).IsEqualTo("sr-from-bundle-123");
+    }
+
+    [Test]
+    public async Task ProcessAsync_AnalysisComplete_UpdatesWorkItemWithProcedureCode()
+    {
+        // Arrange
+        var evt = CreateEvent();
+        var clinicalBundle = CreateTestBundle(evt.PatientId);
+        var formData = CreateFormData("APPROVE");
+        formData = formData with { ProcedureCode = "72148" };
+        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+
+        SetupSuccessfulMocks(evt.PatientId, clinicalBundle, formData, pdfBytes);
+
+        var existingWorkItem = new WorkItem
+        {
+            Id = evt.WorkItemId,
+            PatientId = evt.PatientId,
+            EncounterId = evt.EncounterId,
+            Status = WorkItemStatus.Pending,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _workItemStore.GetByIdAsync(evt.WorkItemId, Arg.Any<CancellationToken>())
+            .Returns(existingWorkItem);
+
+        WorkItem? capturedWorkItem = null;
+        _workItemStore.UpdateAsync(evt.WorkItemId, Arg.Do<WorkItem>(wi => capturedWorkItem = wi), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        // Act
+        await _sut.ProcessAsync(evt, CancellationToken.None);
+
+        // Assert
+        await Assert.That(capturedWorkItem).IsNotNull();
+        await Assert.That(capturedWorkItem!.ProcedureCode).IsEqualTo("72148");
+    }
+
+    [Test]
+    public async Task ProcessAsync_AnalysisComplete_UpdatesWorkItemWithCorrectStatus()
+    {
+        // Arrange
+        var evt = CreateEvent();
+        var clinicalBundle = CreateTestBundle(evt.PatientId);
+        var formData = CreateFormData("NEEDS_INFO");
+        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+
+        SetupSuccessfulMocks(evt.PatientId, clinicalBundle, formData, pdfBytes);
+
+        var existingWorkItem = new WorkItem
+        {
+            Id = evt.WorkItemId,
+            PatientId = evt.PatientId,
+            EncounterId = evt.EncounterId,
+            Status = WorkItemStatus.Pending,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _workItemStore.GetByIdAsync(evt.WorkItemId, Arg.Any<CancellationToken>())
+            .Returns(existingWorkItem);
+
+        WorkItem? capturedWorkItem = null;
+        _workItemStore.UpdateAsync(evt.WorkItemId, Arg.Do<WorkItem>(wi => capturedWorkItem = wi), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        // Act
+        await _sut.ProcessAsync(evt, CancellationToken.None);
+
+        // Assert
+        await Assert.That(capturedWorkItem).IsNotNull();
+        await Assert.That(capturedWorkItem!.Status).IsEqualTo(WorkItemStatus.MissingData);
+    }
+
+    [Test]
+    public async Task ProcessAsync_WorkItemNotFound_DoesNotThrow()
+    {
+        // Arrange
+        var evt = CreateEvent();
+        var clinicalBundle = CreateTestBundle(evt.PatientId);
+        var formData = CreateFormData("APPROVE");
+        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+
+        SetupSuccessfulMocks(evt.PatientId, clinicalBundle, formData, pdfBytes);
+
+        _workItemStore.GetByIdAsync(evt.WorkItemId, Arg.Any<CancellationToken>())
+            .Returns((WorkItem?)null);
+
+        // Act - Should complete without throwing
+        await _sut.ProcessAsync(evt, CancellationToken.None);
+
+        // Assert - UpdateAsync should NOT be called when work item not found
+        await _workItemStore.DidNotReceive().UpdateAsync(
+            Arg.Any<string>(),
+            Arg.Any<WorkItem>(),
+            Arg.Any<CancellationToken>());
+    }
+
     #endregion
 }

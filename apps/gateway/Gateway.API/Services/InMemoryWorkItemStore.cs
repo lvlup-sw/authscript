@@ -57,6 +57,30 @@ public sealed class InMemoryWorkItemStore : IWorkItemStore
     }
 
     /// <inheritdoc />
+    public Task<bool> UpdateAsync(string id, WorkItem updated, CancellationToken cancellationToken = default)
+    {
+        const int maxRetries = 10;
+
+        for (var attempt = 0; attempt < maxRetries; attempt++)
+        {
+            if (!_store.TryGetValue(id, out var existing))
+            {
+                return Task.FromResult(false);
+            }
+
+            // Atomically update only if the value hasn't changed since we read it
+            if (_store.TryUpdate(id, updated, existing))
+            {
+                return Task.FromResult(true);
+            }
+            // If TryUpdate failed, another thread modified the entry - retry
+        }
+
+        // Exhausted retries due to concurrent modifications
+        return Task.FromResult(false);
+    }
+
+    /// <inheritdoc />
     public Task<List<WorkItem>> GetByEncounterAsync(string encounterId, CancellationToken cancellationToken = default)
     {
         var matches = _store.Values

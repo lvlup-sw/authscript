@@ -253,6 +253,90 @@ public class InMemoryWorkItemStoreTests
         await Assert.That(results).IsEmpty();
     }
 
+    [Test]
+    public async Task UpdateAsync_ExistingWorkItem_UpdatesFields()
+    {
+        // Arrange
+        var original = new WorkItem
+        {
+            Id = "wi-update-1",
+            PatientId = "patient-1",
+            EncounterId = "encounter-1",
+            Status = WorkItemStatus.Pending,
+            ServiceRequestId = null,
+            ProcedureCode = null,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        await _sut.CreateAsync(original, CancellationToken.None);
+
+        var updated = original with
+        {
+            ServiceRequestId = "sr-123",
+            ProcedureCode = "72148",
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+
+        // Act
+        var result = await _sut.UpdateAsync("wi-update-1", updated, CancellationToken.None);
+
+        // Assert
+        await Assert.That(result).IsTrue();
+        var retrieved = await _sut.GetByIdAsync("wi-update-1", CancellationToken.None);
+        await Assert.That(retrieved!.ServiceRequestId).IsEqualTo("sr-123");
+        await Assert.That(retrieved.ProcedureCode).IsEqualTo("72148");
+    }
+
+    [Test]
+    public async Task UpdateAsync_NonExistentWorkItem_ReturnsFalse()
+    {
+        // Arrange
+        var workItem = new WorkItem
+        {
+            Id = "non-existent",
+            PatientId = "patient-1",
+            EncounterId = "encounter-1",
+            Status = WorkItemStatus.Pending,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+
+        // Act
+        var result = await _sut.UpdateAsync("non-existent", workItem, CancellationToken.None);
+
+        // Assert
+        await Assert.That(result).IsFalse();
+    }
+
+    [Test]
+    public async Task UpdateAsync_ExistingWorkItem_SetsUpdatedAt()
+    {
+        // Arrange
+        var original = new WorkItem
+        {
+            Id = "wi-update-2",
+            PatientId = "patient-1",
+            EncounterId = "encounter-1",
+            Status = WorkItemStatus.Pending,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        await _sut.CreateAsync(original, CancellationToken.None);
+
+        var updateTime = DateTimeOffset.UtcNow;
+        var updated = original with
+        {
+            Status = WorkItemStatus.ReadyForReview,
+            UpdatedAt = updateTime
+        };
+
+        // Act
+        var result = await _sut.UpdateAsync("wi-update-2", updated, CancellationToken.None);
+
+        // Assert
+        await Assert.That(result).IsTrue();
+        var retrieved = await _sut.GetByIdAsync("wi-update-2", CancellationToken.None);
+        await Assert.That(retrieved!.UpdatedAt).IsNotNull();
+        await Assert.That(retrieved.Status).IsEqualTo(WorkItemStatus.ReadyForReview);
+    }
+
     private static WorkItem CreateWorkItem(string id, string encounterId, WorkItemStatus status)
     {
         return new WorkItem

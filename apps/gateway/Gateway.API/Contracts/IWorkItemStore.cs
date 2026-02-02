@@ -33,6 +33,15 @@ public interface IWorkItemStore
     Task<bool> UpdateStatusAsync(string id, WorkItemStatus newStatus, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Updates a work item with new values.
+    /// </summary>
+    /// <param name="id">The work item ID.</param>
+    /// <param name="updated">The updated work item.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>True if update succeeded, false if work item not found.</returns>
+    Task<bool> UpdateAsync(string id, WorkItem updated, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Retrieves all work items for a given encounter.
     /// </summary>
     /// <param name="encounterId">The FHIR Encounter ID.</param>
