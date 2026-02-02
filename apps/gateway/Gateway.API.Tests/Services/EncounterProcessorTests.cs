@@ -742,4 +742,167 @@ public class EncounterProcessorTests
     }
 
     #endregion
+
+    #region WORK_ITEM_STATUS_CHANGED Notification Tests
+
+    [Test]
+    public async Task ProcessAsync_StatusUpdatedToReadyForReview_SendsWorkItemStatusChangedNotification()
+    {
+        // Arrange
+        var evt = CreateEvent();
+        var clinicalBundle = CreateTestBundle(evt.PatientId);
+        clinicalBundle = clinicalBundle with
+        {
+            ServiceRequests =
+            [
+                new ServiceRequestInfo
+                {
+                    Id = "sr-123",
+                    Status = "active",
+                    Code = new CodeableConcept
+                    {
+                        Coding = [new Coding { Code = "72148", Display = "MRI Lumbar Spine" }],
+                        Text = "MRI Lumbar Spine"
+                    }
+                }
+            ]
+        };
+        var formData = CreateFormData("APPROVE");
+        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+
+        _aggregator.AggregateClinicalDataAsync(evt.PatientId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(clinicalBundle));
+        _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(formData));
+        _pdfStamper.StampFormAsync(Arg.Any<PAFormData>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(pdfBytes));
+
+        var existingWorkItem = new WorkItem
+        {
+            Id = evt.WorkItemId,
+            PatientId = evt.PatientId,
+            EncounterId = evt.EncounterId,
+            Status = WorkItemStatus.Pending,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _workItemStore.GetByIdAsync(evt.WorkItemId, Arg.Any<CancellationToken>())
+            .Returns(existingWorkItem);
+        _workItemStore.UpdateAsync(evt.WorkItemId, Arg.Any<WorkItem>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        // Act
+        await _sut.ProcessAsync(evt, CancellationToken.None);
+
+        // Assert - WORK_ITEM_STATUS_CHANGED notification should be sent
+        await _notificationHub.Received().WriteAsync(
+            Arg.Is<Notification>(n =>
+                n.Type == "WORK_ITEM_STATUS_CHANGED" &&
+                n.WorkItemId == evt.WorkItemId &&
+                n.NewStatus == "ReadyForReview" &&
+                n.PatientId == evt.PatientId &&
+                n.ServiceRequestId == "sr-123" &&
+                n.ProcedureCode == "72148"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ProcessAsync_StatusUpdatedToMissingData_SendsWorkItemStatusChangedNotification()
+    {
+        // Arrange
+        var evt = CreateEvent();
+        var clinicalBundle = CreateTestBundle(evt.PatientId);
+        var formData = CreateFormData("NEEDS_INFO");
+        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+
+        SetupSuccessfulMocks(evt.PatientId, clinicalBundle, formData, pdfBytes);
+
+        var existingWorkItem = new WorkItem
+        {
+            Id = evt.WorkItemId,
+            PatientId = evt.PatientId,
+            EncounterId = evt.EncounterId,
+            Status = WorkItemStatus.Pending,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _workItemStore.GetByIdAsync(evt.WorkItemId, Arg.Any<CancellationToken>())
+            .Returns(existingWorkItem);
+        _workItemStore.UpdateAsync(evt.WorkItemId, Arg.Any<WorkItem>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        // Act
+        await _sut.ProcessAsync(evt, CancellationToken.None);
+
+        // Assert
+        await _notificationHub.Received().WriteAsync(
+            Arg.Is<Notification>(n =>
+                n.Type == "WORK_ITEM_STATUS_CHANGED" &&
+                n.WorkItemId == evt.WorkItemId &&
+                n.NewStatus == "MissingData"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ProcessAsync_StatusUpdatedToNoPaRequired_SendsWorkItemStatusChangedNotification()
+    {
+        // Arrange
+        var evt = CreateEvent();
+        var clinicalBundle = CreateTestBundle(evt.PatientId);
+        var formData = CreateFormData("NOT_REQUIRED");
+        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+
+        SetupSuccessfulMocks(evt.PatientId, clinicalBundle, formData, pdfBytes);
+
+        var existingWorkItem = new WorkItem
+        {
+            Id = evt.WorkItemId,
+            PatientId = evt.PatientId,
+            EncounterId = evt.EncounterId,
+            Status = WorkItemStatus.Pending,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _workItemStore.GetByIdAsync(evt.WorkItemId, Arg.Any<CancellationToken>())
+            .Returns(existingWorkItem);
+        _workItemStore.UpdateAsync(evt.WorkItemId, Arg.Any<WorkItem>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        // Act
+        await _sut.ProcessAsync(evt, CancellationToken.None);
+
+        // Assert
+        await _notificationHub.Received().WriteAsync(
+            Arg.Is<Notification>(n =>
+                n.Type == "WORK_ITEM_STATUS_CHANGED" &&
+                n.WorkItemId == evt.WorkItemId &&
+                n.NewStatus == "NoPaRequired"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ProcessAsync_WorkItemNotFoundFallback_SendsWorkItemStatusChangedNotification()
+    {
+        // Arrange
+        var evt = CreateEvent();
+        var clinicalBundle = CreateTestBundle(evt.PatientId);
+        var formData = CreateFormData("APPROVE");
+        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+
+        SetupSuccessfulMocks(evt.PatientId, clinicalBundle, formData, pdfBytes);
+
+        // Work item not found, will use fallback UpdateStatusAsync
+        _workItemStore.GetByIdAsync(evt.WorkItemId, Arg.Any<CancellationToken>())
+            .Returns((WorkItem?)null);
+
+        // Act
+        await _sut.ProcessAsync(evt, CancellationToken.None);
+
+        // Assert - Should still send notification even when using fallback
+        await _notificationHub.Received().WriteAsync(
+            Arg.Is<Notification>(n =>
+                n.Type == "WORK_ITEM_STATUS_CHANGED" &&
+                n.WorkItemId == evt.WorkItemId &&
+                n.NewStatus == "ReadyForReview"),
+            Arg.Any<CancellationToken>());
+    }
+
+    #endregion
 }

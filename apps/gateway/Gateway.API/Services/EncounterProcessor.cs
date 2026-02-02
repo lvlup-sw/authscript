@@ -97,10 +97,12 @@ public sealed class EncounterProcessor : IEncounterProcessor
 
             // Step 4: Update work item with ServiceRequestId, ProcedureCode, and status
             var existingWorkItem = await _workItemStore.GetByIdAsync(evt.WorkItemId, ct);
+            string? serviceRequestId = null;
+
             if (existingWorkItem is not null)
             {
                 // Extract ServiceRequestId from the first active ServiceRequest in the bundle
-                var serviceRequestId = clinicalBundle.ServiceRequests
+                serviceRequestId = clinicalBundle.ServiceRequests
                     .FirstOrDefault(sr => sr.Status == "active")?.Id;
 
                 var updatedWorkItem = existingWorkItem with
@@ -129,6 +131,23 @@ public sealed class EncounterProcessor : IEncounterProcessor
                     evt.WorkItemId,
                     status);
             }
+
+            // Step 4b: Send WORK_ITEM_STATUS_CHANGED notification
+            var statusChangeNotification = new Notification(
+                Type: "WORK_ITEM_STATUS_CHANGED",
+                TransactionId: transactionId,
+                EncounterId: evt.EncounterId,
+                PatientId: evt.PatientId,
+                Message: $"Work item {evt.WorkItemId} status changed to {status}",
+                WorkItemId: evt.WorkItemId,
+                NewStatus: status.ToString(),
+                ServiceRequestId: serviceRequestId,
+                ProcedureCode: formData.ProcedureCode);
+            await _notificationHub.WriteAsync(statusChangeNotification, ct);
+
+            _logger.LogInformation(
+                "Sent WORK_ITEM_STATUS_CHANGED notification for work item {WorkItemId}",
+                evt.WorkItemId);
 
             // Step 5: Generate PDF from form data
             var pdfBytes = await _pdfStamper.StampFormAsync(formData, ct);
