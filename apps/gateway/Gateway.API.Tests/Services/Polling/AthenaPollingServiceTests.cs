@@ -159,8 +159,8 @@ public class AthenaPollingServiceTests
         var reader = service.Encounters;
         await Assert.That(reader).IsNotNull();
 
-        // The Encounters property should return a type assignable to ChannelReader<string>
-        await Assert.That(reader is ChannelReader<string>).IsTrue();
+        // The Encounters property should return a type assignable to ChannelReader<EncounterCompletedEvent>
+        await Assert.That(reader is ChannelReader<EncounterCompletedEvent>).IsTrue();
 
         service.Dispose();
     }
@@ -340,9 +340,10 @@ public class AthenaPollingServiceTests
         await _patientRegistry.Received(1).UnregisterAsync("patient-1", Arg.Any<CancellationToken>());
 
         // Check channel has event
-        var hasEvent = _sut.Encounters.TryRead(out var encounterId);
+        var hasEvent = _sut.Encounters.TryRead(out var evt);
         await Assert.That(hasEvent).IsTrue();
-        await Assert.That(encounterId).IsEqualTo("encounter-1");
+        await Assert.That(evt).IsNotNull();
+        await Assert.That(evt!.EncounterId).IsEqualTo("encounter-1");
     }
 
     [Test]
@@ -394,8 +395,40 @@ public class AthenaPollingServiceTests
         await _patientRegistry.Received(1).UnregisterAsync("patient-1", Arg.Any<CancellationToken>());
 
         // Verify event was written to channel
-        var hasEvent = _sut.Encounters.TryRead(out var encounterId);
+        var hasEvent = _sut.Encounters.TryRead(out var evt);
         await Assert.That(hasEvent).IsTrue();
-        await Assert.That(encounterId).IsEqualTo("encounter-1");
+        await Assert.That(evt).IsNotNull();
+        await Assert.That(evt!.EncounterId).IsEqualTo("encounter-1");
+    }
+
+    [Test]
+    public async Task PollPatientEncounterAsync_EncounterFinished_EmitsFullEvent()
+    {
+        // Arrange
+        var patient = new RegisteredPatient
+        {
+            PatientId = "patient-1",
+            EncounterId = "encounter-1",
+            PracticeId = "practice-1",
+            WorkItemId = "workitem-1",
+            RegisteredAt = DateTimeOffset.UtcNow,
+            CurrentEncounterStatus = "in-progress"
+        };
+
+        var encounterBundle = CreateFhirBundle("encounter-1", "finished");
+        _fhirClient.SearchAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Result<JsonElement>.Success(encounterBundle));
+
+        // Act
+        await _sut.PollPatientEncounterAsync(patient, CancellationToken.None);
+
+        // Assert - check event contains full context
+        var hasEvent = _sut.Encounters.TryRead(out var evt);
+        await Assert.That(hasEvent).IsTrue();
+        await Assert.That(evt).IsNotNull();
+        await Assert.That(evt!.PatientId).IsEqualTo("patient-1");
+        await Assert.That(evt.EncounterId).IsEqualTo("encounter-1");
+        await Assert.That(evt.PracticeId).IsEqualTo("practice-1");
+        await Assert.That(evt.WorkItemId).IsEqualTo("workitem-1");
     }
 }

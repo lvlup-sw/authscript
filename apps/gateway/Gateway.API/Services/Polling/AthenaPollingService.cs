@@ -25,7 +25,7 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
     private readonly IPatientRegistry _patientRegistry;
     private readonly Dictionary<string, DateTimeOffset> _processedEncounters = new();
     private readonly object _lock = new();
-    private readonly Channel<string> _encounterChannel;
+    private readonly Channel<EncounterCompletedEvent> _encounterChannel;
     private DateTimeOffset _lastCheck = DateTimeOffset.UtcNow;
     private DateTimeOffset _lastPurge = DateTimeOffset.UtcNow;
 
@@ -46,7 +46,7 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
         _options = options.Value;
         _logger = logger;
         _patientRegistry = patientRegistry;
-        _encounterChannel = Channel.CreateUnbounded<string>(new UnboundedChannelOptions
+        _encounterChannel = Channel.CreateUnbounded<EncounterCompletedEvent>(new UnboundedChannelOptions
         {
             SingleReader = true,
             SingleWriter = true
@@ -54,9 +54,9 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
     }
 
     /// <summary>
-    /// Gets the channel reader for consuming detected encounter IDs.
+    /// Gets the channel reader for consuming encounter completion events.
     /// </summary>
-    public ChannelReader<string> Encounters => _encounterChannel.Reader;
+    public ChannelReader<EncounterCompletedEvent> Encounters => _encounterChannel.Reader;
 
     /// <summary>
     /// Gets the count of processed encounters currently tracked.
@@ -239,8 +239,15 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
             {
                 _logger.LogInformation("Encounter completed for patient {PatientId}", patient.PatientId);
 
-                // Emit event to channel
-                await _encounterChannel.Writer.WriteAsync(patient.EncounterId, ct).ConfigureAwait(false);
+                // Emit full event to channel
+                var evt = new EncounterCompletedEvent
+                {
+                    PatientId = patient.PatientId,
+                    EncounterId = patient.EncounterId,
+                    PracticeId = patient.PracticeId,
+                    WorkItemId = patient.WorkItemId,
+                };
+                await _encounterChannel.Writer.WriteAsync(evt, ct).ConfigureAwait(false);
 
                 // Auto-unregister patient
                 await _patientRegistry.UnregisterAsync(patient.PatientId, ct).ConfigureAwait(false);
@@ -282,50 +289,4 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
         return statusElement.GetString();
     }
 
-    private async Task ProcessEncounterBundleAsync(JsonElement bundle, CancellationToken ct)
-    {
-        if (!bundle.TryGetProperty("entry", out var entries))
-        {
-            return;
-        }
-
-        foreach (var entry in entries.EnumerateArray())
-        {
-            if (!entry.TryGetProperty("resource", out var resource))
-            {
-                continue;
-            }
-
-            if (!resource.TryGetProperty("id", out var idElement))
-            {
-                continue;
-            }
-
-            var encounterId = idElement.GetString();
-            if (string.IsNullOrEmpty(encounterId))
-            {
-                continue;
-            }
-
-            // Deduplication: skip if already processed
-            bool isNew;
-            lock (_lock)
-            {
-                if (_processedEncounters.ContainsKey(encounterId))
-                {
-                    _logger.LogDebug("Skipping already processed encounter: {EncounterId}", encounterId);
-                    continue;
-                }
-
-                _processedEncounters[encounterId] = DateTimeOffset.UtcNow;
-                isNew = true;
-            }
-
-            if (isNew)
-            {
-                _logger.LogInformation("Found finished encounter: {EncounterId}", encounterId);
-                await _encounterChannel.Writer.WriteAsync(encounterId, ct);
-            }
-        }
-    }
 }
