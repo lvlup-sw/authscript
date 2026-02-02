@@ -21,8 +21,11 @@
     <!-- Alba Integration Testing -->
     <PackageReference Include="Alba" Version="8.4.0" />
 
-    <!-- Code Coverage -->
+<!-- Code Coverage -->
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
+
+    <!-- EF Core In-Memory Database for Testing -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.0" />
   </ItemGroup>
 
   <ItemGroup>
