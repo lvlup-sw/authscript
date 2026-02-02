@@ -3,6 +3,8 @@ using System.Threading.Channels;
 using Gateway.API.Configuration;
 using Gateway.API.Contracts;
 using Gateway.API.Exceptions;
+using Gateway.API.Models;
+using Gateway.API.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -20,9 +22,10 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
     private readonly IFhirHttpClient _fhirClient;
     private readonly AthenaOptions _options;
     private readonly ILogger<AthenaPollingService> _logger;
+    private readonly IPatientRegistry _patientRegistry;
     private readonly Dictionary<string, DateTimeOffset> _processedEncounters = new();
     private readonly object _lock = new();
-    private readonly Channel<string> _encounterChannel;
+    private readonly Channel<EncounterCompletedEvent> _encounterChannel;
     private DateTimeOffset _lastCheck = DateTimeOffset.UtcNow;
     private DateTimeOffset _lastPurge = DateTimeOffset.UtcNow;
 
@@ -32,25 +35,28 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
     /// <param name="fhirClient">The FHIR HTTP client for API calls.</param>
     /// <param name="options">Configuration options for athenahealth.</param>
     /// <param name="logger">Logger instance.</param>
+    /// <param name="patientRegistry">Registry for tracking patients awaiting encounter completion.</param>
     public AthenaPollingService(
         IFhirHttpClient fhirClient,
         IOptions<AthenaOptions> options,
-        ILogger<AthenaPollingService> logger)
+        ILogger<AthenaPollingService> logger,
+        IPatientRegistry patientRegistry)
     {
         _fhirClient = fhirClient;
         _options = options.Value;
         _logger = logger;
-        _encounterChannel = Channel.CreateUnbounded<string>(new UnboundedChannelOptions
+        _patientRegistry = patientRegistry;
+        _encounterChannel = Channel.CreateUnbounded<EncounterCompletedEvent>(new UnboundedChannelOptions
         {
             SingleReader = true,
-            SingleWriter = true
+            SingleWriter = false
         });
     }
 
     /// <summary>
-    /// Gets the channel reader for consuming detected encounter IDs.
+    /// Gets the channel reader for consuming encounter completion events.
     /// </summary>
-    public ChannelReader<string> Encounters => _encounterChannel.Reader;
+    public ChannelReader<EncounterCompletedEvent> Encounters => _encounterChannel.Reader;
 
     /// <summary>
     /// Gets the count of processed encounters currently tracked.
@@ -168,80 +174,132 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
             return;
         }
 
-        // Capture timestamp BEFORE the search to avoid missing encounters created during the request
-        var pollStart = DateTimeOffset.UtcNow;
-        var query = $"ah-practice={_options.PracticeId}&status=finished&date=gt{_lastCheck:O}";
+        // Get registered patients to poll
+        var patients = await _patientRegistry.GetActiveAsync(ct).ConfigureAwait(false);
 
-        _logger.LogDebug("Polling for encounters with query: {Query}", query);
+        if (patients.Count == 0)
+        {
+            _logger.LogDebug("No registered patients to poll");
+            return;
+        }
 
-        Result<JsonElement> result;
+        _logger.LogDebug("Polling {Count} registered patients", patients.Count);
+
+        // Poll each patient in parallel (max 5 concurrent)
+        await Parallel.ForEachAsync(
+            patients,
+            new ParallelOptions { MaxDegreeOfParallelism = 5, CancellationToken = ct },
+            async (patient, token) =>
+            {
+                await PollPatientEncounterAsync(patient, token).ConfigureAwait(false);
+            }).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Polls a specific patient's encounter for status changes.
+    /// </summary>
+    /// <param name="patient">The registered patient to poll.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    public async Task PollPatientEncounterAsync(
+        RegisteredPatient patient,
+        CancellationToken ct)
+    {
         try
         {
-            result = await _fhirClient.SearchAsync("Encounter", query, ct);
-        }
-        catch (TokenAcquisitionException ex)
-        {
-            // Token acquisition failed (transient) - will retry on next poll cycle
-            _logger.LogWarning("Unable to acquire Athena access token for polling: {Message}", ex.Message);
-            return;
-        }
-
-        if (result.IsFailure)
-        {
-            _logger.LogWarning("Failed to search encounters: {Error}", result.Error?.Message);
-            return;
-        }
-
-        // Only update _lastCheck on success, using the pre-captured timestamp
-        _lastCheck = pollStart;
-
-        await ProcessEncounterBundleAsync(result.Value, ct);
-    }
-
-    private async Task ProcessEncounterBundleAsync(JsonElement bundle, CancellationToken ct)
-    {
-        if (!bundle.TryGetProperty("entry", out var entries))
-        {
-            return;
-        }
-
-        foreach (var entry in entries.EnumerateArray())
-        {
-            if (!entry.TryGetProperty("resource", out var resource))
+            // Skip if already processed
+            if (IsEncounterProcessed(patient.EncounterId))
             {
-                continue;
+                _logger.LogDebug("Skipping already processed encounter {EncounterId}", patient.EncounterId);
+                return;
             }
 
-            if (!resource.TryGetProperty("id", out var idElement))
+            // Build per-patient query using AthenaQueryBuilder
+            var query = AthenaQueryBuilder.BuildEncounterQuery(
+                patient.PatientId,
+                patient.EncounterId,
+                patient.PracticeId);
+
+            _logger.LogDebug("Polling encounter for patient {PatientId}: {Query}", patient.PatientId, query);
+
+            var result = await _fhirClient.SearchAsync("Encounter", query, ct).ConfigureAwait(false);
+
+            if (result.IsFailure)
             {
-                continue;
+                _logger.LogWarning(
+                    "Failed to poll encounter for patient {PatientId}: {Error}",
+                    patient.PatientId,
+                    result.Error?.Message);
+                return;
             }
 
-            var encounterId = idElement.GetString();
-            if (string.IsNullOrEmpty(encounterId))
+            // Extract status from FHIR response
+            var status = ExtractEncounterStatus(result.Value);
+            if (status is null)
             {
-                continue;
+                _logger.LogWarning("Could not extract status for patient {PatientId}", patient.PatientId);
+                return;
             }
 
-            // Deduplication: skip if already processed
-            bool isNew;
-            lock (_lock)
+            // Check for status transition to "finished"
+            if (status == "finished" && patient.CurrentEncounterStatus != "finished")
             {
-                if (_processedEncounters.ContainsKey(encounterId))
+                // Mark encounter as processed to prevent duplicate emissions
+                lock (_lock)
                 {
-                    _logger.LogDebug("Skipping already processed encounter: {EncounterId}", encounterId);
-                    continue;
+                    _processedEncounters[patient.EncounterId] = DateTimeOffset.UtcNow;
                 }
 
-                _processedEncounters[encounterId] = DateTimeOffset.UtcNow;
-                isNew = true;
-            }
+                _logger.LogInformation("Encounter completed for patient {PatientId}", patient.PatientId);
 
-            if (isNew)
+                // Emit full event to channel
+                var evt = new EncounterCompletedEvent
+                {
+                    PatientId = patient.PatientId,
+                    EncounterId = patient.EncounterId,
+                    PracticeId = patient.PracticeId,
+                    WorkItemId = patient.WorkItemId,
+                };
+                await _encounterChannel.Writer.WriteAsync(evt, ct).ConfigureAwait(false);
+
+                // Auto-unregister patient
+                await _patientRegistry.UnregisterAsync(patient.PatientId, ct).ConfigureAwait(false);
+            }
+            else
             {
-                _logger.LogInformation("Found finished encounter: {EncounterId}", encounterId);
-                await _encounterChannel.Writer.WriteAsync(encounterId, ct);
+                // Update registry with poll timestamp and status
+                await _patientRegistry.UpdateAsync(
+                    patient.PatientId,
+                    DateTimeOffset.UtcNow,
+                    status,
+                    ct).ConfigureAwait(false);
             }
         }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error polling encounter for patient {PatientId}", patient.PatientId);
+        }
     }
+
+    private static string? ExtractEncounterStatus(JsonElement bundle)
+    {
+        if (!bundle.TryGetProperty("entry", out var entries) || entries.GetArrayLength() == 0)
+        {
+            return null;
+        }
+
+        var firstEntry = entries[0];
+        if (!firstEntry.TryGetProperty("resource", out var resource))
+        {
+            return null;
+        }
+
+        if (!resource.TryGetProperty("status", out var statusElement))
+        {
+            return null;
+        }
+
+        return statusElement.GetString();
+    }
+
 }

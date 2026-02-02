@@ -55,5 +55,6 @@ app.MapAnalysisEndpoints();
 app.MapSseEndpoints();
 app.MapSubmitEndpoints();
 app.MapWorkItemEndpoints();
+app.MapPatientEndpoints();
 
 app.Run();

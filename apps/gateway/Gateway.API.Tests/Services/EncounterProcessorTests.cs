@@ -19,6 +19,7 @@ public class EncounterProcessorTests
     private readonly IPdfFormStamper _pdfStamper;
     private readonly IAnalysisResultStore _resultStore;
     private readonly INotificationHub _notificationHub;
+    private readonly IWorkItemStore _workItemStore;
     private readonly ILogger<EncounterProcessor> _logger;
     private readonly EncounterProcessor _sut;
 
@@ -29,6 +30,7 @@ public class EncounterProcessorTests
         _pdfStamper = Substitute.For<IPdfFormStamper>();
         _resultStore = Substitute.For<IAnalysisResultStore>();
         _notificationHub = Substitute.For<INotificationHub>();
+        _workItemStore = Substitute.For<IWorkItemStore>();
         _logger = Substitute.For<ILogger<EncounterProcessor>>();
 
         _sut = new EncounterProcessor(
@@ -37,6 +39,7 @@ public class EncounterProcessorTests
             _pdfStamper,
             _resultStore,
             _notificationHub,
+            _workItemStore,
             _logger);
     }
 
@@ -59,6 +62,7 @@ public class EncounterProcessorTests
         // Assert
         await _aggregator.Received(1).AggregateClinicalDataAsync(
             patientId,
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -121,7 +125,7 @@ public class EncounterProcessorTests
 
         var clinicalBundle = CreateTestBundle(patientId);
 
-        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<CancellationToken>())
+        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(clinicalBundle));
         _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("Intelligence service unavailable"));
@@ -142,7 +146,7 @@ public class EncounterProcessorTests
 
         var clinicalBundle = CreateTestBundle(patientId);
 
-        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<CancellationToken>())
+        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(clinicalBundle));
         _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("Intelligence service unavailable"));
@@ -169,7 +173,7 @@ public class EncounterProcessorTests
 
         var clinicalBundle = CreateTestBundle(patientId);
 
-        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<CancellationToken>())
+        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(clinicalBundle));
         _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Unexpected internal error"));
@@ -196,7 +200,7 @@ public class EncounterProcessorTests
 
         var clinicalBundle = CreateTestBundle(patientId);
 
-        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<CancellationToken>())
+        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(clinicalBundle));
         _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Sensitive internal error with stack details"));
@@ -286,7 +290,7 @@ public class EncounterProcessorTests
         PAFormData formData,
         byte[] pdfBytes)
     {
-        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<CancellationToken>())
+        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(clinicalBundle));
         _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(formData));
@@ -369,4 +373,551 @@ public class EncounterProcessorTests
             }
         };
     }
+
+    private static PAFormData CreateFormData(string recommendation)
+    {
+        return new PAFormData
+        {
+            PatientName = "Test Patient",
+            PatientDob = "1980-01-15",
+            MemberId = "MEM123",
+            DiagnosisCodes = ["M54.5"],
+            ProcedureCode = "72148",
+            ClinicalSummary = "Test clinical summary",
+            SupportingEvidence = [],
+            Recommendation = recommendation,
+            ConfidenceScore = 0.90,
+            FieldMappings = new Dictionary<string, string>()
+        };
+    }
+
+    private static EncounterCompletedEvent CreateEvent()
+    {
+        return new EncounterCompletedEvent
+        {
+            PatientId = "patient-1",
+            EncounterId = "encounter-1",
+            PracticeId = "practice-1",
+            WorkItemId = "workitem-1"
+        };
+    }
+
+    #region ProcessAsync Tests
+
+    [Test]
+    public async Task ProcessAsync_ReceivesEvent_HydratesWithCorrectPatientId()
+    {
+        // Arrange
+        var evt = new EncounterCompletedEvent
+        {
+            PatientId = "patient-123",
+            EncounterId = "encounter-456",
+            PracticeId = "practice-789",
+            WorkItemId = "workitem-abc"
+        };
+
+        var clinicalBundle = CreateTestBundle(evt.PatientId);
+        var formData = CreateFormData("APPROVE");
+        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+
+        SetupSuccessfulMocks(evt.PatientId, clinicalBundle, formData, pdfBytes);
+
+        // Act
+        await _sut.ProcessAsync(evt, CancellationToken.None);
+
+        // Assert - aggregator called with correct patient ID and encounter ID
+        await _aggregator.Received(1).AggregateClinicalDataAsync(
+            "patient-123",
+            "encounter-456",
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ProcessAsync_ReceivesEvent_UpdatesWorkItemStatus()
+    {
+        // Arrange
+        var evt = new EncounterCompletedEvent
+        {
+            PatientId = "patient-123",
+            EncounterId = "encounter-456",
+            PracticeId = "practice-789",
+            WorkItemId = "workitem-abc"
+        };
+
+        var clinicalBundle = CreateTestBundle(evt.PatientId);
+        var formData = CreateFormData("APPROVE");
+        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+
+        SetupSuccessfulMocks(evt.PatientId, clinicalBundle, formData, pdfBytes);
+
+        // Act
+        await _sut.ProcessAsync(evt, CancellationToken.None);
+
+        // Assert - work item status updated
+        await _workItemStore.Received(1).UpdateStatusAsync(
+            "workitem-abc",
+            WorkItemStatus.ReadyForReview,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ProcessAsync_AnalysisApprove_UpdatesWorkItemToReadyForReview()
+    {
+        // Arrange
+        var evt = CreateEvent();
+        var clinicalBundle = CreateTestBundle(evt.PatientId);
+        var formData = CreateFormData("APPROVE");
+        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+
+        SetupSuccessfulMocks(evt.PatientId, clinicalBundle, formData, pdfBytes);
+
+        // Act
+        await _sut.ProcessAsync(evt, CancellationToken.None);
+
+        // Assert
+        await _workItemStore.Received(1).UpdateStatusAsync(
+            evt.WorkItemId,
+            WorkItemStatus.ReadyForReview,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ProcessAsync_AnalysisDeny_UpdatesWorkItemToReadyForReview()
+    {
+        // Arrange
+        var evt = CreateEvent();
+        var clinicalBundle = CreateTestBundle(evt.PatientId);
+        var formData = CreateFormData("DENY");
+        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+
+        SetupSuccessfulMocks(evt.PatientId, clinicalBundle, formData, pdfBytes);
+
+        // Act
+        await _sut.ProcessAsync(evt, CancellationToken.None);
+
+        // Assert
+        await _workItemStore.Received(1).UpdateStatusAsync(
+            evt.WorkItemId,
+            WorkItemStatus.ReadyForReview,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ProcessAsync_AnalysisNeedsInfo_UpdatesWorkItemToMissingData()
+    {
+        // Arrange
+        var evt = CreateEvent();
+        var clinicalBundle = CreateTestBundle(evt.PatientId);
+        var formData = CreateFormData("NEEDS_INFO");
+        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+
+        SetupSuccessfulMocks(evt.PatientId, clinicalBundle, formData, pdfBytes);
+
+        // Act
+        await _sut.ProcessAsync(evt, CancellationToken.None);
+
+        // Assert
+        await _workItemStore.Received(1).UpdateStatusAsync(
+            evt.WorkItemId,
+            WorkItemStatus.MissingData,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ProcessAsync_AnalysisNotRequired_UpdatesWorkItemToNoPaRequired()
+    {
+        // Arrange
+        var evt = CreateEvent();
+        var clinicalBundle = CreateTestBundle(evt.PatientId);
+        var formData = CreateFormData("NOT_REQUIRED");
+        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+
+        SetupSuccessfulMocks(evt.PatientId, clinicalBundle, formData, pdfBytes);
+
+        // Act
+        await _sut.ProcessAsync(evt, CancellationToken.None);
+
+        // Assert
+        await _workItemStore.Received(1).UpdateStatusAsync(
+            evt.WorkItemId,
+            WorkItemStatus.NoPaRequired,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ProcessAsync_SendsNotification_WithEventData()
+    {
+        // Arrange
+        var evt = new EncounterCompletedEvent
+        {
+            PatientId = "patient-123",
+            EncounterId = "encounter-456",
+            PracticeId = "practice-789",
+            WorkItemId = "workitem-abc"
+        };
+
+        var clinicalBundle = CreateTestBundle(evt.PatientId);
+        var formData = CreateFormData("APPROVE");
+        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+
+        SetupSuccessfulMocks(evt.PatientId, clinicalBundle, formData, pdfBytes);
+
+        // Configure work item store for fallback path (work item not found)
+        _workItemStore.GetByIdAsync(evt.WorkItemId, Arg.Any<CancellationToken>())
+            .Returns((WorkItem?)null);
+        _workItemStore.UpdateStatusAsync(evt.WorkItemId, Arg.Any<WorkItemStatus>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        // Act
+        await _sut.ProcessAsync(evt, CancellationToken.None);
+
+        // Assert
+        await _notificationHub.Received(1).WriteAsync(
+            Arg.Is<Notification>(n =>
+                n.Type == "PA_FORM_READY" &&
+                n.EncounterId == "encounter-456" &&
+                n.PatientId == "patient-123"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ProcessAsync_OnError_SendsErrorNotification()
+    {
+        // Arrange
+        var evt = CreateEvent();
+        var clinicalBundle = CreateTestBundle(evt.PatientId);
+
+        _aggregator.AggregateClinicalDataAsync(evt.PatientId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(clinicalBundle));
+        _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Test error"));
+
+        // Act
+        await _sut.ProcessAsync(evt, CancellationToken.None);
+
+        // Assert
+        await _notificationHub.Received(1).WriteAsync(
+            Arg.Is<Notification>(n =>
+                n.Type == "PROCESSING_ERROR" &&
+                n.EncounterId == evt.EncounterId &&
+                n.PatientId == evt.PatientId),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ProcessAsync_AnalysisComplete_UpdatesWorkItemWithServiceRequestId()
+    {
+        // Arrange
+        var evt = CreateEvent();
+        var clinicalBundle = CreateTestBundle(evt.PatientId);
+        clinicalBundle = clinicalBundle with
+        {
+            ServiceRequests =
+            [
+                new ServiceRequestInfo
+                {
+                    Id = "sr-from-bundle-123",
+                    Status = "active",
+                    Code = new CodeableConcept
+                    {
+                        Coding = [new Coding { Code = "72148", Display = "MRI Lumbar Spine" }],
+                        Text = "MRI Lumbar Spine"
+                    }
+                }
+            ]
+        };
+        var formData = CreateFormData("APPROVE");
+        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+
+        _aggregator.AggregateClinicalDataAsync(evt.PatientId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(clinicalBundle));
+        _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(formData));
+        _pdfStamper.StampFormAsync(Arg.Any<PAFormData>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(pdfBytes));
+
+        var existingWorkItem = new WorkItem
+        {
+            Id = evt.WorkItemId,
+            PatientId = evt.PatientId,
+            EncounterId = evt.EncounterId,
+            Status = WorkItemStatus.Pending,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _workItemStore.GetByIdAsync(evt.WorkItemId, Arg.Any<CancellationToken>())
+            .Returns(existingWorkItem);
+
+        WorkItem? capturedWorkItem = null;
+        _workItemStore.UpdateAsync(evt.WorkItemId, Arg.Do<WorkItem>(wi => capturedWorkItem = wi), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        // Act
+        await _sut.ProcessAsync(evt, CancellationToken.None);
+
+        // Assert
+        await Assert.That(capturedWorkItem).IsNotNull();
+        await Assert.That(capturedWorkItem!.ServiceRequestId).IsEqualTo("sr-from-bundle-123");
+    }
+
+    [Test]
+    public async Task ProcessAsync_AnalysisComplete_UpdatesWorkItemWithProcedureCode()
+    {
+        // Arrange
+        var evt = CreateEvent();
+        var clinicalBundle = CreateTestBundle(evt.PatientId);
+        var formData = CreateFormData("APPROVE");
+        formData = formData with { ProcedureCode = "72148" };
+        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+
+        SetupSuccessfulMocks(evt.PatientId, clinicalBundle, formData, pdfBytes);
+
+        var existingWorkItem = new WorkItem
+        {
+            Id = evt.WorkItemId,
+            PatientId = evt.PatientId,
+            EncounterId = evt.EncounterId,
+            Status = WorkItemStatus.Pending,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _workItemStore.GetByIdAsync(evt.WorkItemId, Arg.Any<CancellationToken>())
+            .Returns(existingWorkItem);
+
+        WorkItem? capturedWorkItem = null;
+        _workItemStore.UpdateAsync(evt.WorkItemId, Arg.Do<WorkItem>(wi => capturedWorkItem = wi), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        // Act
+        await _sut.ProcessAsync(evt, CancellationToken.None);
+
+        // Assert
+        await Assert.That(capturedWorkItem).IsNotNull();
+        await Assert.That(capturedWorkItem!.ProcedureCode).IsEqualTo("72148");
+    }
+
+    [Test]
+    public async Task ProcessAsync_AnalysisComplete_UpdatesWorkItemWithCorrectStatus()
+    {
+        // Arrange
+        var evt = CreateEvent();
+        var clinicalBundle = CreateTestBundle(evt.PatientId);
+        var formData = CreateFormData("NEEDS_INFO");
+        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+
+        SetupSuccessfulMocks(evt.PatientId, clinicalBundle, formData, pdfBytes);
+
+        var existingWorkItem = new WorkItem
+        {
+            Id = evt.WorkItemId,
+            PatientId = evt.PatientId,
+            EncounterId = evt.EncounterId,
+            Status = WorkItemStatus.Pending,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _workItemStore.GetByIdAsync(evt.WorkItemId, Arg.Any<CancellationToken>())
+            .Returns(existingWorkItem);
+
+        WorkItem? capturedWorkItem = null;
+        _workItemStore.UpdateAsync(evt.WorkItemId, Arg.Do<WorkItem>(wi => capturedWorkItem = wi), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        // Act
+        await _sut.ProcessAsync(evt, CancellationToken.None);
+
+        // Assert
+        await Assert.That(capturedWorkItem).IsNotNull();
+        await Assert.That(capturedWorkItem!.Status).IsEqualTo(WorkItemStatus.MissingData);
+    }
+
+    [Test]
+    public async Task ProcessAsync_WorkItemNotFound_DoesNotThrow()
+    {
+        // Arrange
+        var evt = CreateEvent();
+        var clinicalBundle = CreateTestBundle(evt.PatientId);
+        var formData = CreateFormData("APPROVE");
+        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+
+        SetupSuccessfulMocks(evt.PatientId, clinicalBundle, formData, pdfBytes);
+
+        _workItemStore.GetByIdAsync(evt.WorkItemId, Arg.Any<CancellationToken>())
+            .Returns((WorkItem?)null);
+
+        // Act - Should complete without throwing
+        await _sut.ProcessAsync(evt, CancellationToken.None);
+
+        // Assert - UpdateAsync should NOT be called when work item not found
+        await _workItemStore.DidNotReceive().UpdateAsync(
+            Arg.Any<string>(),
+            Arg.Any<WorkItem>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    #endregion
+
+    #region WORK_ITEM_STATUS_CHANGED Notification Tests
+
+    [Test]
+    public async Task ProcessAsync_StatusUpdatedToReadyForReview_SendsWorkItemStatusChangedNotification()
+    {
+        // Arrange
+        var evt = CreateEvent();
+        var clinicalBundle = CreateTestBundle(evt.PatientId);
+        clinicalBundle = clinicalBundle with
+        {
+            ServiceRequests =
+            [
+                new ServiceRequestInfo
+                {
+                    Id = "sr-123",
+                    Status = "active",
+                    Code = new CodeableConcept
+                    {
+                        Coding = [new Coding { Code = "72148", Display = "MRI Lumbar Spine" }],
+                        Text = "MRI Lumbar Spine"
+                    }
+                }
+            ]
+        };
+        var formData = CreateFormData("APPROVE");
+        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+
+        _aggregator.AggregateClinicalDataAsync(evt.PatientId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(clinicalBundle));
+        _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(formData));
+        _pdfStamper.StampFormAsync(Arg.Any<PAFormData>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(pdfBytes));
+
+        var existingWorkItem = new WorkItem
+        {
+            Id = evt.WorkItemId,
+            PatientId = evt.PatientId,
+            EncounterId = evt.EncounterId,
+            Status = WorkItemStatus.Pending,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _workItemStore.GetByIdAsync(evt.WorkItemId, Arg.Any<CancellationToken>())
+            .Returns(existingWorkItem);
+        _workItemStore.UpdateAsync(evt.WorkItemId, Arg.Any<WorkItem>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        // Act
+        await _sut.ProcessAsync(evt, CancellationToken.None);
+
+        // Assert - WORK_ITEM_STATUS_CHANGED notification should be sent
+        await _notificationHub.Received().WriteAsync(
+            Arg.Is<Notification>(n =>
+                n.Type == "WORK_ITEM_STATUS_CHANGED" &&
+                n.WorkItemId == evt.WorkItemId &&
+                n.NewStatus == "ReadyForReview" &&
+                n.PatientId == evt.PatientId &&
+                n.ServiceRequestId == "sr-123" &&
+                n.ProcedureCode == "72148"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ProcessAsync_StatusUpdatedToMissingData_SendsWorkItemStatusChangedNotification()
+    {
+        // Arrange
+        var evt = CreateEvent();
+        var clinicalBundle = CreateTestBundle(evt.PatientId);
+        var formData = CreateFormData("NEEDS_INFO");
+        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+
+        SetupSuccessfulMocks(evt.PatientId, clinicalBundle, formData, pdfBytes);
+
+        var existingWorkItem = new WorkItem
+        {
+            Id = evt.WorkItemId,
+            PatientId = evt.PatientId,
+            EncounterId = evt.EncounterId,
+            Status = WorkItemStatus.Pending,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _workItemStore.GetByIdAsync(evt.WorkItemId, Arg.Any<CancellationToken>())
+            .Returns(existingWorkItem);
+        _workItemStore.UpdateAsync(evt.WorkItemId, Arg.Any<WorkItem>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        // Act
+        await _sut.ProcessAsync(evt, CancellationToken.None);
+
+        // Assert
+        await _notificationHub.Received().WriteAsync(
+            Arg.Is<Notification>(n =>
+                n.Type == "WORK_ITEM_STATUS_CHANGED" &&
+                n.WorkItemId == evt.WorkItemId &&
+                n.NewStatus == "MissingData"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ProcessAsync_StatusUpdatedToNoPaRequired_SendsWorkItemStatusChangedNotification()
+    {
+        // Arrange
+        var evt = CreateEvent();
+        var clinicalBundle = CreateTestBundle(evt.PatientId);
+        var formData = CreateFormData("NOT_REQUIRED");
+        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+
+        SetupSuccessfulMocks(evt.PatientId, clinicalBundle, formData, pdfBytes);
+
+        var existingWorkItem = new WorkItem
+        {
+            Id = evt.WorkItemId,
+            PatientId = evt.PatientId,
+            EncounterId = evt.EncounterId,
+            Status = WorkItemStatus.Pending,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _workItemStore.GetByIdAsync(evt.WorkItemId, Arg.Any<CancellationToken>())
+            .Returns(existingWorkItem);
+        _workItemStore.UpdateAsync(evt.WorkItemId, Arg.Any<WorkItem>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        // Act
+        await _sut.ProcessAsync(evt, CancellationToken.None);
+
+        // Assert
+        await _notificationHub.Received().WriteAsync(
+            Arg.Is<Notification>(n =>
+                n.Type == "WORK_ITEM_STATUS_CHANGED" &&
+                n.WorkItemId == evt.WorkItemId &&
+                n.NewStatus == "NoPaRequired"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ProcessAsync_WorkItemNotFoundFallback_SendsWorkItemStatusChangedNotification()
+    {
+        // Arrange
+        var evt = CreateEvent();
+        var clinicalBundle = CreateTestBundle(evt.PatientId);
+        var formData = CreateFormData("APPROVE");
+        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+
+        SetupSuccessfulMocks(evt.PatientId, clinicalBundle, formData, pdfBytes);
+
+        // Work item not found, will use fallback UpdateStatusAsync
+        _workItemStore.GetByIdAsync(evt.WorkItemId, Arg.Any<CancellationToken>())
+            .Returns((WorkItem?)null);
+
+        // UpdateStatusAsync must return true for processing to continue
+        _workItemStore.UpdateStatusAsync(evt.WorkItemId, Arg.Any<WorkItemStatus>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        // Act
+        await _sut.ProcessAsync(evt, CancellationToken.None);
+
+        // Assert - Should still send notification even when using fallback
+        await _notificationHub.Received().WriteAsync(
+            Arg.Is<Notification>(n =>
+                n.Type == "WORK_ITEM_STATUS_CHANGED" &&
+                n.WorkItemId == evt.WorkItemId &&
+                n.NewStatus == "ReadyForReview"),
+            Arg.Any<CancellationToken>());
+    }
+
+    #endregion
 }

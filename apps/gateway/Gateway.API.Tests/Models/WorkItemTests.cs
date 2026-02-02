@@ -57,4 +57,45 @@ public class WorkItemTests
         await Assert.That(workItem.UpdatedAt).IsEqualTo(updatedAt);
         await Assert.That(workItem.Status).IsEqualTo(WorkItemStatus.MissingData);
     }
+
+    [Test]
+    public async Task WorkItem_CanBeCreatedWithoutServiceRequestInfo()
+    {
+        // Arrange & Act - Create with null optional fields (populated after analysis)
+        var workItem = new WorkItem
+        {
+            Id = "wi-123",
+            EncounterId = "enc-456",
+            PatientId = "pat-789",
+            ServiceRequestId = null, // Optional: populated after analysis
+            Status = WorkItemStatus.ReadyForReview,
+            ProcedureCode = null, // Optional: populated after analysis
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+
+        // Assert
+        await Assert.That(workItem.ServiceRequestId).IsNull();
+        await Assert.That(workItem.ProcedureCode).IsNull();
+        await Assert.That(workItem.Id).IsEqualTo("wi-123");
+    }
+
+    [Test]
+    public async Task WorkItem_CanBeCreatedWithServiceRequestInfo()
+    {
+        // Arrange & Act - Create with all fields
+        var workItem = new WorkItem
+        {
+            Id = "wi-123",
+            EncounterId = "enc-456",
+            PatientId = "pat-789",
+            ServiceRequestId = "sr-abc",
+            Status = WorkItemStatus.ReadyForReview,
+            ProcedureCode = "99213",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+
+        // Assert
+        await Assert.That(workItem.ServiceRequestId).IsEqualTo("sr-abc");
+        await Assert.That(workItem.ProcedureCode).IsEqualTo("99213");
+    }
 }

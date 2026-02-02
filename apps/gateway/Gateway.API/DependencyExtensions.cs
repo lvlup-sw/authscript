@@ -127,6 +127,9 @@ public static class DependencyExtensions
         // Work item storage (in-memory for MVP)
         services.AddSingleton<IWorkItemStore, InMemoryWorkItemStore>();
 
+        // Patient registry for per-patient polling
+        services.AddSingleton<IPatientRegistry, InMemoryPatientRegistry>();
+
         return services;
     }
 

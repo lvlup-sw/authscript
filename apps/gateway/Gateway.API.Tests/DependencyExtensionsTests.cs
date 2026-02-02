@@ -29,6 +29,25 @@ public class DependencyExtensionsTests
         await Assert.That(workItemStore).IsTypeOf<InMemoryWorkItemStore>();
     }
 
+    [Test]
+    public async Task AddGatewayServices_RegistersPatientRegistry()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddLogging();
+        var config = CreateTestConfiguration();
+        services.AddSingleton<IConfiguration>(config);
+
+        // Act
+        services.AddGatewayServices();
+        var provider = services.BuildServiceProvider();
+
+        // Assert
+        var registry = provider.GetService<IPatientRegistry>();
+        await Assert.That(registry).IsNotNull();
+        await Assert.That(registry).IsTypeOf<InMemoryPatientRegistry>();
+    }
+
     private static IConfiguration CreateTestConfiguration()
     {
         var configValues = new Dictionary<string, string?>

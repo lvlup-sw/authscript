@@ -1,3 +1,9 @@
+// =============================================================================
+// <copyright file="EncounterProcessingAlbaBootstrap.cs" company="Levelup Software">
+// Copyright (c) Levelup Software. All rights reserved.
+// </copyright>
+// =============================================================================
+
 using Alba;
 using Gateway.API.Contracts;
 using Gateway.API.Models;
@@ -5,15 +11,16 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NSubstitute;
+using StackExchange.Redis;
 using TUnit.Core.Interfaces;
 
 namespace Gateway.API.Tests.Integration;
 
 /// <summary>
-/// Alba bootstrap for Gateway integration tests.
-/// Uses TUnit's IAsyncInitializer for async initialization.
+/// Alba bootstrap for encounter processing integration tests.
+/// Provides mocked FHIR services with clinical bundles containing service requests.
 /// </summary>
-public sealed class GatewayAlbaBootstrap : IAsyncInitializer, IAsyncDisposable
+public sealed class EncounterProcessingAlbaBootstrap : IAsyncInitializer, IAsyncDisposable
 {
     /// <summary>
     /// Test API key for integration tests.
@@ -66,15 +73,21 @@ public sealed class GatewayAlbaBootstrap : IAsyncInitializer, IAsyncDisposable
                 services.RemoveAll<IFhirClient>();
                 services.AddSingleton(Substitute.For<IFhirClient>());
 
-                // Replace IFhirDataAggregator with mock returning empty clinical bundle
+                // Replace IFhirDataAggregator with mock returning clinical bundle WITH service requests
                 var mockAggregator = Substitute.For<IFhirDataAggregator>();
                 mockAggregator
                     .AggregateClinicalDataAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-                    .Returns(Task.FromResult(CreateEmptyClinicalBundle()));
+                    .Returns(Task.FromResult(CreateClinicalBundleWithServiceRequest()));
                 services.RemoveAll<IFhirDataAggregator>();
                 services.AddSingleton(mockAggregator);
 
                 // IntelligenceClient is already a stub - no replacement needed
+                // PdfFormStamper is already a stub - no replacement needed
+
+                // Remove the Aspire Redis registration that would fail without a real connection
+                // and provide a null IConnectionMultiplexer so AnalysisResultStore skips Redis storage
+                services.RemoveAll<IConnectionMultiplexer>();
+                services.AddSingleton<IConnectionMultiplexer?>(sp => null);
             });
         }).ConfigureAwait(false);
     }
@@ -88,7 +101,7 @@ public sealed class GatewayAlbaBootstrap : IAsyncInitializer, IAsyncDisposable
         }
     }
 
-    private static ClinicalBundle CreateEmptyClinicalBundle()
+    private static ClinicalBundle CreateClinicalBundleWithServiceRequest()
     {
         return new ClinicalBundle
         {
@@ -101,10 +114,62 @@ public sealed class GatewayAlbaBootstrap : IAsyncInitializer, IAsyncDisposable
                 BirthDate = new DateOnly(1990, 1, 1),
                 Gender = "male"
             },
-            Conditions = [],
-            Observations = [],
-            Procedures = [],
-            Documents = []
+            Conditions =
+            [
+                new ConditionInfo
+                {
+                    Id = "test-condition-001",
+                    Code = "M54.5",
+                    Display = "Low back pain",
+                    ClinicalStatus = "active",
+                    OnsetDate = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(-6))
+                }
+            ],
+            Observations =
+            [
+                new ObservationInfo
+                {
+                    Id = "test-observation-001",
+                    Code = "59408-5",
+                    Display = "Oxygen saturation",
+                    Value = "98%",
+                    EffectiveDate = DateTimeOffset.UtcNow.AddDays(-1)
+                }
+            ],
+            Procedures =
+            [
+                new ProcedureInfo
+                {
+                    Id = "test-procedure-001",
+                    Code = "97110",
+                    Display = "Therapeutic exercises",
+                    PerformedDate = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(-3))
+                }
+            ],
+            Documents = [],
+            ServiceRequests =
+            [
+                new ServiceRequestInfo
+                {
+                    Id = "test-service-request-001",
+                    Status = "active",
+                    Code = new CodeableConcept
+                    {
+                        Coding =
+                        [
+                            new Coding
+                            {
+                                System = "http://www.ama-assn.org/go/cpt",
+                                Code = "72148",
+                                Display = "MRI lumbar spine without contrast"
+                            }
+                        ],
+                        Text = "MRI lumbar spine without contrast"
+                    },
+                    EncounterId = "test-encounter",
+                    AuthoredOn = DateTimeOffset.UtcNow
+                }
+            ]
         };
     }
 }

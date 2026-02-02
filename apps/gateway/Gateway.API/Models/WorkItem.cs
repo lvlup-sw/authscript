@@ -22,8 +22,9 @@ public sealed record WorkItem
 
     /// <summary>
     /// FHIR ServiceRequest ID for the order requiring prior authorization.
+    /// Populated after analysis; null at registration time.
     /// </summary>
-    public required string ServiceRequestId { get; init; }
+    public string? ServiceRequestId { get; init; }
 
     /// <summary>
     /// Current status of the work item in its lifecycle.
@@ -32,8 +33,9 @@ public sealed record WorkItem
 
     /// <summary>
     /// CPT code for the procedure requiring prior authorization.
+    /// Populated after analysis; null at registration time.
     /// </summary>
-    public required string ProcedureCode { get; init; }
+    public string? ProcedureCode { get; init; }
 
     /// <summary>
     /// Timestamp when the work item was created.
