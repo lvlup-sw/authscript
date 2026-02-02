@@ -10,7 +10,7 @@
 
   <ItemGroup>
     <!-- TUnit Test Framework -->
-    <PackageReference Include="TUnit" Version="0.18.0" />
+    <PackageReference Include="TUnit" Version="1.2.11" />
 
     <!-- Mocking -->
     <PackageReference Include="NSubstitute" Version="5.3.0" />
@@ -21,10 +21,7 @@
     <!-- Alba Integration Testing -->
     <PackageReference Include="Alba" Version="8.4.0" />
 
-<!-- Code Coverage -->
-    <PackageReference Include="coverlet.collector" Version="6.0.4" />
-
-    <!-- EF Core In-Memory Database for Testing -->
+<!-- EF Core In-Memory Database for Testing -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.2" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.2" />
   </ItemGroup>

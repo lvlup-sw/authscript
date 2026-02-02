@@ -12,6 +12,8 @@ env:
   NODE_VERSION: '20'
   PYTHON_VERSION: '3.11'
   COVERAGE_THRESHOLD: 60
+  # Enable new Microsoft Testing Platform integration for .NET 10+ / TUnit
+  DOTNET_CLI_TESTINGPLATFORM_ENABLE: '1'
 
 permissions:
   contents: read
@@ -138,18 +140,19 @@ jobs:
       - name: Test with coverage
         if: hashFiles('apps/gateway/Gateway.API.Tests/*.csproj') != ''
         run: |
-          dotnet test apps/gateway/Gateway.API.Tests/Gateway.API.Tests.csproj \
+          # TUnit uses Microsoft.Testing.Platform - run tests with native coverage
+          mkdir -p ./apps/gateway/coverage
+          dotnet run --project apps/gateway/Gateway.API.Tests/Gateway.API.Tests.csproj \
             --configuration Release \
-            --no-build \
-            --logger "console;verbosity=detailed" \
-            --collect:"XPlat Code Coverage" \
-            --results-directory ./apps/gateway/coverage \
-            -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
+            -- \
+            --coverage \
+            --coverage-output-format cobertura \
+            --coverage-output "${GITHUB_WORKSPACE}/apps/gateway/coverage/coverage.cobertura.xml"
 
       - name: Check Coverage Threshold
-        if: hashFiles('apps/gateway/coverage/*/coverage.cobertura.xml') != ''
+        if: hashFiles('apps/gateway/coverage/coverage.cobertura.xml') != ''
         run: |
-          COVERAGE=$(grep -oP 'line-rate="\K[0-9.]+' ./apps/gateway/coverage/*/coverage.cobertura.xml | head -1)
+          COVERAGE=$(grep -oP 'line-rate="\K[0-9.]+' ./apps/gateway/coverage/coverage.cobertura.xml | head -1)
           COVERAGE_PCT=$(echo "$COVERAGE * 100" | bc | cut -d. -f1)
           echo "Coverage: ${COVERAGE_PCT}%"
           if [ "$COVERAGE_PCT" -lt "${{ env.COVERAGE_THRESHOLD }}" ]; then
@@ -158,11 +161,11 @@ jobs:
           fi
 
       - name: Upload coverage
-        if: hashFiles('apps/gateway/coverage/*/coverage.cobertura.xml') != ''
+        if: hashFiles('apps/gateway/coverage/coverage.cobertura.xml') != ''
         uses: actions/upload-artifact@v4
         with:
           name: gateway-coverage
-          path: ./apps/gateway/coverage/*/coverage.cobertura.xml
+          path: ./apps/gateway/coverage/coverage.cobertura.xml
           retention-days: 7
           if-no-files-found: warn
 
