@@ -5,6 +5,7 @@ using Gateway.API.Contracts;
 using Gateway.API.Exceptions;
 using Gateway.API.Models;
 using Gateway.API.Services;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -22,7 +23,7 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
     private readonly IFhirHttpClient _fhirClient;
     private readonly AthenaOptions _options;
     private readonly ILogger<AthenaPollingService> _logger;
-    private readonly IPatientRegistry _patientRegistry;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly Dictionary<string, DateTimeOffset> _processedEncounters = new();
     private readonly object _lock = new();
     private readonly Channel<EncounterCompletedEvent> _encounterChannel;
@@ -35,17 +36,17 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
     /// <param name="fhirClient">The FHIR HTTP client for API calls.</param>
     /// <param name="options">Configuration options for athenahealth.</param>
     /// <param name="logger">Logger instance.</param>
-    /// <param name="patientRegistry">Registry for tracking patients awaiting encounter completion.</param>
+    /// <param name="scopeFactory">Factory for creating scoped service instances.</param>
     public AthenaPollingService(
         IFhirHttpClient fhirClient,
         IOptions<AthenaOptions> options,
         ILogger<AthenaPollingService> logger,
-        IPatientRegistry patientRegistry)
+        IServiceScopeFactory scopeFactory)
     {
         _fhirClient = fhirClient;
         _options = options.Value;
         _logger = logger;
-        _patientRegistry = patientRegistry;
+        _scopeFactory = scopeFactory;
         _encounterChannel = Channel.CreateUnbounded<EncounterCompletedEvent>(new UnboundedChannelOptions
         {
             SingleReader = true,
@@ -174,8 +175,12 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
             return;
         }
 
+        // Create scope for scoped services (IPatientRegistry uses scoped DbContext)
+        using var scope = _scopeFactory.CreateScope();
+        var patientRegistry = scope.ServiceProvider.GetRequiredService<IPatientRegistry>();
+
         // Get registered patients to poll
-        var patients = await _patientRegistry.GetActiveAsync(ct).ConfigureAwait(false);
+        var patients = await patientRegistry.GetActiveAsync(ct).ConfigureAwait(false);
 
         if (patients.Count == 0)
         {
@@ -262,13 +267,17 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
                 };
                 await _encounterChannel.Writer.WriteAsync(evt, ct).ConfigureAwait(false);
 
-                // Auto-unregister patient
-                await _patientRegistry.UnregisterAsync(patient.PatientId, ct).ConfigureAwait(false);
+                // Auto-unregister patient using scoped service
+                using var scope = _scopeFactory.CreateScope();
+                var patientRegistry = scope.ServiceProvider.GetRequiredService<IPatientRegistry>();
+                await patientRegistry.UnregisterAsync(patient.PatientId, ct).ConfigureAwait(false);
             }
             else
             {
-                // Update registry with poll timestamp and status
-                await _patientRegistry.UpdateAsync(
+                // Update registry with poll timestamp and status using scoped service
+                using var scope = _scopeFactory.CreateScope();
+                var patientRegistry = scope.ServiceProvider.GetRequiredService<IPatientRegistry>();
+                await patientRegistry.UpdateAsync(
                     patient.PatientId,
                     DateTimeOffset.UtcNow,
                     status,
