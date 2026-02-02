@@ -6,10 +6,14 @@
 
 using Alba;
 using Gateway.API.Contracts;
+using Gateway.API.Data;
 using Gateway.API.Models;
+using Gateway.API.Services.Polling;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using NSubstitute;
 using StackExchange.Redis;
 using TUnit.Core.Interfaces;
@@ -55,12 +59,51 @@ public sealed class EncounterProcessingAlbaBootstrap : IAsyncInitializer, IAsync
                     ["Intelligence:TimeoutSeconds"] = "30",
                     // Clinical query configuration
                     ["ClinicalQuery:ObservationLookbackMonths"] = "12",
-                    ["ClinicalQuery:ProcedureLookbackMonths"] = "24"
+                    ["ClinicalQuery:ProcedureLookbackMonths"] = "24",
+                    // Fake connection string for Aspire PostgreSQL component validation
+                    // (we override the DbContext with in-memory provider in ConfigureServices)
+                    ["ConnectionStrings:authscript"] = "Host=localhost;Database=test;Username=test;Password=test"
                 });
             });
 
             config.ConfigureServices(services =>
             {
+                // Replace Aspire's DbContext registration with EF Core in-memory provider
+                // Remove all EF Core-related registrations that Aspire created
+                // Note: We need to remove ALL registrations related to the DbContext to avoid
+                // the Aspire component's factory being invoked during migration
+                var dbContextDescriptors = services.Where(d =>
+                    d.ServiceType == typeof(GatewayDbContext) ||
+                    d.ServiceType == typeof(DbContextOptions<GatewayDbContext>) ||
+                    d.ServiceType == typeof(DbContextOptions) ||
+                    d.ServiceType.FullName?.Contains("GatewayDbContext") == true ||
+                    d.ImplementationType?.FullName?.Contains("GatewayDbContext") == true).ToList();
+                foreach (var descriptor in dbContextDescriptors)
+                {
+                    services.Remove(descriptor);
+                }
+
+                services.RemoveAll(typeof(Microsoft.EntityFrameworkCore.Internal.IDbContextPool<GatewayDbContext>));
+                services.RemoveAll(typeof(Microsoft.EntityFrameworkCore.Internal.IScopedDbContextLease<GatewayDbContext>));
+
+                // Use a fixed database name to ensure data persists across scopes within the same test
+                var databaseName = $"GatewayTest_{Guid.NewGuid()}";
+                services.AddDbContext<GatewayDbContext>(options =>
+                    options.UseInMemoryDatabase(databaseName));
+
+                // Remove AthenaPollingService to avoid scoped dependency validation issue
+                // The singleton background service cannot consume scoped IPatientRegistry
+                services.RemoveAll<AthenaPollingService>();
+
+                // Also remove the IHostedService registration for AthenaPollingService
+                var hostedServiceDescriptor = services.FirstOrDefault(d =>
+                    d.ServiceType == typeof(IHostedService) &&
+                    d.ImplementationFactory?.Method.ReturnType == typeof(AthenaPollingService));
+                if (hostedServiceDescriptor != null)
+                {
+                    services.Remove(hostedServiceDescriptor);
+                }
+
                 // Replace IFhirTokenProvider with mock returning test token
                 var mockTokenProvider = Substitute.For<IFhirTokenProvider>();
                 mockTokenProvider
