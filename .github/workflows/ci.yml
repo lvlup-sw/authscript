@@ -141,14 +141,28 @@ jobs:
           dotnet test apps/gateway/Gateway.API.Tests/Gateway.API.Tests.csproj \
             --configuration Release \
             --no-build \
-            --logger "console;verbosity=detailed"
+            --logger "console;verbosity=detailed" \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ./apps/gateway/coverage \
+            -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
+
+      - name: Check Coverage Threshold
+        if: hashFiles('apps/gateway/coverage/*/coverage.cobertura.xml') != ''
+        run: |
+          COVERAGE=$(grep -oP 'line-rate="\K[0-9.]+' ./apps/gateway/coverage/*/coverage.cobertura.xml | head -1)
+          COVERAGE_PCT=$(echo "$COVERAGE * 100" | bc | cut -d. -f1)
+          echo "Coverage: ${COVERAGE_PCT}%"
+          if [ "$COVERAGE_PCT" -lt "${{ env.COVERAGE_THRESHOLD }}" ]; then
+            echo "::error::Coverage ${COVERAGE_PCT}% is below ${{ env.COVERAGE_THRESHOLD }}% threshold"
+            exit 1
+          fi
 
       - name: Upload coverage
-        if: hashFiles('apps/gateway/coverage/*.xml') != ''
+        if: hashFiles('apps/gateway/coverage/*/coverage.cobertura.xml') != ''
         uses: actions/upload-artifact@v4
         with:
           name: gateway-coverage
-          path: apps/gateway/coverage/*.xml
+          path: ./apps/gateway/coverage/*/coverage.cobertura.xml
           retention-days: 7
           if-no-files-found: warn
 

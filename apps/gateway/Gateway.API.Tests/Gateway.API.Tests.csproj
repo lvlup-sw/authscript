@@ -20,6 +20,9 @@
 
     <!-- Alba Integration Testing -->
     <PackageReference Include="Alba" Version="8.4.0" />
+
+    <!-- Code Coverage -->
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
   </ItemGroup>
 
   <ItemGroup>
