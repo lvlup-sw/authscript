@@ -25,7 +25,8 @@
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
 
     <!-- EF Core In-Memory Database for Testing -->
-    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.2" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.2" />
   </ItemGroup>
 
   <ItemGroup>
