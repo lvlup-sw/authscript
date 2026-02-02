@@ -115,9 +115,9 @@ public class GatewayDbContextTests
         await Assert.That(entityType).IsNotNull();
         await Assert.That(entityType!.GetTableName()).IsEqualTo("work_items");
 
-        var idProperty = entityType.FindProperty(nameof(WorkItemEntity.Id));
+        var idProperty = entityType!.FindProperty(nameof(WorkItemEntity.Id));
         await Assert.That(idProperty).IsNotNull();
-        await Assert.That(idProperty!.GetMaxLength()).IsEqualTo(32);
+        await Assert.That(idProperty!.GetMaxLength()).IsEqualTo(36);
     }
 
     [Test]
@@ -133,7 +133,7 @@ public class GatewayDbContextTests
         await Assert.That(entityType).IsNotNull();
         await Assert.That(entityType!.GetTableName()).IsEqualTo("registered_patients");
 
-        var patientIdProperty = entityType.FindProperty(nameof(RegisteredPatientEntity.PatientId));
+        var patientIdProperty = entityType!.FindProperty(nameof(RegisteredPatientEntity.PatientId));
         await Assert.That(patientIdProperty).IsNotNull();
         await Assert.That(patientIdProperty!.GetMaxLength()).IsEqualTo(100);
     }

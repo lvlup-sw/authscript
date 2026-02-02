@@ -20,7 +20,7 @@ public class NotificationHubTests
             PatientId: "patient-789",
             Message: "Analysis completed successfully");
 
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         var readNotifications = new List<Notification>();
 
         // Act - Start reading first (subscriber must be active before write)
@@ -33,8 +33,8 @@ public class NotificationHubTests
             }
         }, cts.Token);
 
-        // Give subscriber time to register
-        await Task.Delay(50);
+        // Wait for subscriber to register (poll instead of fixed delay)
+        await WaitForSubscribersAsync(hub, expectedCount: 1, cts.Token);
 
         await hub.WriteAsync(notification, CancellationToken.None);
 
@@ -223,8 +223,9 @@ public class NotificationHubTests
             }
         });
 
-        // Give subscriber time to register
-        await Task.Delay(50);
+        // Wait for subscriber to register
+        using var waitCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        await WaitForSubscribersAsync(hub, expectedCount: 1, waitCts.Token);
 
         // Cancel the subscription
         cts.Cancel();
@@ -255,8 +256,8 @@ public class NotificationHubTests
             }
         }, cts.Token);
 
-        // Give subscriber time to register
-        await Task.Delay(50);
+        // Wait for subscriber to register (poll instead of fixed delay)
+        await WaitForSubscribersAsync(hub, expectedCount: 1, cts.Token);
 
         // Write many notifications
         for (var i = 0; i < notificationCount; i++)
@@ -312,8 +313,8 @@ public class NotificationHubTests
             }
         }, cts.Token);
 
-        // Give subscribers time to register
-        await Task.Delay(50);
+        // Wait for subscribers to register (poll instead of fixed delay)
+        await WaitForSubscribersAsync(hub, expectedCount: 2, cts.Token);
 
         // Write multiple messages
         for (var i = 0; i < messageCount; i++)
@@ -349,12 +350,19 @@ public class NotificationHubTests
 
     /// <summary>
     /// Helper to reliably wait for subscribers to register instead of using fixed delays.
+    /// Throws TimeoutException if expected count is not reached before cancellation.
     /// </summary>
     private static async Task WaitForSubscribersAsync(NotificationHub hub, int expectedCount, CancellationToken ct)
     {
         while (hub.SubscriberCount < expectedCount && !ct.IsCancellationRequested)
         {
             await Task.Delay(10, ct);
+        }
+
+        if (hub.SubscriberCount < expectedCount)
+        {
+            throw new TimeoutException(
+                $"Expected {expectedCount} subscriber(s) but only {hub.SubscriberCount} registered before timeout.");
         }
     }
 }

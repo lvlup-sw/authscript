@@ -12,8 +12,6 @@ env:
   NODE_VERSION: '20'
   PYTHON_VERSION: '3.11'
   COVERAGE_THRESHOLD: 60
-  # Enable new Microsoft Testing Platform integration for .NET 10+ / TUnit
-  DOTNET_CLI_TESTINGPLATFORM_ENABLE: '1'
 
 permissions:
   contents: read
@@ -121,6 +119,9 @@ jobs:
     needs: changes
     if: needs.changes.outputs.gateway == 'true' || needs.changes.outputs.orchestration == 'true' || needs.changes.outputs.shared == 'true'
     runs-on: ubuntu-latest
+    env:
+      # Enable new Microsoft Testing Platform integration for .NET 10+ / TUnit
+      DOTNET_CLI_TESTINGPLATFORM_ENABLE: '1'
     steps:
       - uses: actions/checkout@v4
         with:

@@ -28,7 +28,7 @@ public sealed class WorkItemConfiguration : IEntityTypeConfiguration<WorkItemEnt
         builder.HasKey(e => e.Id);
 
         builder.Property(e => e.Id)
-            .HasMaxLength(32);
+            .HasMaxLength(36);
 
         builder.Property(e => e.PatientId)
             .HasMaxLength(100)
