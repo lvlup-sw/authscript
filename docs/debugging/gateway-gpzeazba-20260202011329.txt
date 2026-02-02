@@ -1,0 +1,237 @@
+2026-02-02T09:04:54.3145860Z Waiting for resource 'postgres' to enter the 'Running' state.
+2026-02-02T09:04:54.3182704Z Waiting for resource 'authscript' to enter the 'Running' state.
+2026-02-02T09:04:54.3183322Z Waiting for resource 'redis' to enter the 'Running' state.
+2026-02-02T09:04:54.3183561Z Waiting for resource 'intelligence' to enter the 'Running' state.
+2026-02-02T09:04:55.8864924Z Waiting for resource 'redis' to become healthy.
+2026-02-02T09:04:55.9765953Z Waiting for resource ready to execute for 'redis'.
+2026-02-02T09:04:55.9767480Z Finished waiting for resource 'redis'.
+2026-02-02T09:04:58.0480641Z Waiting for resource 'postgres' to become healthy.
+2026-02-02T09:04:58.0480881Z Waiting for resource 'authscript' to become healthy.
+2026-02-02T09:04:58.1697763Z Waiting for resource ready to execute for 'postgres'.
+2026-02-02T09:04:58.1705626Z Waiting for resource ready to execute for 'authscript'.
+2026-02-02T09:04:58.1705850Z Finished waiting for resource 'authscript'.
+2026-02-02T09:04:58.1771638Z Finished waiting for resource 'postgres'.
+2026-02-02T09:05:02.0480742Z Waiting for resource ready to execute for 'intelligence'.
+2026-02-02T09:05:02.0481879Z Finished waiting for resource 'intelligence'.
+2026-02-02T09:05:03.8560000Z /home/reedsalus/Documents/code/prior-auth/apps/gateway/Gateway.API/bin/Debug/net10.0/Gateway.API
+2026-02-02T09:05:04.1080000Z =
+2026-02-02T09:05:04.1080000Z info: Gateway.API.Data.MigrationService[0]
+2026-02-02T09:05:04.1080000Z       Waiting for database container to be ready...
+2026-02-02T09:05:04.1080000Z info: Gateway.API.Services.Polling.AthenaPollingService[0]
+2026-02-02T09:05:04.1080000Z       AthenaPollingService starting
+2026-02-02T09:05:04.1080000Z info: Gateway.API.Services.Polling.AthenaPollingService[0]
+2026-02-02T09:05:04.1080000Z       Waiting for database migrations to complete...
+2026-02-02T09:05:04.1190000Z info: Microsoft.Hosting.Lifetime[14]
+2026-02-02T09:05:04.1190000Z       Now listening on: http://localhost:38675
+2026-02-02T09:05:04.1190000Z info: Microsoft.Hosting.Lifetime[14]
+2026-02-02T09:05:04.1190000Z       Now listening on: http://localhost:33707
+2026-02-02T09:05:04.1190000Z info: Microsoft.Hosting.Lifetime[0]
+2026-02-02T09:05:04.1190000Z       Application started. Press Ctrl+C to shut down.
+2026-02-02T09:05:04.1190000Z info: Microsoft.Hosting.Lifetime[0]
+2026-02-02T09:05:04.1190000Z       Hosting environment: Development
+2026-02-02T09:05:04.1190000Z info: Microsoft.Hosting.Lifetime[0]
+2026-02-02T09:05:04.1190000Z       Content root path: /home/reedsalus/Documents/code/prior-auth/apps/gateway/Gateway.API
+2026-02-02T09:05:09.1060000Z info: Gateway.API.Data.MigrationService[0]
+2026-02-02T09:05:09.1060000Z       Starting migration for GatewayDbContext...
+2026-02-02T09:05:09.3390000Z warn: Microsoft.EntityFrameworkCore.Model.Validation[10400]
+2026-02-02T09:05:09.3390000Z       Sensitive data logging is enabled. Log entries and exception messages may include sensitive application data; this mode should only be enabled during development.
+2026-02-02T09:05:09.5020000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:05:09.5020000Z       Executed DbCommand (17ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:05:09.5020000Z       SELECT 1
+2026-02-02T09:05:09.5100000Z info: Gateway.API.Data.MigrationService[0]
+2026-02-02T09:05:09.5100000Z       Database exists for GatewayDbContext.
+2026-02-02T09:05:09.5420000Z fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+2026-02-02T09:05:09.5420000Z       Failed executing DbCommand (11ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:05:09.5420000Z       SELECT "MigrationId", "ProductVersion"
+2026-02-02T09:05:09.5420000Z       FROM "__EFMigrationsHistory"
+2026-02-02T09:05:09.5420000Z       ORDER BY "MigrationId";
+2026-02-02T09:05:09.5430000Z info: Gateway.API.Data.MigrationService[0]
+2026-02-02T09:05:09.5430000Z       Found 1 pending migrations for GatewayDbContext: 20260202074435_InitialCreate
+2026-02-02T09:05:09.5430000Z info: Gateway.API.Data.MigrationService[0]
+2026-02-02T09:05:09.5430000Z       Applying migrations for GatewayDbContext...
+2026-02-02T09:05:09.5450000Z fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+2026-02-02T09:05:09.5450000Z       Failed executing DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:05:09.5450000Z       SELECT "MigrationId", "ProductVersion"
+2026-02-02T09:05:09.5450000Z       FROM "__EFMigrationsHistory"
+2026-02-02T09:05:09.5450000Z       ORDER BY "MigrationId";
+2026-02-02T09:05:09.6010000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:05:09.6010000Z       Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:05:09.6010000Z       SELECT 1
+2026-02-02T09:05:09.6330000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:05:09.6330000Z       Executed DbCommand (5ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:05:09.6330000Z       CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+2026-02-02T09:05:09.6330000Z           "MigrationId" character varying(150) NOT NULL,
+2026-02-02T09:05:09.6330000Z           "ProductVersion" character varying(32) NOT NULL,
+2026-02-02T09:05:09.6330000Z           CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
+2026-02-02T09:05:09.6330000Z       );
+2026-02-02T09:05:09.6420000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:05:09.6420000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:05:09.6420000Z       LOCK TABLE "__EFMigrationsHistory" IN ACCESS EXCLUSIVE MODE
+2026-02-02T09:05:09.6430000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:05:09.6430000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:05:09.6430000Z       SELECT "MigrationId", "ProductVersion"
+2026-02-02T09:05:09.6430000Z       FROM "__EFMigrationsHistory"
+2026-02-02T09:05:09.6430000Z       ORDER BY "MigrationId";
+2026-02-02T09:05:09.6490000Z info: Microsoft.EntityFrameworkCore.Migrations[20402]
+2026-02-02T09:05:09.6490000Z       Applying migration '20260202074435_InitialCreate'.
+2026-02-02T09:05:09.6570000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:05:09.6570000Z       Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:05:09.6570000Z       CREATE TABLE registered_patients (
+2026-02-02T09:05:09.6570000Z           "PatientId" character varying(100) NOT NULL,
+2026-02-02T09:05:09.6570000Z           "EncounterId" character varying(100) NOT NULL,
+2026-02-02T09:05:09.6570000Z           "PracticeId" character varying(50) NOT NULL,
+2026-02-02T09:05:09.6570000Z           "WorkItemId" character varying(32) NOT NULL,
+2026-02-02T09:05:09.6570000Z           "RegisteredAt" timestamp with time zone NOT NULL,
+2026-02-02T09:05:09.6570000Z           "LastPolledAt" timestamp with time zone,
+2026-02-02T09:05:09.6570000Z           "CurrentEncounterStatus" character varying(50),
+2026-02-02T09:05:09.6570000Z           CONSTRAINT "PK_registered_patients" PRIMARY KEY ("PatientId")
+2026-02-02T09:05:09.6570000Z       );
+2026-02-02T09:05:09.6570000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:05:09.6570000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:05:09.6570000Z       CREATE TABLE work_items (
+2026-02-02T09:05:09.6570000Z           "Id" character varying(32) NOT NULL,
+2026-02-02T09:05:09.6570000Z           "PatientId" character varying(100) NOT NULL,
+2026-02-02T09:05:09.6570000Z           "EncounterId" character varying(100) NOT NULL,
+2026-02-02T09:05:09.6570000Z           "ServiceRequestId" character varying(100),
+2026-02-02T09:05:09.6570000Z           "ProcedureCode" character varying(20),
+2026-02-02T09:05:09.6570000Z           "Status" integer NOT NULL,
+2026-02-02T09:05:09.6570000Z           "CreatedAt" timestamp with time zone NOT NULL,
+2026-02-02T09:05:09.6570000Z           "UpdatedAt" timestamp with time zone,
+2026-02-02T09:05:09.6570000Z           CONSTRAINT "PK_work_items" PRIMARY KEY ("Id")
+2026-02-02T09:05:09.6570000Z       );
+2026-02-02T09:05:09.6580000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:05:09.6580000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:05:09.6580000Z       CREATE INDEX idx_registered_patients_registered ON registered_patients ("RegisteredAt");
+2026-02-02T09:05:09.6580000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:05:09.6580000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:05:09.6580000Z       CREATE INDEX idx_work_items_encounter ON work_items ("EncounterId");
+2026-02-02T09:05:09.6590000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:05:09.6590000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:05:09.6590000Z       CREATE INDEX idx_work_items_status ON work_items ("Status");
+2026-02-02T09:05:09.6590000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:05:09.6590000Z       Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:05:09.6590000Z       INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+2026-02-02T09:05:09.6590000Z       VALUES ('20260202074435_InitialCreate', '10.0.2');
+2026-02-02T09:05:09.6680000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:05:09.6680000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:05:09.6680000Z       SELECT "MigrationId", "ProductVersion"
+2026-02-02T09:05:09.6680000Z       FROM "__EFMigrationsHistory"
+2026-02-02T09:05:09.6680000Z       ORDER BY "MigrationId";
+2026-02-02T09:05:09.6860000Z info: Gateway.API.Data.MigrationService[0]
+2026-02-02T09:05:09.6860000Z       Successfully applied migrations for GatewayDbContext. Total applied: 1
+2026-02-02T09:05:09.6860000Z info: Gateway.API.Data.MigrationService[0]
+2026-02-02T09:05:09.6860000Z       Migration process completed successfully for GatewayDbContext.
+2026-02-02T09:05:09.7140000Z info: Gateway.API.Services.Polling.AthenaPollingService[0]
+2026-02-02T09:05:09.7140000Z       Database migrations complete, starting polling
+2026-02-02T09:05:09.8180000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:05:09.8180000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:05:09.8180000Z       SELECT r."PatientId", r."CurrentEncounterStatus", r."EncounterId", r."LastPolledAt", r."PracticeId", r."RegisteredAt", r."WorkItemId"
+2026-02-02T09:05:09.8180000Z       FROM registered_patients AS r
+2026-02-02T09:05:39.8330000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:05:39.8330000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:05:39.8330000Z       SELECT r."PatientId", r."CurrentEncounterStatus", r."EncounterId", r."LastPolledAt", r."PracticeId", r."RegisteredAt", r."WorkItemId"
+2026-02-02T09:05:39.8330000Z       FROM registered_patients AS r
+2026-02-02T09:06:09.8350000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:06:09.8350000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:06:09.8350000Z       SELECT r."PatientId", r."CurrentEncounterStatus", r."EncounterId", r."LastPolledAt", r."PracticeId", r."RegisteredAt", r."WorkItemId"
+2026-02-02T09:06:09.8350000Z       FROM registered_patients AS r
+2026-02-02T09:06:39.8360000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:06:39.8360000Z       Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:06:39.8360000Z       SELECT r."PatientId", r."CurrentEncounterStatus", r."EncounterId", r."LastPolledAt", r."PracticeId", r."RegisteredAt", r."WorkItemId"
+2026-02-02T09:06:39.8360000Z       FROM registered_patients AS r
+2026-02-02T09:07:09.8410000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:07:09.8410000Z       Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:07:09.8410000Z       SELECT r."PatientId", r."CurrentEncounterStatus", r."EncounterId", r."LastPolledAt", r."PracticeId", r."RegisteredAt", r."WorkItemId"
+2026-02-02T09:07:09.8410000Z       FROM registered_patients AS r
+2026-02-02T09:07:39.8430000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:07:39.8430000Z       Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:07:39.8430000Z       SELECT r."PatientId", r."CurrentEncounterStatus", r."EncounterId", r."LastPolledAt", r."PracticeId", r."RegisteredAt", r."WorkItemId"
+2026-02-02T09:07:39.8430000Z       FROM registered_patients AS r
+2026-02-02T09:08:09.8440000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:08:09.8440000Z       Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:08:09.8440000Z       SELECT r."PatientId", r."CurrentEncounterStatus", r."EncounterId", r."LastPolledAt", r."PracticeId", r."RegisteredAt", r."WorkItemId"
+2026-02-02T09:08:09.8440000Z       FROM registered_patients AS r
+2026-02-02T09:08:39.8480000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:08:39.8480000Z       Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:08:39.8480000Z       SELECT r."PatientId", r."CurrentEncounterStatus", r."EncounterId", r."LastPolledAt", r."PracticeId", r."RegisteredAt", r."WorkItemId"
+2026-02-02T09:08:39.8480000Z       FROM registered_patients AS r
+2026-02-02T09:09:09.8500000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:09:09.8500000Z       Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:09:09.8500000Z       SELECT r."PatientId", r."CurrentEncounterStatus", r."EncounterId", r."LastPolledAt", r."PracticeId", r."RegisteredAt", r."WorkItemId"
+2026-02-02T09:09:09.8500000Z       FROM registered_patients AS r
+2026-02-02T09:09:39.8520000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:09:39.8520000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:09:39.8520000Z       SELECT r."PatientId", r."CurrentEncounterStatus", r."EncounterId", r."LastPolledAt", r."PracticeId", r."RegisteredAt", r."WorkItemId"
+2026-02-02T09:09:39.8520000Z       FROM registered_patients AS r
+2026-02-02T09:10:09.8570000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:10:09.8570000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:10:09.8570000Z       SELECT r."PatientId", r."CurrentEncounterStatus", r."EncounterId", r."LastPolledAt", r."PracticeId", r."RegisteredAt", r."WorkItemId"
+2026-02-02T09:10:09.8570000Z       FROM registered_patients AS r
+2026-02-02T09:10:39.8580000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:10:39.8580000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:10:39.8580000Z       SELECT r."PatientId", r."CurrentEncounterStatus", r."EncounterId", r."LastPolledAt", r."PracticeId", r."RegisteredAt", r."WorkItemId"
+2026-02-02T09:10:39.8580000Z       FROM registered_patients AS r
+2026-02-02T09:11:09.8590000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:11:09.8590000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:11:09.8590000Z       SELECT r."PatientId", r."CurrentEncounterStatus", r."EncounterId", r."LastPolledAt", r."PracticeId", r."RegisteredAt", r."WorkItemId"
+2026-02-02T09:11:09.8590000Z       FROM registered_patients AS r
+2026-02-02T09:11:39.8610000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:11:39.8610000Z       Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:11:39.8610000Z       SELECT r."PatientId", r."CurrentEncounterStatus", r."EncounterId", r."LastPolledAt", r."PracticeId", r."RegisteredAt", r."WorkItemId"
+2026-02-02T09:11:39.8610000Z       FROM registered_patients AS r
+2026-02-02T09:12:09.8630000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:12:09.8630000Z       Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:12:09.8630000Z       SELECT r."PatientId", r."CurrentEncounterStatus", r."EncounterId", r."LastPolledAt", r."PracticeId", r."RegisteredAt", r."WorkItemId"
+2026-02-02T09:12:09.8630000Z       FROM registered_patients AS r
+2026-02-02T09:12:15.9510000Z info: Gateway.API.Services.ApiKeyValidator[0]
+2026-02-02T09:12:15.9510000Z       ApiKeyValidator initialized with 1 API key(s)
+2026-02-02T09:12:16.0420000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:12:16.0420000Z       Executed DbCommand (16ms) [Parameters=[@p0='28deeae2449b40ee881b63fd4389a905' (Nullable = false), @p1='2026-02-02T09:12:15.9529382+00:00' (DbType = DateTime), @p2='a-195900.Encounter-12345' (Nullable = false), @p3='a-195900.E-60178' (Nullable = false), @p4=NULL, @p5=NULL, @p6='0', @p7=NULL (DbType = DateTime)], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:12:16.0420000Z       INSERT INTO work_items ("Id", "CreatedAt", "EncounterId", "PatientId", "ProcedureCode", "ServiceRequestId", "Status", "UpdatedAt")
+2026-02-02T09:12:16.0420000Z       VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7);
+2026-02-02T09:12:16.0620000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:12:16.0620000Z       Executed DbCommand (1ms) [Parameters=[@p0='a-195900.E-60178' (Nullable = false), @p1=NULL, @p2='a-195900.Encounter-12345' (Nullable = false), @p3=NULL (DbType = DateTime), @p4='Organization/a-1.Practice-195900' (Nullable = false), @p5='2026-02-02T09:12:16.0470531+00:00' (DbType = DateTime), @p6='28deeae2449b40ee881b63fd4389a905' (Nullable = false)], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:12:16.0620000Z       INSERT INTO registered_patients ("PatientId", "CurrentEncounterStatus", "EncounterId", "LastPolledAt", "PracticeId", "RegisteredAt", "WorkItemId")
+2026-02-02T09:12:16.0620000Z       VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6);
+2026-02-02T09:12:38.0570000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:12:38.0570000Z       Executed DbCommand (9ms) [Parameters=[@patientId='a-195900.E-60178'], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:12:38.0570000Z       SELECT r."PatientId", r."CurrentEncounterStatus", r."EncounterId", r."LastPolledAt", r."PracticeId", r."RegisteredAt", r."WorkItemId"
+2026-02-02T09:12:38.0570000Z       FROM registered_patients AS r
+2026-02-02T09:12:38.0570000Z       WHERE r."PatientId" = @patientId
+2026-02-02T09:12:38.0570000Z       LIMIT 1
+2026-02-02T09:12:39.8640000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:12:39.8640000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:12:39.8640000Z       SELECT r."PatientId", r."CurrentEncounterStatus", r."EncounterId", r."LastPolledAt", r."PracticeId", r."RegisteredAt", r."WorkItemId"
+2026-02-02T09:12:39.8640000Z       FROM registered_patients AS r
+2026-02-02T09:12:39.8780000Z info: System.Net.Http.HttpClient.Athena.LogicalHandler[100]
+2026-02-02T09:12:39.8780000Z       Start processing HTTP request POST https://api.preview.platform.athenahealth.com/oauth2/v1/token
+2026-02-02T09:12:39.8780000Z info: System.Net.Http.HttpClient.Athena.ClientHandler[100]
+2026-02-02T09:12:39.8780000Z       Sending HTTP request POST https://api.preview.platform.athenahealth.com/oauth2/v1/token
+2026-02-02T09:12:40.5020000Z info: System.Net.Http.HttpClient.Athena.ClientHandler[101]
+2026-02-02T09:12:40.5020000Z       Received HTTP response headers after 619.9037ms - 200
+2026-02-02T09:12:40.5030000Z info: System.Net.Http.HttpClient.Athena.LogicalHandler[101]
+2026-02-02T09:12:40.5030000Z       End processing HTTP request after 627.6737ms - 200
+2026-02-02T09:12:40.5070000Z info: System.Net.Http.HttpClient.IFhirHttpClient.LogicalHandler[100]
+2026-02-02T09:12:40.5070000Z       Start processing HTTP request GET https://api.preview.platform.athenahealth.com/fhir/r4/Encounter?*
+2026-02-02T09:12:40.5070000Z info: System.Net.Http.HttpClient.IFhirHttpClient.ClientHandler[100]
+2026-02-02T09:12:40.5070000Z       Sending HTTP request GET https://api.preview.platform.athenahealth.com/fhir/r4/Encounter?*
+2026-02-02T09:12:41.0230000Z info: System.Net.Http.HttpClient.IFhirHttpClient.ClientHandler[101]
+2026-02-02T09:12:41.0230000Z       Received HTTP response headers after 515.3478ms - 200
+2026-02-02T09:12:41.0230000Z info: System.Net.Http.HttpClient.IFhirHttpClient.LogicalHandler[101]
+2026-02-02T09:12:41.0230000Z       End processing HTTP request after 515.4195ms - 200
+2026-02-02T09:12:41.0270000Z warn: Gateway.API.Services.Polling.AthenaPollingService[0]
+2026-02-02T09:12:41.0270000Z       Could not extract status for patient a-195900.E-60178
+2026-02-02T09:13:11.0290000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-02T09:13:11.0290000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-02T09:13:11.0290000Z       SELECT r."PatientId", r."CurrentEncounterStatus", r."EncounterId", r."LastPolledAt", r."PracticeId", r."RegisteredAt", r."WorkItemId"
+2026-02-02T09:13:11.0290000Z       FROM registered_patients AS r
+2026-02-02T09:13:11.0290000Z info: System.Net.Http.HttpClient.IFhirHttpClient.LogicalHandler[100]
+2026-02-02T09:13:11.0290000Z       Start processing HTTP request GET https://api.preview.platform.athenahealth.com/fhir/r4/Encounter?*
+2026-02-02T09:13:11.0290000Z info: System.Net.Http.HttpClient.IFhirHttpClient.ClientHandler[100]
+2026-02-02T09:13:11.0290000Z       Sending HTTP request GET https://api.preview.platform.athenahealth.com/fhir/r4/Encounter?*
+2026-02-02T09:13:11.2460000Z info: System.Net.Http.HttpClient.IFhirHttpClient.ClientHandler[101]
+2026-02-02T09:13:11.2460000Z       Received HTTP response headers after 216.3389ms - 200
+2026-02-02T09:13:11.2460000Z info: System.Net.Http.HttpClient.IFhirHttpClient.LogicalHandler[101]
+2026-02-02T09:13:11.2460000Z       End processing HTTP request after 216.383ms - 200
+2026-02-02T09:13:11.2460000Z warn: Gateway.API.Services.Polling.AthenaPollingService[0]
+2026-02-02T09:13:11.2460000Z       Could not extract status for patient a-195900.E-60178
