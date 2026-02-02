@@ -367,4 +367,35 @@ public class AthenaPollingServiceTests
         // Assert - no crash, no unregister
         await _patientRegistry.DidNotReceive().UnregisterAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
+
+    [Test]
+    public async Task PollPatientEncounterAsync_InitialPollFinished_EmitsImmediately()
+    {
+        // Arrange - patient just registered, first poll shows "finished"
+        // This handles the edge case where encounter is already finished at registration time
+        var patient = new RegisteredPatient
+        {
+            PatientId = "patient-1",
+            EncounterId = "encounter-1",
+            PracticeId = "practice-1",
+            WorkItemId = "workitem-1",
+            RegisteredAt = DateTimeOffset.UtcNow,
+            CurrentEncounterStatus = null // First poll - never polled before
+        };
+
+        var encounterBundle = CreateFhirBundle("encounter-1", "finished");
+        _fhirClient.SearchAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Result<JsonElement>.Success(encounterBundle));
+
+        // Act
+        await _sut.PollPatientEncounterAsync(patient, CancellationToken.None);
+
+        // Assert - event should be emitted immediately (null != "finished" is true)
+        await _patientRegistry.Received(1).UnregisterAsync("patient-1", Arg.Any<CancellationToken>());
+
+        // Verify event was written to channel
+        var hasEvent = _sut.Encounters.TryRead(out var encounterId);
+        await Assert.That(hasEvent).IsTrue();
+        await Assert.That(encounterId).IsEqualTo("encounter-1");
+    }
 }
