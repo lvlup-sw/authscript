@@ -172,34 +172,26 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
             return;
         }
 
-        // Capture timestamp BEFORE the search to avoid missing encounters created during the request
-        var pollStart = DateTimeOffset.UtcNow;
-        var query = $"ah-practice={_options.PracticeId}&status=finished&date=gt{_lastCheck:O}";
+        // Get registered patients to poll
+        var patients = await _patientRegistry.GetActiveAsync(ct);
 
-        _logger.LogDebug("Polling for encounters with query: {Query}", query);
-
-        Result<JsonElement> result;
-        try
+        if (patients.Count == 0)
         {
-            result = await _fhirClient.SearchAsync("Encounter", query, ct);
-        }
-        catch (TokenAcquisitionException ex)
-        {
-            // Token acquisition failed (transient) - will retry on next poll cycle
-            _logger.LogWarning("Unable to acquire Athena access token for polling: {Message}", ex.Message);
+            _logger.LogDebug("No registered patients to poll");
             return;
         }
 
-        if (result.IsFailure)
-        {
-            _logger.LogWarning("Failed to search encounters: {Error}", result.Error?.Message);
-            return;
-        }
+        _logger.LogDebug("Polling {Count} registered patients", patients.Count);
 
-        // Only update _lastCheck on success, using the pre-captured timestamp
-        _lastCheck = pollStart;
-
-        await ProcessEncounterBundleAsync(result.Value, ct);
+        // Poll each patient in parallel (max 5 concurrent)
+        await Parallel.ForEachAsync(
+            patients,
+            new ParallelOptions { MaxDegreeOfParallelism = 5, CancellationToken = ct },
+            async (patient, token) =>
+            {
+                // TODO: Implement PollPatientEncounterAsync in Task 016
+                _logger.LogDebug("Would poll patient {PatientId}", patient.PatientId);
+            });
     }
 
     private async Task ProcessEncounterBundleAsync(JsonElement bundle, CancellationToken ct)
