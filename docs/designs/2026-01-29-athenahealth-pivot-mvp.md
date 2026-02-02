@@ -515,6 +515,236 @@ Per [athenahealth Embedded Apps documentation](../integration/embedded-apps.md):
 }
 ```
 
+## Dashboard UI Design
+
+> **Note:** This design reconciles the product team's [Figma vision](../integration/Current%20FIGMA.md) with athenahealth API constraints. See [Technical Reconciliation](../integration/Current%20FIGMA.md#technical-reconciliation) for details.
+
+### Design Philosophy
+
+The MVP Dashboard is a **patient-specific PA assistant** embedded in the athenaOne patient chart, not a practice-wide queue manager. This approach:
+
+- Works within Certified API constraints (patient-scoped queries only)
+- Integrates seamlessly into provider workflow (appears in patient context)
+- Delivers immediate value (automates PA form generation for current patient)
+
+### MVP Screens
+
+#### Screen 1: Patient PA Status
+
+The main view when AuthScript opens. Shows the current patient's PA request status.
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  AuthScript                                              ✕  ─  □   │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │  John Smith  •  DOB: 03/15/1975  •  Encounter: 01/31/2026     │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+│                                                                     │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │  Prior Authorization Request                                   │  │
+│  │                                                                │  │
+│  │  Procedure: Remicade Infusion (J1745)                         │  │
+│  │  Payer: Blue Cross Blue Shield                                │  │
+│  │                                                                │  │
+│  │  Status: ● READY FOR REVIEW                                   │  │
+│  │                                                                │  │
+│  │  ┌─────────────────────────────────────────────────────────┐  │  │
+│  │  │  Completeness: ████████████████████░░  95%              │  │  │
+│  │  │  All required criteria documented                        │  │  │
+│  │  └─────────────────────────────────────────────────────────┘  │  │
+│  │                                                                │  │
+│  │  ┌──────────────────┐  ┌──────────────────┐                   │  │
+│  │  │   Review Form    │  │     Approve      │                   │  │
+│  │  └──────────────────┘  └──────────────────┘                   │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+│                                                                     │
+│  Evidence Summary                                                   │
+│  ├─ Diagnosis: Rheumatoid Arthritis (M05.79)                       │
+│  │  Source: Problem List (updated 01/15/2026)                      │
+│  ├─ Prior Treatments: MTX 15mg weekly × 12 weeks (failed)          │
+│  │  Source: Medication List                                        │
+│  └─ Labs: CRP 2.4 mg/dL, ESR 28 mm/hr                              │
+│     Source: Lab Results (01/30/2026)                               │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Elements:**
+- **Patient Header:** Name, DOB, encounter date (from SMART context)
+- **PA Request Card:** Procedure, payer, current status
+- **Completeness Meter:** Visual indicator of form completeness
+- **Action Buttons:** "Review Form" opens detailed view; "Approve" submits
+- **Evidence Summary:** Key clinical facts with source citations
+
+**Status States:**
+| Status | Display | Actions Available |
+|--------|---------|-------------------|
+| `PENDING` | "Analyzing encounter..." with spinner | None (monitoring) |
+| `READY_FOR_REVIEW` | Green "Ready for Review" | Review, Approve |
+| `MISSING_DATA` | Yellow "Missing Information" | Update with New Data |
+| `SUBMITTED` | "PDF Written to Chart" | None (complete) |
+| `NO_PA_REQUIRED` | "No PA Required" | None (auto-closed) |
+
+---
+
+#### Screen 2: Form Review
+
+Detailed form view with side-by-side evidence panel.
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  AuthScript  >  Form Review                              ✕  ─  □   │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌─────────────────────────────┐  ┌─────────────────────────────┐  │
+│  │  PA Form                    │  │  Supporting Evidence        │  │
+│  │                             │  │                             │  │
+│  │  Patient Information        │  │  Click any field to see     │  │
+│  │  ────────────────────       │  │  source documentation       │  │
+│  │  Name: John Smith       [✎] │  │                             │  │
+│  │  DOB: 03/15/1975        [✎] │  │  ┌─────────────────────┐    │  │
+│  │  Member ID: BCB123456   [✎] │  │  │ Progress Note       │    │  │
+│  │                             │  │  │ 01/31/2026          │    │  │
+│  │  Diagnosis                  │  │  │                     │    │  │
+│  │  ────────────────────       │  │  │ "Patient presents   │    │  │
+│  │  Primary: M05.79        [✎] │  │  │ with continued RA   │    │  │
+│  │  (RA, multiple sites)       │  │  │ symptoms despite    │    │  │
+│  │                             │  │  │ 12 weeks of MTX..." │    │  │
+│  │  Clinical Justification     │  │  └─────────────────────┘    │  │
+│  │  ────────────────────       │  │                             │  │
+│  │  Patient has failed         │  │  ┌─────────────────────┐    │  │
+│  │  conventional DMARDs...  [✎]│  │  │ Lab Results         │    │  │
+│  │                             │  │  │ 01/30/2026          │    │  │
+│  │  ┌─────────────────────┐    │  │  │                     │    │  │
+│  │  │ ← Back │ │ Approve │ │    │  │  │ CRP: 2.4 mg/dL     │    │  │
+│  │  └─────────────────────┘    │  │  │ ESR: 28 mm/hr      │    │  │
+│  │                             │  │  └─────────────────────┘    │  │
+│  └─────────────────────────────┘  └─────────────────────────────┘  │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Elements:**
+- **Form Panel (Left):** Pre-filled PA form with editable fields
+- **Evidence Panel (Right):** Source documents supporting each field
+- **Edit Icons:** Inline editing for any field
+- **Field Highlighting:** Click a field to highlight its source evidence
+- **Action Buttons:** Back to status view, Approve to submit
+
+---
+
+#### Screen 3: Missing Data View
+
+When required information is not found in the clinical record.
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  AuthScript                                              ✕  ─  □   │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │  John Smith  •  DOB: 03/15/1975  •  Encounter: 01/31/2026     │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+│                                                                     │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │  ⚠️  Missing Information                                      │  │
+│  │                                                                │  │
+│  │  The following information is required by the payer but       │  │
+│  │  was not found in the patient's record:                       │  │
+│  │                                                                │  │
+│  │  ┌─────────────────────────────────────────────────────────┐  │  │
+│  │  │  ☐  TB Test Results                                     │  │  │
+│  │  │     Required: Negative TB test within 6 months          │  │  │
+│  │  │     Found: No TB test on file                           │  │  │
+│  │  ├─────────────────────────────────────────────────────────┤  │  │
+│  │  │  ☐  Hepatitis B Screening                               │  │  │
+│  │  │     Required: HBsAg, anti-HBc, anti-HBs                 │  │  │
+│  │  │     Found: No hepatitis screening on file               │  │  │
+│  │  └─────────────────────────────────────────────────────────┘  │  │
+│  │                                                                │  │
+│  │  ┌──────────────────────────┐  ┌──────────────────────────┐   │  │
+│  │  │  Update with New Data    │  │  Payer Req Not Met       │   │  │
+│  │  └──────────────────────────┘  └──────────────────────────┘   │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+│                                                                     │
+│  Next Steps:                                                        │
+│  1. Add the required documentation to the patient's chart           │
+│  2. Click "Update with New Data" to re-analyze                      │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Elements:**
+- **Missing Items List:** Specific fields/criteria not met
+- **Payer Requirement:** What the payer policy requires
+- **Current State:** What was (or wasn't) found
+- **Update Button:** Re-triggers clinical data hydration
+- **Payer Req Not Met:** Marks request as unsubmittable (terminal state)
+
+---
+
+#### Screen 4: Submission Confirmation
+
+After successful approval and PDF write-back.
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  AuthScript                                              ✕  ─  □   │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │  John Smith  •  DOB: 03/15/1975  •  Encounter: 01/31/2026     │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+│                                                                     │
+│                         ┌─────────┐                                 │
+│                         │   ✓     │                                 │
+│                         └─────────┘                                 │
+│                                                                     │
+│                  PA Form Written to Patient Chart                   │
+│                                                                     │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │                                                                │  │
+│  │  Document: Prior_Auth_Remicade_20260131.pdf                   │  │
+│  │  Location: Patient Documents                                   │  │
+│  │  Created: 01/31/2026 2:34 PM                                   │  │
+│  │                                                                │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+│                                                                     │
+│  Next Step:                                                         │
+│  Open the document in athenaOne and fax to payer.                   │
+│                                                                     │
+│                    ┌──────────────────────────┐                     │
+│                    │   Close AuthScript       │                     │
+│                    └──────────────────────────┘                     │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Elements:**
+- **Success Indicator:** Clear visual confirmation
+- **Document Details:** PDF filename, location, timestamp
+- **Next Step:** Instruction to fax from athenaOne
+- **Close Button:** Dismisses the embedded app
+
+---
+
+### Figma Compatibility Summary
+
+| Figma Element | MVP Status | Notes |
+|---------------|------------|-------|
+| Queue cards (Green/Yellow/Gray) | ⚠️ Modified | Single status indicator per patient |
+| Confidence Score | ✅ Included | Completeness percentage |
+| Evidence panel | ✅ Included | Side-by-side with form |
+| One-Click Approve | ✅ Included | Direct approve button |
+| Revenue at Risk | ❌ Deferred | No pricing data |
+| Multi-patient table | ❌ Deferred | Single patient context |
+| ADT Feed banner | ❌ Removed | No ADT integration |
+| Batch approval | ❌ Deferred | Single patient context |
+
+---
+
 ## Testing Strategy
 
 ### Unit Tests

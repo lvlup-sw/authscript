@@ -155,6 +155,8 @@ This document describes the validated end-to-end workflow for AuthScript integra
 
 ## Phase 5: Provider Review (User Interaction)
 
+> **Context:** The Dashboard operates in a **single-patient context** provided by the SMART launch. All UI elements described below refer to the current patient only. See [Dashboard UI Design](2026-01-29-athenahealth-pivot-mvp.md#dashboard-ui-design) for screen mockups.
+
 ### Path A: Ready for Review
 
 > Form is complete. Provider reviews for accuracy before submission.
@@ -232,6 +234,8 @@ This document describes the validated end-to-end workflow for AuthScript integra
 ---
 
 ## Work Item State Machine
+
+> **Note:** Each work item represents a single patient's PA request. The Dashboard shows the work item for the current patient context (from SMART launch). There is no multi-patient queue view in MVP scope.
 
 ```mermaid
 stateDiagram-v2
