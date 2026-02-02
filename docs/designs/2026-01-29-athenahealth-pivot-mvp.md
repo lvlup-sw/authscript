@@ -202,8 +202,14 @@ async function registerPatientForMonitoring(context: SmartContext): Promise<void
 
 ```typescript
 // Listen for athenaOne context changes (postMessage)
+// Allowlist of valid athenahealth origins (production + sandbox)
+const ATHENA_ORIGINS = [
+  'https://athenanet.athenahealth.com',  // Production
+  'https://preview.athenahealth.com',     // Preview/sandbox
+];
+
 window.addEventListener('message', (event) => {
-  if (event.origin !== 'https://athenahealth.com') return;
+  if (!ATHENA_ORIGINS.includes(event.origin)) return;
 
   if (event.data.event === 'patientContextChanged') {
     const newPatientId = event.data.updatedPatient;

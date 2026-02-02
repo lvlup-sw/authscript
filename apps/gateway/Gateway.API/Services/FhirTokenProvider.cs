@@ -1,5 +1,6 @@
 using Gateway.API.Contracts;
 using Gateway.API.Contracts.Http;
+using Gateway.API.Exceptions;
 using Microsoft.Extensions.Logging;
 
 namespace Gateway.API.Services;
@@ -32,7 +33,7 @@ public sealed class FhirTokenProvider : IFhirTokenProvider
         if (token is null)
         {
             _logger.LogError("Failed to acquire FHIR access token");
-            throw new InvalidOperationException("Unable to acquire FHIR access token");
+            throw new TokenAcquisitionException("Unable to acquire FHIR access token");
         }
 
         return token;

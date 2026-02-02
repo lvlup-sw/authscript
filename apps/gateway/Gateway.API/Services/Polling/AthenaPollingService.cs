@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Threading.Channels;
 using Gateway.API.Configuration;
 using Gateway.API.Contracts;
+using Gateway.API.Exceptions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -160,6 +161,13 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
 
     private async Task PollForFinishedEncountersAsync(CancellationToken ct)
     {
+        // Guard against missing PracticeId to fail fast
+        if (string.IsNullOrWhiteSpace(_options.PracticeId))
+        {
+            _logger.LogError("Athena PracticeId is missing; polling skipped");
+            return;
+        }
+
         // Capture timestamp BEFORE the search to avoid missing encounters created during the request
         var pollStart = DateTimeOffset.UtcNow;
         var query = $"ah-practice={_options.PracticeId}&status=finished&date=gt{_lastCheck:O}";
@@ -171,9 +179,9 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
         {
             result = await _fhirClient.SearchAsync("Encounter", query, ct);
         }
-        catch (InvalidOperationException ex)
+        catch (TokenAcquisitionException ex)
         {
-            // Token acquisition failed
+            // Token acquisition failed (transient) - will retry on next poll cycle
             _logger.LogWarning("Unable to acquire Athena access token for polling: {Message}", ex.Message);
             return;
         }

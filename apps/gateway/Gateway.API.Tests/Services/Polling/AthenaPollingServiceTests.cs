@@ -26,7 +26,8 @@ public class AthenaPollingServiceTests
             FhirBaseUrl = "https://api.athena.test/fhir/r4",
             ClientId = "test-client",
             TokenEndpoint = "https://api.athena.test/oauth2/token",
-            PollingIntervalSeconds = 1
+            PollingIntervalSeconds = 1,
+            PracticeId = "Organization/a-1.Practice-12345"
         });
 
         _sut = new AthenaPollingService(_fhirClient, _options, _logger);

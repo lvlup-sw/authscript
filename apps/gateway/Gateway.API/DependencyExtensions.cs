@@ -19,19 +19,27 @@ namespace Gateway.API;
 /// </summary>
 public static class DependencyExtensions
 {
+    private const string CorsOriginsConfigKey = "Cors:Origins";
+    private const string DefaultCorsOrigin = "http://localhost:5173";
+
     /// <summary>
     /// Adds CORS policy for the dashboard.
     /// </summary>
     /// <param name="services">The service collection.</param>
+    /// <param name="configuration">The configuration to read allowed origins from.</param>
     /// <returns>The service collection for chaining.</returns>
-    public static IServiceCollection AddCorsPolicy(this IServiceCollection services)
+    public static IServiceCollection AddCorsPolicy(this IServiceCollection services, IConfiguration? configuration = null)
     {
+        // Read origins from config or use default for development
+        var origins = configuration?.GetSection(CorsOriginsConfigKey).Get<string[]>()
+            ?? [DefaultCorsOrigin];
+
         services.AddCors(options =>
         {
             options.AddDefaultPolicy(policy =>
             {
                 policy
-                    .WithOrigins("http://localhost:5173")
+                    .WithOrigins(origins)
                     .AllowAnyHeader()
                     .AllowAnyMethod()
                     .AllowCredentials();

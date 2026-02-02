@@ -28,7 +28,19 @@ public sealed class ApiKeySecuritySchemeTransformer : IOpenApiDocumentTransforme
         };
 
         document.Components ??= new OpenApiComponents();
-        document.Components.SecuritySchemes = securitySchemes;
+
+        // Add API key scheme without overwriting existing schemes
+        if (document.Components.SecuritySchemes is null)
+        {
+            document.Components.SecuritySchemes = securitySchemes;
+        }
+        else
+        {
+            foreach (var scheme in securitySchemes)
+            {
+                document.Components.SecuritySchemes.TryAdd(scheme.Key, scheme.Value);
+            }
+        }
 
         // Apply security requirement to all operations
         var operations = document.Paths?.Values

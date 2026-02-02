@@ -1,4 +1,5 @@
 using Gateway.API.Contracts.Http;
+using Gateway.API.Exceptions;
 using Gateway.API.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -30,7 +31,7 @@ public sealed class FhirTokenProviderTests
     }
 
     [Test]
-    public async Task GetTokenAsync_WhenStrategyReturnsNull_ThrowsInvalidOperationException()
+    public async Task GetTokenAsync_WhenStrategyReturnsNull_ThrowsTokenAcquisitionException()
     {
         // Arrange
         _resolver.Resolve().Returns(_strategy);
@@ -39,12 +40,12 @@ public sealed class FhirTokenProviderTests
         var provider = new FhirTokenProvider(_resolver, NullLogger<FhirTokenProvider>.Instance);
 
         // Act
-        InvalidOperationException? exception = null;
+        TokenAcquisitionException? exception = null;
         try
         {
             await provider.GetTokenAsync();
         }
-        catch (InvalidOperationException ex)
+        catch (TokenAcquisitionException ex)
         {
             exception = ex;
         }

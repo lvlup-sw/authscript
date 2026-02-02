@@ -416,7 +416,8 @@ public sealed class FhirClient : IFhirClient
         if (!resource.TryGetProperty(property, out var codeableConcept)) return null;
 
         var codings = new List<Coding>();
-        if (codeableConcept.TryGetProperty("coding", out var codingsArray))
+        if (codeableConcept.TryGetProperty("coding", out var codingsArray) &&
+            codingsArray.ValueKind == JsonValueKind.Array)
         {
             foreach (var coding in codingsArray.EnumerateArray())
             {
