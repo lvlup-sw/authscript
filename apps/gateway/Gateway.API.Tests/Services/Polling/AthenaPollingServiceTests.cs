@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Threading.Channels;
 using Gateway.API.Configuration;
 using Gateway.API.Contracts;
+using Gateway.API.Data;
 using Gateway.API.Models;
 using Gateway.API.Services.Polling;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,6 +24,10 @@ public class AthenaPollingServiceTests
     [Before(Test)]
     public Task Setup()
     {
+        // Mark migration as complete so AthenaPollingService doesn't wait for it in tests
+        MigrationHealthCheck.RegisterExpected(nameof(GatewayDbContext));
+        MigrationHealthCheck.MarkComplete(nameof(GatewayDbContext));
+
         _fhirClient = Substitute.For<IFhirHttpClient>();
         _logger = Substitute.For<ILogger<AthenaPollingService>>();
         _patientRegistry = Substitute.For<IPatientRegistry>();

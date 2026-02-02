@@ -117,7 +117,7 @@ public class GatewayDbContextTests
 
         var idProperty = entityType!.FindProperty(nameof(WorkItemEntity.Id));
         await Assert.That(idProperty).IsNotNull();
-        await Assert.That(idProperty!.GetMaxLength()).IsEqualTo(36);
+        await Assert.That(idProperty!.GetMaxLength()).IsEqualTo(32);
     }
 
     [Test]

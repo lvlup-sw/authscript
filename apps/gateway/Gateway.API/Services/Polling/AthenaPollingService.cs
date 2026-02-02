@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Threading.Channels;
 using Gateway.API.Configuration;
 using Gateway.API.Contracts;
+using Gateway.API.Data;
 using Gateway.API.Exceptions;
 using Gateway.API.Models;
 using Gateway.API.Services;
@@ -114,6 +115,21 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("AthenaPollingService starting");
+
+        // Wait for database migrations to complete before polling
+        _logger.LogInformation("Waiting for database migrations to complete...");
+        try
+        {
+            await MigrationHealthCheck.WaitForMigrationAsync(
+                nameof(GatewayDbContext),
+                stoppingToken).ConfigureAwait(false);
+            _logger.LogInformation("Database migrations complete, starting polling");
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            _logger.LogInformation("AthenaPollingService cancelled while waiting for migrations");
+            return;
+        }
 
         // Guard against non-positive polling interval to prevent hot spin or ArgumentOutOfRangeException
         var intervalSeconds = _options.PollingIntervalSeconds;
