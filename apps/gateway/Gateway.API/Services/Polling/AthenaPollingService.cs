@@ -20,6 +20,7 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
     private readonly IFhirHttpClient _fhirClient;
     private readonly AthenaOptions _options;
     private readonly ILogger<AthenaPollingService> _logger;
+    private readonly IPatientRegistry _patientRegistry;
     private readonly Dictionary<string, DateTimeOffset> _processedEncounters = new();
     private readonly object _lock = new();
     private readonly Channel<string> _encounterChannel;
@@ -32,14 +33,17 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
     /// <param name="fhirClient">The FHIR HTTP client for API calls.</param>
     /// <param name="options">Configuration options for athenahealth.</param>
     /// <param name="logger">Logger instance.</param>
+    /// <param name="patientRegistry">Registry for tracking patients awaiting encounter completion.</param>
     public AthenaPollingService(
         IFhirHttpClient fhirClient,
         IOptions<AthenaOptions> options,
-        ILogger<AthenaPollingService> logger)
+        ILogger<AthenaPollingService> logger,
+        IPatientRegistry patientRegistry)
     {
         _fhirClient = fhirClient;
         _options = options.Value;
         _logger = logger;
+        _patientRegistry = patientRegistry;
         _encounterChannel = Channel.CreateUnbounded<string>(new UnboundedChannelOptions
         {
             SingleReader = true,

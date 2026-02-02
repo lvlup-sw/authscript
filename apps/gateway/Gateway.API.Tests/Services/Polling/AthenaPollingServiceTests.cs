@@ -14,6 +14,7 @@ public class AthenaPollingServiceTests
     private IFhirHttpClient _fhirClient = null!;
     private IOptions<AthenaOptions> _options = null!;
     private ILogger<AthenaPollingService> _logger = null!;
+    private IPatientRegistry _patientRegistry = null!;
     private AthenaPollingService _sut = null!;
 
     [Before(Test)]
@@ -21,6 +22,7 @@ public class AthenaPollingServiceTests
     {
         _fhirClient = Substitute.For<IFhirHttpClient>();
         _logger = Substitute.For<ILogger<AthenaPollingService>>();
+        _patientRegistry = Substitute.For<IPatientRegistry>();
         _options = Options.Create(new AthenaOptions
         {
             FhirBaseUrl = "https://api.athena.test/fhir/r4",
@@ -30,7 +32,7 @@ public class AthenaPollingServiceTests
             PracticeId = "Organization/a-1.Practice-12345"
         });
 
-        _sut = new AthenaPollingService(_fhirClient, _options, _logger);
+        _sut = new AthenaPollingService(_fhirClient, _options, _logger, _patientRegistry);
         return Task.CompletedTask;
     }
 
@@ -39,6 +41,34 @@ public class AthenaPollingServiceTests
     {
         await _sut.StopAsync(CancellationToken.None);
         _sut.Dispose();
+    }
+
+    [Test]
+    public async Task Constructor_WithPatientRegistry_StoresReference()
+    {
+        // Arrange
+        var fhirClient = Substitute.For<IFhirHttpClient>();
+        var options = Options.Create(new AthenaOptions
+        {
+            FhirBaseUrl = "https://api.athena.test/fhir/r4",
+            ClientId = "test-client",
+            TokenEndpoint = "https://api.athena.test/oauth2/token",
+            PollingIntervalSeconds = 5
+        });
+        var logger = Substitute.For<ILogger<AthenaPollingService>>();
+        var patientRegistry = Substitute.For<IPatientRegistry>();
+
+        // Act
+        var service = new AthenaPollingService(
+            fhirClient,
+            options,
+            logger,
+            patientRegistry);
+
+        // Assert - service was created without error
+        await Assert.That(service).IsNotNull();
+
+        service.Dispose();
     }
 
     [Test]
@@ -149,7 +179,7 @@ public class AthenaPollingServiceTests
             .Returns(Result<JsonElement>.Success(bundleWithEncounter));
 
         // Create a service and process the encounter
-        var service = new AthenaPollingService(_fhirClient, _options, _logger);
+        var service = new AthenaPollingService(_fhirClient, _options, _logger, _patientRegistry);
 
         // Act - Start, let it process, stop, start again to see if it skips
         await service.StartAsync(CancellationToken.None);
@@ -185,7 +215,7 @@ public class AthenaPollingServiceTests
             Arg.Any<CancellationToken>())
             .Returns(Result<JsonElement>.Success(bundleWithEncounter));
 
-        var service = new AthenaPollingService(_fhirClient, _options, _logger);
+        var service = new AthenaPollingService(_fhirClient, _options, _logger, _patientRegistry);
 
         // Act
         await service.StartAsync(CancellationToken.None);
@@ -212,7 +242,7 @@ public class AthenaPollingServiceTests
             .Returns(Result<JsonElement>.Success(bundle));
 
         // Use a service with short purge window for testing
-        var service = new AthenaPollingService(_fhirClient, _options, _logger);
+        var service = new AthenaPollingService(_fhirClient, _options, _logger, _patientRegistry);
 
         // Act - Add an encounter and manually set it as old
         await service.StartAsync(CancellationToken.None);
@@ -240,7 +270,7 @@ public class AthenaPollingServiceTests
             Arg.Any<CancellationToken>())
             .Returns(Result<JsonElement>.Success(bundleWithEncounter));
 
-        var service = new AthenaPollingService(_fhirClient, _options, _logger);
+        var service = new AthenaPollingService(_fhirClient, _options, _logger, _patientRegistry);
 
         // Act
         await service.StartAsync(CancellationToken.None);
@@ -259,7 +289,7 @@ public class AthenaPollingServiceTests
     public async Task AthenaPollingService_Channel_IsUnboundedSingleConsumer()
     {
         // Arrange & Act
-        var service = new AthenaPollingService(_fhirClient, _options, _logger);
+        var service = new AthenaPollingService(_fhirClient, _options, _logger, _patientRegistry);
 
         // Assert - The channel reader should exist
         var reader = service.Encounters;
