@@ -1,3 +1,9 @@
+// =============================================================================
+// <copyright file="DependencyExtensions.cs" company="Levelup Software">
+// Copyright (c) Levelup Software. All rights reserved.
+// </copyright>
+// =============================================================================
+
 using System.Text.Json.Serialization;
 using Gateway.API.Configuration;
 using Gateway.API.Contracts;
@@ -11,6 +17,7 @@ using Gateway.API.Services.Notifications;
 using Gateway.API.Services.Polling;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Options;
+using Gateway.API.Data;
 
 namespace Gateway.API;
 
@@ -124,11 +131,23 @@ public static class DependencyExtensions
         services.AddScoped<IFhirDataAggregator, FhirDataAggregator>();
         services.AddScoped<IPdfFormStamper, PdfFormStamper>();
         services.AddSingleton<IAnalysisResultStore, AnalysisResultStore>();
-        // Work item storage (in-memory for MVP)
-        services.AddSingleton<IWorkItemStore, InMemoryWorkItemStore>();
 
-        // Patient registry for per-patient polling
-        services.AddSingleton<IPatientRegistry, InMemoryPatientRegistry>();
+        return services;
+    }
+
+    /// <summary>
+    /// Adds PostgreSQL persistence services to the dependency injection container.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The service collection for chaining.</returns>
+    /// <remarks>
+    /// EF Core DbContext is registered by Aspire via builder.AddNpgsqlDbContext.
+    /// This method registers the stores that use the DbContext.
+    /// </remarks>
+    public static IServiceCollection AddGatewayPersistence(this IServiceCollection services)
+    {
+        services.AddScoped<IWorkItemStore, PostgresWorkItemStore>();
+        services.AddScoped<IPatientRegistry, PostgresPatientRegistry>();
 
         return services;
     }
