@@ -28,6 +28,14 @@ public static class PatientEndpoints
         group.MapPost("/register", RegisterAsync)
             .WithName("RegisterPatient")
             .WithDescription("Register a patient for encounter monitoring");
+
+        group.MapDelete("/{patientId}", UnregisterAsync)
+            .WithName("UnregisterPatient")
+            .WithDescription("Unregister a patient from encounter monitoring");
+
+        group.MapGet("/{patientId}", GetAsync)
+            .WithName("GetPatient")
+            .WithDescription("Get patient registration status");
     }
 
     /// <summary>
@@ -76,5 +84,39 @@ public static class PatientEndpoints
             WorkItemId = workItemId,
             Message = $"Patient {request.PatientId} registered for encounter monitoring"
         });
+    }
+
+    /// <summary>
+    /// Unregisters a patient from encounter monitoring.
+    /// </summary>
+    /// <param name="patientId">The patient ID to unregister.</param>
+    /// <param name="patientRegistry">The patient registry service.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>An OK result (idempotent - returns OK even if patient doesn't exist).</returns>
+    public static async Task<Results<Ok, NotFound>> UnregisterAsync(
+        string patientId,
+        [FromServices] IPatientRegistry patientRegistry,
+        CancellationToken ct = default)
+    {
+        await patientRegistry.UnregisterAsync(patientId, ct).ConfigureAwait(false);
+        return TypedResults.Ok();
+    }
+
+    /// <summary>
+    /// Gets a patient's registration status.
+    /// </summary>
+    /// <param name="patientId">The patient ID to look up.</param>
+    /// <param name="patientRegistry">The patient registry service.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The registered patient if found; otherwise, NotFound.</returns>
+    public static async Task<Results<Ok<RegisteredPatient>, NotFound>> GetAsync(
+        string patientId,
+        [FromServices] IPatientRegistry patientRegistry,
+        CancellationToken ct = default)
+    {
+        var patient = await patientRegistry.GetAsync(patientId, ct).ConfigureAwait(false);
+        return patient is null
+            ? TypedResults.NotFound()
+            : TypedResults.Ok(patient);
     }
 }

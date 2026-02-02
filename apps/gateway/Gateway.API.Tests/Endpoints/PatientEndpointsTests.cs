@@ -108,4 +108,71 @@ public sealed class PatientEndpointsTests
         await Assert.That(okResult!.Value!.WorkItemId).IsEqualTo("workitem-id-1");
         await Assert.That(okResult.Value!.Message).Contains("registered");
     }
+
+    [Test]
+    public async Task UnregisterAsync_ExistingPatient_Returns200()
+    {
+        // Arrange
+        var patientId = "patient-123";
+
+        // Act
+        var result = await PatientEndpoints.UnregisterAsync(patientId, _patientRegistry);
+
+        // Assert
+        await Assert.That(result.Result).IsTypeOf<Ok>();
+        await _patientRegistry.Received(1).UnregisterAsync(patientId, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task UnregisterAsync_NonExistentPatient_Returns200()
+    {
+        // Arrange - idempotent behavior, returns 200 even if not found
+        var patientId = "non-existent";
+
+        // Act
+        var result = await PatientEndpoints.UnregisterAsync(patientId, _patientRegistry);
+
+        // Assert
+        await Assert.That(result.Result).IsTypeOf<Ok>();
+    }
+
+    [Test]
+    public async Task GetAsync_ExistingPatient_ReturnsPatient()
+    {
+        // Arrange
+        var patientId = "patient-123";
+        var registeredPatient = new RegisteredPatient
+        {
+            PatientId = patientId,
+            EncounterId = "encounter-456",
+            PracticeId = "practice-789",
+            WorkItemId = "workitem-abc",
+            RegisteredAt = DateTimeOffset.UtcNow
+        };
+        _patientRegistry.GetAsync(patientId, Arg.Any<CancellationToken>())
+            .Returns(registeredPatient);
+
+        // Act
+        var result = await PatientEndpoints.GetAsync(patientId, _patientRegistry);
+
+        // Assert
+        await Assert.That(result.Result).IsTypeOf<Ok<RegisteredPatient>>();
+        var okResult = result.Result as Ok<RegisteredPatient>;
+        await Assert.That(okResult!.Value!.PatientId).IsEqualTo(patientId);
+    }
+
+    [Test]
+    public async Task GetAsync_NonExistentPatient_Returns404()
+    {
+        // Arrange
+        var patientId = "non-existent";
+        _patientRegistry.GetAsync(patientId, Arg.Any<CancellationToken>())
+            .Returns((RegisteredPatient?)null);
+
+        // Act
+        var result = await PatientEndpoints.GetAsync(patientId, _patientRegistry);
+
+        // Assert
+        await Assert.That(result.Result).IsTypeOf<NotFound>();
+    }
 }
