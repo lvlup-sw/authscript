@@ -3,6 +3,8 @@ using System.Threading.Channels;
 using Gateway.API.Configuration;
 using Gateway.API.Contracts;
 using Gateway.API.Exceptions;
+using Gateway.API.Models;
+using Gateway.API.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -173,7 +175,7 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
         }
 
         // Get registered patients to poll
-        var patients = await _patientRegistry.GetActiveAsync(ct);
+        var patients = await _patientRegistry.GetActiveAsync(ct).ConfigureAwait(false);
 
         if (patients.Count == 0)
         {
@@ -189,9 +191,95 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
             new ParallelOptions { MaxDegreeOfParallelism = 5, CancellationToken = ct },
             async (patient, token) =>
             {
-                // TODO: Implement PollPatientEncounterAsync in Task 016
-                _logger.LogDebug("Would poll patient {PatientId}", patient.PatientId);
-            });
+                await PollPatientEncounterAsync(patient, token).ConfigureAwait(false);
+            }).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Polls a specific patient's encounter for status changes.
+    /// </summary>
+    /// <param name="patient">The registered patient to poll.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    public async Task PollPatientEncounterAsync(
+        RegisteredPatient patient,
+        CancellationToken ct)
+    {
+        try
+        {
+            // Build per-patient query using AthenaQueryBuilder
+            var query = AthenaQueryBuilder.BuildEncounterQuery(
+                patient.PatientId,
+                patient.EncounterId,
+                patient.PracticeId);
+
+            _logger.LogDebug("Polling encounter for patient {PatientId}: {Query}", patient.PatientId, query);
+
+            var result = await _fhirClient.SearchAsync("Encounter", query, ct).ConfigureAwait(false);
+
+            if (result.IsFailure)
+            {
+                _logger.LogWarning(
+                    "Failed to poll encounter for patient {PatientId}: {Error}",
+                    patient.PatientId,
+                    result.Error?.Message);
+                return;
+            }
+
+            // Extract status from FHIR response
+            var status = ExtractEncounterStatus(result.Value);
+            if (status is null)
+            {
+                _logger.LogWarning("Could not extract status for patient {PatientId}", patient.PatientId);
+                return;
+            }
+
+            // Check for status transition to "finished"
+            if (status == "finished" && patient.CurrentEncounterStatus != "finished")
+            {
+                _logger.LogInformation("Encounter completed for patient {PatientId}", patient.PatientId);
+
+                // Emit event to channel
+                await _encounterChannel.Writer.WriteAsync(patient.EncounterId, ct).ConfigureAwait(false);
+
+                // Auto-unregister patient
+                await _patientRegistry.UnregisterAsync(patient.PatientId, ct).ConfigureAwait(false);
+            }
+            else
+            {
+                // Update registry with poll timestamp and status
+                await _patientRegistry.UpdateAsync(
+                    patient.PatientId,
+                    DateTimeOffset.UtcNow,
+                    status,
+                    ct).ConfigureAwait(false);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error polling encounter for patient {PatientId}", patient.PatientId);
+        }
+    }
+
+    private static string? ExtractEncounterStatus(JsonElement bundle)
+    {
+        if (!bundle.TryGetProperty("entry", out var entries) || entries.GetArrayLength() == 0)
+        {
+            return null;
+        }
+
+        var firstEntry = entries[0];
+        if (!firstEntry.TryGetProperty("resource", out var resource))
+        {
+            return null;
+        }
+
+        if (!resource.TryGetProperty("status", out var statusElement))
+        {
+            return null;
+        }
+
+        return statusElement.GetString();
     }
 
     private async Task ProcessEncounterBundleAsync(JsonElement bundle, CancellationToken ct)

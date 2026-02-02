@@ -265,4 +265,106 @@ public class AthenaPollingServiceTests
         """;
         return JsonDocument.Parse(json).RootElement;
     }
+
+    private static JsonElement CreateFhirBundle(string encounterId, string status)
+    {
+        var json = $$"""
+        {
+            "resourceType": "Bundle",
+            "type": "searchset",
+            "total": 1,
+            "entry": [{
+                "resource": {
+                    "resourceType": "Encounter",
+                    "id": "{{encounterId}}",
+                    "status": "{{status}}"
+                }
+            }]
+        }
+        """;
+        return JsonDocument.Parse(json).RootElement;
+    }
+
+    [Test]
+    public async Task PollPatientEncounterAsync_EncounterInProgress_UpdatesRegistryOnly()
+    {
+        // Arrange
+        var patient = new RegisteredPatient
+        {
+            PatientId = "patient-1",
+            EncounterId = "encounter-1",
+            PracticeId = "practice-1",
+            WorkItemId = "workitem-1",
+            RegisteredAt = DateTimeOffset.UtcNow
+        };
+
+        // FHIR returns encounter in "in-progress" status
+        var encounterBundle = CreateFhirBundle("encounter-1", "in-progress");
+        _fhirClient.SearchAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Result<JsonElement>.Success(encounterBundle));
+
+        // Act - call the method directly
+        await _sut.PollPatientEncounterAsync(patient, CancellationToken.None);
+
+        // Assert - registry updated but NOT unregistered
+        await _patientRegistry.Received(1).UpdateAsync(
+            "patient-1",
+            Arg.Any<DateTimeOffset>(),
+            "in-progress",
+            Arg.Any<CancellationToken>());
+        await _patientRegistry.DidNotReceive().UnregisterAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task PollPatientEncounterAsync_EncounterFinished_EmitsEventAndUnregisters()
+    {
+        // Arrange
+        var patient = new RegisteredPatient
+        {
+            PatientId = "patient-1",
+            EncounterId = "encounter-1",
+            PracticeId = "practice-1",
+            WorkItemId = "workitem-1",
+            RegisteredAt = DateTimeOffset.UtcNow,
+            CurrentEncounterStatus = "in-progress" // Was in-progress, now finished
+        };
+
+        var encounterBundle = CreateFhirBundle("encounter-1", "finished");
+        _fhirClient.SearchAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Result<JsonElement>.Success(encounterBundle));
+
+        // Act
+        await _sut.PollPatientEncounterAsync(patient, CancellationToken.None);
+
+        // Assert - event emitted and patient unregistered
+        await _patientRegistry.Received(1).UnregisterAsync("patient-1", Arg.Any<CancellationToken>());
+
+        // Check channel has event
+        var hasEvent = _sut.Encounters.TryRead(out var encounterId);
+        await Assert.That(hasEvent).IsTrue();
+        await Assert.That(encounterId).IsEqualTo("encounter-1");
+    }
+
+    [Test]
+    public async Task PollPatientEncounterAsync_FhirError_LogsAndContinues()
+    {
+        // Arrange
+        var patient = new RegisteredPatient
+        {
+            PatientId = "patient-1",
+            EncounterId = "encounter-1",
+            PracticeId = "practice-1",
+            WorkItemId = "workitem-1",
+            RegisteredAt = DateTimeOffset.UtcNow
+        };
+
+        _fhirClient.SearchAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Result<JsonElement>.Failure(FhirError.Network("FHIR error")));
+
+        // Act - should not throw
+        await _sut.PollPatientEncounterAsync(patient, CancellationToken.None);
+
+        // Assert - no crash, no unregister
+        await _patientRegistry.DidNotReceive().UnregisterAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
 }
