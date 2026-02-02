@@ -76,10 +76,16 @@ public sealed class EncounterProcessor : IEncounterProcessor
                 clinicalBundle.Observations.Count,
                 clinicalBundle.Procedures.Count);
 
-            // Step 2: Send to Intelligence service for PA analysis
+            // Step 2: Extract procedure code from ServiceRequest (fall back to default)
+            var procedureCode = clinicalBundle.ServiceRequests
+                .FirstOrDefault(sr => sr.Status == "active")
+                ?.Code?.Coding?.FirstOrDefault()?.Code
+                ?? DefaultProcedureCode;
+
+            // Step 3: Send to Intelligence service for PA analysis
             var formData = await _intelligenceClient.AnalyzeAsync(
                 clinicalBundle,
-                DefaultProcedureCode,
+                procedureCode,
                 ct);
 
             _logger.LogInformation(
@@ -87,7 +93,7 @@ public sealed class EncounterProcessor : IEncounterProcessor
                 formData.Recommendation,
                 formData.ConfidenceScore);
 
-            // Step 3: Determine work item status based on recommendation
+            // Step 4: Determine work item status based on recommendation
             var status = RecommendationMapper.MapToStatus(formData.Recommendation, formData.ConfidenceScore);
 
             // Step 4: Update work item with ServiceRequestId, ProcedureCode, and status
@@ -258,10 +264,16 @@ public sealed class EncounterProcessor : IEncounterProcessor
                 clinicalBundle.Observations.Count,
                 clinicalBundle.Procedures.Count);
 
-            // Step 2: Send to Intelligence service for PA analysis
+            // Step 2: Extract procedure code from ServiceRequest (fall back to default)
+            var procedureCode = clinicalBundle.ServiceRequests
+                .FirstOrDefault(sr => sr.Status == "active")
+                ?.Code?.Coding?.FirstOrDefault()?.Code
+                ?? DefaultProcedureCode;
+
+            // Step 3: Send to Intelligence service for PA analysis
             var formData = await _intelligenceClient.AnalyzeAsync(
                 clinicalBundle,
-                DefaultProcedureCode,
+                procedureCode,
                 ct);
 
             _logger.LogInformation(
@@ -269,7 +281,7 @@ public sealed class EncounterProcessor : IEncounterProcessor
                 formData.Recommendation,
                 formData.ConfidenceScore);
 
-            // Step 3: Generate PDF from form data
+            // Step 4: Generate PDF from form data
             var pdfBytes = await _pdfStamper.StampFormAsync(formData, ct);
 
             _logger.LogInformation(
