@@ -10,53 +10,40 @@ using Scalar.AspNetCore;
 var builder = WebApplication.CreateBuilder(args);
 
 // ---------------------------------------------------------------------------
-// Service Registration
+// Infrastructure (Aspire)
 // ---------------------------------------------------------------------------
-builder.Services.AddOpenApi();
-
-// Health checks
-builder.Services.AddHealthChecks();
-
-// Redis cache
 builder.AddRedisClient("redis");
-
-// PostgreSQL
 builder.AddNpgsqlDataSource("authscript");
 
-// Gateway services
-builder.Services.AddGatewayServices(builder.Configuration);
-builder.Services.AddFhirClients(builder.Configuration);
-builder.Services.AddIntelligenceClient(builder.Configuration);
-builder.Services.AddNotificationServices();
-builder.Services.AddAthenaServices(builder.Configuration);
-
-// CORS for dashboard
-builder.Services.AddCors(options =>
-{
-    options.AddDefaultPolicy(policy =>
-    {
-        policy
-            .WithOrigins("http://localhost:5173")
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
-    });
-});
+// ---------------------------------------------------------------------------
+// Service Registration
+// ---------------------------------------------------------------------------
+builder.Services
+    .AddApiDocumentation()
+    .AddHealthMonitoring()
+    .AddCorsPolicy()
+    .AddApiKeyAuthentication()
+    .AddAthenaServices()      // Must be before AddFhirClients (registers AthenaOptions)
+    .AddGatewayServices()
+    .AddFhirClients()         // Uses IOptions<AthenaOptions> for base URL
+    .AddIntelligenceClient()
+    .AddNotificationServices();
 
 var app = builder.Build();
 
 // ---------------------------------------------------------------------------
 // Middleware Pipeline
 // ---------------------------------------------------------------------------
-if (app.Environment.IsDevelopment())
+app.MapOpenApi();
+app.MapScalarApiReference(options =>
 {
-    app.MapOpenApi();
-    app.MapScalarApiReference(options =>
+    options.Title = "AuthScript Gateway API";
+    options.Theme = ScalarTheme.DeepSpace;
+    options.Authentication = new ScalarAuthenticationOptions
     {
-        options.Title = "AuthScript Gateway API";
-        options.Theme = ScalarTheme.DeepSpace;
-    });
-}
+        PreferredSecuritySchemes = ["ApiKey"],
+    };
+});
 
 app.UseCors();
 app.UseHealthChecks("/health");
@@ -67,5 +54,6 @@ app.UseHealthChecks("/health");
 app.MapAnalysisEndpoints();
 app.MapSseEndpoints();
 app.MapSubmitEndpoints();
+app.MapWorkItemEndpoints();
 
 app.Run();

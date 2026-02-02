@@ -78,12 +78,11 @@ public static class SubmitEndpoints
             await resultStore.SetCachedPdfAsync(cacheKey, pdfBytes, ct);
         }
 
-        // Upload to FHIR server
+        // Upload to FHIR server (token management handled internally)
         var result = await documentUploader.UploadDocumentAsync(
             pdfBytes,
             request.PatientId,
             request.EncounterId,
-            request.AccessToken,
             ct);
 
         if (result.IsFailure)

@@ -36,7 +36,6 @@ public sealed class DocumentUploader : IDocumentUploader
         byte[] pdfBytes,
         string patientId,
         string? encounterId,
-        string accessToken,
         CancellationToken cancellationToken = default)
     {
         _logger.LogInformation(
@@ -46,7 +45,7 @@ public sealed class DocumentUploader : IDocumentUploader
         var documentReference = BuildDocumentReference(pdfBytes, patientId, encounterId);
         var json = JsonSerializer.Serialize(documentReference);
 
-        var result = await _fhirHttpClient.CreateAsync("DocumentReference", json, accessToken, cancellationToken);
+        var result = await _fhirHttpClient.CreateAsync("DocumentReference", json, cancellationToken);
 
         if (result.IsFailure)
         {

@@ -277,8 +277,7 @@ public class AnalysisEndpointsTests
         var request = new SubmitToFhirRequest
         {
             PatientId = "patient-123",
-            EncounterId = "encounter-456",
-            AccessToken = "bearer-token-xyz"
+            EncounterId = "encounter-456"
         };
 
         _resultStore
@@ -294,7 +293,6 @@ public class AnalysisEndpointsTests
                 pdfBytes,
                 request.PatientId,
                 request.EncounterId,
-                request.AccessToken,
                 Arg.Any<CancellationToken>())
             .Returns(Result<string>.Success(documentId));
 
@@ -314,7 +312,6 @@ public class AnalysisEndpointsTests
             pdfBytes,
             request.PatientId,
             request.EncounterId,
-            request.AccessToken,
             Arg.Any<CancellationToken>());
     }
 
@@ -325,8 +322,7 @@ public class AnalysisEndpointsTests
         const string transactionId = "txn-nonexistent";
         var request = new SubmitToFhirRequest
         {
-            PatientId = "patient-123",
-            AccessToken = "bearer-token-xyz"
+            PatientId = "patient-123"
         };
 
         _resultStore
@@ -355,8 +351,7 @@ public class AnalysisEndpointsTests
         var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
         var request = new SubmitToFhirRequest
         {
-            PatientId = "patient-123",
-            AccessToken = "bearer-token-xyz"
+            PatientId = "patient-123"
         };
 
         _resultStore
@@ -372,7 +367,6 @@ public class AnalysisEndpointsTests
                 Arg.Any<byte[]>(),
                 Arg.Any<string>(),
                 Arg.Any<string?>(),
-                Arg.Any<string>(),
                 Arg.Any<CancellationToken>())
             .Returns(Result<string>.Failure(FhirError.Unauthorized("FHIR returned 401")));
 

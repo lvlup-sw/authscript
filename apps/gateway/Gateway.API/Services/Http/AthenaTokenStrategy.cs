@@ -3,6 +3,7 @@ namespace Gateway.API.Services.Http;
 using System.Text.Json;
 using Gateway.API.Configuration;
 using Gateway.API.Contracts.Http;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 /// <summary>
@@ -14,6 +15,7 @@ public sealed class AthenaTokenStrategy : ITokenAcquisitionStrategy
 
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly AthenaOptions _options;
+    private readonly ILogger<AthenaTokenStrategy> _logger;
     private readonly TimeProvider _timeProvider;
 
     private string? _cachedToken;
@@ -24,8 +26,12 @@ public sealed class AthenaTokenStrategy : ITokenAcquisitionStrategy
     /// </summary>
     /// <param name="httpClientFactory">HTTP client factory for making token requests.</param>
     /// <param name="options">athenahealth configuration options.</param>
-    public AthenaTokenStrategy(IHttpClientFactory httpClientFactory, IOptions<AthenaOptions> options)
-        : this(httpClientFactory, options, TimeProvider.System)
+    /// <param name="logger">Logger instance.</param>
+    public AthenaTokenStrategy(
+        IHttpClientFactory httpClientFactory,
+        IOptions<AthenaOptions> options,
+        ILogger<AthenaTokenStrategy> logger)
+        : this(httpClientFactory, options, logger, TimeProvider.System)
     {
     }
 
@@ -34,14 +40,17 @@ public sealed class AthenaTokenStrategy : ITokenAcquisitionStrategy
     /// </summary>
     /// <param name="httpClientFactory">HTTP client factory for making token requests.</param>
     /// <param name="options">athenahealth configuration options.</param>
+    /// <param name="logger">Logger instance.</param>
     /// <param name="timeProvider">Time provider for token expiry calculations.</param>
     public AthenaTokenStrategy(
         IHttpClientFactory httpClientFactory,
         IOptions<AthenaOptions> options,
+        ILogger<AthenaTokenStrategy> logger,
         TimeProvider timeProvider)
     {
         _httpClientFactory = httpClientFactory;
         _options = options.Value;
+        _logger = logger;
         _timeProvider = timeProvider;
     }
 
@@ -63,7 +72,8 @@ public sealed class AthenaTokenStrategy : ITokenAcquisitionStrategy
         {
             ["grant_type"] = "client_credentials",
             ["client_id"] = _options.ClientId,
-            ["client_secret"] = _options.ClientSecret ?? string.Empty
+            ["client_secret"] = _options.ClientSecret ?? string.Empty,
+            ["scope"] = _options.Scopes
         });
 
         try
@@ -72,6 +82,11 @@ public sealed class AthenaTokenStrategy : ITokenAcquisitionStrategy
 
             if (!response.IsSuccessStatusCode)
             {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogError(
+                    "Token request failed with status {StatusCode}: {ErrorResponse}",
+                    (int)response.StatusCode,
+                    errorContent);
                 return null;
             }
 
@@ -80,6 +95,7 @@ public sealed class AthenaTokenStrategy : ITokenAcquisitionStrategy
 
             if (tokenResponse?.AccessToken is null)
             {
+                _logger.LogError("Token response did not contain an access token");
                 return null;
             }
 
@@ -90,8 +106,9 @@ public sealed class AthenaTokenStrategy : ITokenAcquisitionStrategy
 
             return _cachedToken;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Exception during token acquisition");
             return null;
         }
     }

@@ -4,6 +4,8 @@ using System.Net;
 using System.Text.Json;
 using Gateway.API.Configuration;
 using Gateway.API.Services.Http;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 
@@ -11,6 +13,7 @@ public class AthenaTokenStrategyTests : IDisposable
 {
     private readonly IOptions<AthenaOptions> _options;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ILogger<AthenaTokenStrategy> _logger;
     private readonly MockHttpMessageHandler _mockHandler;
     private readonly HttpClient _httpClient;
 
@@ -20,6 +23,7 @@ public class AthenaTokenStrategyTests : IDisposable
         _httpClient = new HttpClient(_mockHandler);
         _httpClientFactory = Substitute.For<IHttpClientFactory>();
         _httpClientFactory.CreateClient(Arg.Any<string>()).Returns(_httpClient);
+        _logger = NullLogger<AthenaTokenStrategy>.Instance;
 
         _options = Options.Create(new AthenaOptions
         {
@@ -40,7 +44,7 @@ public class AthenaTokenStrategyTests : IDisposable
     public async Task AthenaTokenStrategy_CanHandle_ReturnsTrueWhenOptionsAreValid()
     {
         // Arrange
-        var strategy = new AthenaTokenStrategy(_httpClientFactory, _options);
+        var strategy = new AthenaTokenStrategy(_httpClientFactory, _options, _logger);
 
         // Act
         var canHandle = strategy.CanHandle;
@@ -59,7 +63,7 @@ public class AthenaTokenStrategyTests : IDisposable
             FhirBaseUrl = "https://api.platform.athenahealth.com/fhir/r4",
             TokenEndpoint = "https://api.platform.athenahealth.com/oauth2/token"
         });
-        var strategy = new AthenaTokenStrategy(_httpClientFactory, invalidOptions);
+        var strategy = new AthenaTokenStrategy(_httpClientFactory, invalidOptions, _logger);
 
         // Act
         var canHandle = strategy.CanHandle;
@@ -79,7 +83,7 @@ public class AthenaTokenStrategyTests : IDisposable
             HttpStatusCode.OK,
             JsonSerializer.Serialize(tokenResponse));
 
-        var strategy = new AthenaTokenStrategy(_httpClientFactory, _options);
+        var strategy = new AthenaTokenStrategy(_httpClientFactory, _options, _logger);
 
         // Act
         await strategy.AcquireTokenAsync();
@@ -102,7 +106,7 @@ public class AthenaTokenStrategyTests : IDisposable
             HttpStatusCode.OK,
             JsonSerializer.Serialize(tokenResponse));
 
-        var strategy = new AthenaTokenStrategy(_httpClientFactory, _options);
+        var strategy = new AthenaTokenStrategy(_httpClientFactory, _options, _logger);
 
         // Act
         await strategy.AcquireTokenAsync();
@@ -125,7 +129,7 @@ public class AthenaTokenStrategyTests : IDisposable
             HttpStatusCode.OK,
             JsonSerializer.Serialize(tokenResponse));
 
-        var strategy = new AthenaTokenStrategy(_httpClientFactory, _options);
+        var strategy = new AthenaTokenStrategy(_httpClientFactory, _options, _logger);
 
         // Act
         var token = await strategy.AcquireTokenAsync();
@@ -144,7 +148,7 @@ public class AthenaTokenStrategyTests : IDisposable
             HttpStatusCode.Unauthorized,
             "");
 
-        var strategy = new AthenaTokenStrategy(_httpClientFactory, _options);
+        var strategy = new AthenaTokenStrategy(_httpClientFactory, _options, _logger);
 
         // Act
         var token = await strategy.AcquireTokenAsync();
@@ -165,7 +169,7 @@ public class AthenaTokenStrategyTests : IDisposable
             JsonSerializer.Serialize(tokenResponse));
 
         var timeProvider = new FakeTimeProvider();
-        var strategy = new AthenaTokenStrategy(_httpClientFactory, _options, timeProvider);
+        var strategy = new AthenaTokenStrategy(_httpClientFactory, _options, _logger, timeProvider);
 
         // Act
         await strategy.AcquireTokenAsync();
@@ -188,7 +192,7 @@ public class AthenaTokenStrategyTests : IDisposable
             JsonSerializer.Serialize(tokenResponse));
 
         var timeProvider = new FakeTimeProvider();
-        var strategy = new AthenaTokenStrategy(_httpClientFactory, _options, timeProvider);
+        var strategy = new AthenaTokenStrategy(_httpClientFactory, _options, _logger, timeProvider);
 
         // Act
         var firstToken = await strategy.AcquireTokenAsync();
@@ -211,7 +215,7 @@ public class AthenaTokenStrategyTests : IDisposable
             JsonSerializer.Serialize(tokenResponse));
 
         var timeProvider = new FakeTimeProvider();
-        var strategy = new AthenaTokenStrategy(_httpClientFactory, _options, timeProvider);
+        var strategy = new AthenaTokenStrategy(_httpClientFactory, _options, _logger, timeProvider);
 
         // Act - first call
         await strategy.AcquireTokenAsync();
@@ -248,7 +252,7 @@ public class AthenaTokenStrategyTests : IDisposable
             JsonSerializer.Serialize(tokenResponse));
 
         var timeProvider = new FakeTimeProvider();
-        var strategy = new AthenaTokenStrategy(_httpClientFactory, _options, timeProvider);
+        var strategy = new AthenaTokenStrategy(_httpClientFactory, _options, _logger, timeProvider);
 
         // Act - first call
         await strategy.AcquireTokenAsync();

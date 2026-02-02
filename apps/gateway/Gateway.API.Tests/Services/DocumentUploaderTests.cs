@@ -37,15 +37,14 @@ public class DocumentUploaderTests
         var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 }; // PDF magic bytes
         const string patientId = "patient-123";
         const string encounterId = "encounter-456";
-        const string accessToken = "bearer-token";
-        const string documentId = "doc-789";
+                const string documentId = "doc-789";
 
         var responseJson = JsonDocument.Parse($"{{\"id\": \"{documentId}\"}}").RootElement;
-        _fhirHttpClient.CreateAsync("DocumentReference", Arg.Any<string>(), accessToken, Arg.Any<CancellationToken>())
+        _fhirHttpClient.CreateAsync("DocumentReference", Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Result<JsonElement>.Success(responseJson));
 
         // Act
-        var result = await _sut.UploadDocumentAsync(pdfBytes, patientId, encounterId, accessToken, CancellationToken.None);
+        var result = await _sut.UploadDocumentAsync(pdfBytes, patientId, encounterId, CancellationToken.None);
 
         // Assert
         await Assert.That(result.IsSuccess).IsTrue();
@@ -53,7 +52,6 @@ public class DocumentUploaderTests
         await _fhirHttpClient.Received(1).CreateAsync(
             "DocumentReference",
             Arg.Any<string>(),
-            accessToken,
             Arg.Any<CancellationToken>());
     }
 
@@ -64,15 +62,14 @@ public class DocumentUploaderTests
         var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 }; // PDF magic bytes
         var expectedBase64 = Convert.ToBase64String(pdfBytes);
         const string patientId = "patient-123";
-        const string accessToken = "bearer-token";
-
+        
         string? capturedJson = null;
         var responseJson = JsonDocument.Parse("{\"id\": \"doc-123\"}").RootElement;
-        _fhirHttpClient.CreateAsync("DocumentReference", Arg.Do<string>(json => capturedJson = json), accessToken, Arg.Any<CancellationToken>())
+        _fhirHttpClient.CreateAsync("DocumentReference", Arg.Do<string>(json => capturedJson = json), Arg.Any<CancellationToken>())
             .Returns(Result<JsonElement>.Success(responseJson));
 
         // Act
-        await _sut.UploadDocumentAsync(pdfBytes, patientId, null, accessToken, CancellationToken.None);
+        await _sut.UploadDocumentAsync(pdfBytes, patientId, null, CancellationToken.None);
 
         // Assert
         await Assert.That(capturedJson).IsNotNull();
@@ -85,15 +82,14 @@ public class DocumentUploaderTests
         // Arrange
         var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
         const string patientId = "patient-123";
-        const string accessToken = "bearer-token";
-
+        
         string? capturedJson = null;
         var responseJson = JsonDocument.Parse("{\"id\": \"doc-123\"}").RootElement;
-        _fhirHttpClient.CreateAsync("DocumentReference", Arg.Do<string>(json => capturedJson = json), accessToken, Arg.Any<CancellationToken>())
+        _fhirHttpClient.CreateAsync("DocumentReference", Arg.Do<string>(json => capturedJson = json), Arg.Any<CancellationToken>())
             .Returns(Result<JsonElement>.Success(responseJson));
 
         // Act
-        await _sut.UploadDocumentAsync(pdfBytes, patientId, null, accessToken, CancellationToken.None);
+        await _sut.UploadDocumentAsync(pdfBytes, patientId, null, CancellationToken.None);
 
         // Assert
         await Assert.That(capturedJson).IsNotNull();
@@ -107,15 +103,14 @@ public class DocumentUploaderTests
         var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
         const string patientId = "patient-123";
         const string encounterId = "encounter-456";
-        const string accessToken = "bearer-token";
-
+        
         string? capturedJson = null;
         var responseJson = JsonDocument.Parse("{\"id\": \"doc-123\"}").RootElement;
-        _fhirHttpClient.CreateAsync("DocumentReference", Arg.Do<string>(json => capturedJson = json), accessToken, Arg.Any<CancellationToken>())
+        _fhirHttpClient.CreateAsync("DocumentReference", Arg.Do<string>(json => capturedJson = json), Arg.Any<CancellationToken>())
             .Returns(Result<JsonElement>.Success(responseJson));
 
         // Act
-        await _sut.UploadDocumentAsync(pdfBytes, patientId, encounterId, accessToken, CancellationToken.None);
+        await _sut.UploadDocumentAsync(pdfBytes, patientId, encounterId, CancellationToken.None);
 
         // Assert
         await Assert.That(capturedJson).IsNotNull();
@@ -129,13 +124,12 @@ public class DocumentUploaderTests
         // Arrange
         var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
         const string patientId = "patient-123";
-        const string accessToken = "bearer-token";
-
-        _fhirHttpClient.CreateAsync("DocumentReference", Arg.Any<string>(), accessToken, Arg.Any<CancellationToken>())
+        
+        _fhirHttpClient.CreateAsync("DocumentReference", Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Result<JsonElement>.Failure(FhirError.Unauthorized("Invalid token")));
 
         // Act
-        var result = await _sut.UploadDocumentAsync(pdfBytes, patientId, null, accessToken, CancellationToken.None);
+        var result = await _sut.UploadDocumentAsync(pdfBytes, patientId, null, CancellationToken.None);
 
         // Assert
         await Assert.That(result.IsFailure).IsTrue();
@@ -148,15 +142,14 @@ public class DocumentUploaderTests
         // Arrange
         var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
         const string patientId = "patient-123";
-        const string accessToken = "bearer-token";
-
+        
         string? capturedJson = null;
         var responseJson = JsonDocument.Parse("{\"id\": \"doc-123\"}").RootElement;
-        _fhirHttpClient.CreateAsync("DocumentReference", Arg.Do<string>(json => capturedJson = json), accessToken, Arg.Any<CancellationToken>())
+        _fhirHttpClient.CreateAsync("DocumentReference", Arg.Do<string>(json => capturedJson = json), Arg.Any<CancellationToken>())
             .Returns(Result<JsonElement>.Success(responseJson));
 
         // Act
-        await _sut.UploadDocumentAsync(pdfBytes, patientId, null, accessToken, CancellationToken.None);
+        await _sut.UploadDocumentAsync(pdfBytes, patientId, null, CancellationToken.None);
 
         // Assert
         await Assert.That(capturedJson).IsNotNull();

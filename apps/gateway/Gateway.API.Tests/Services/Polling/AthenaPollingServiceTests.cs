@@ -4,8 +4,6 @@ using System.Text.Json;
 using System.Threading.Channels;
 using Gateway.API.Configuration;
 using Gateway.API.Contracts;
-using Gateway.API.Contracts.Http;
-using Gateway.API.Services.Http;
 using Gateway.API.Services.Polling;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -16,8 +14,6 @@ public class AthenaPollingServiceTests
     private IFhirHttpClient _fhirClient = null!;
     private IOptions<AthenaOptions> _options = null!;
     private ILogger<AthenaPollingService> _logger = null!;
-    private TokenStrategyResolver _tokenResolver = null!;
-    private ITokenAcquisitionStrategy _tokenStrategy = null!;
     private AthenaPollingService _sut = null!;
 
     [Before(Test)]
@@ -30,18 +26,11 @@ public class AthenaPollingServiceTests
             FhirBaseUrl = "https://api.athena.test/fhir/r4",
             ClientId = "test-client",
             TokenEndpoint = "https://api.athena.test/oauth2/token",
-            PollingIntervalSeconds = 1
+            PollingIntervalSeconds = 1,
+            PracticeId = "Organization/a-1.Practice-12345"
         });
 
-        // Setup mock token strategy that returns a valid token
-        _tokenStrategy = Substitute.For<ITokenAcquisitionStrategy>();
-        _tokenStrategy.CanHandle.Returns(true);
-        _tokenStrategy.AcquireTokenAsync(Arg.Any<CancellationToken>())
-            .Returns("test-token");
-
-        _tokenResolver = new TokenStrategyResolver([_tokenStrategy]);
-
-        _sut = new AthenaPollingService(_fhirClient, _tokenResolver, _options, _logger);
+        _sut = new AthenaPollingService(_fhirClient, _options, _logger);
         return Task.CompletedTask;
     }
 
@@ -60,7 +49,6 @@ public class AthenaPollingServiceTests
         _fhirClient.SearchAsync(
             Arg.Is("Encounter"),
             Arg.Any<string>(),
-            Arg.Any<string>(),
             Arg.Any<CancellationToken>())
             .Returns(Result<JsonElement>.Success(bundle));
 
@@ -74,7 +62,6 @@ public class AthenaPollingServiceTests
         await _fhirClient.Received().SearchAsync(
             Arg.Is("Encounter"),
             Arg.Any<string>(),
-            Arg.Any<string>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -84,7 +71,6 @@ public class AthenaPollingServiceTests
         // Arrange
         var bundle = CreateEmptyBundle();
         _fhirClient.SearchAsync(
-            Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Any<CancellationToken>())
@@ -100,7 +86,6 @@ public class AthenaPollingServiceTests
         await _fhirClient.Received().SearchAsync(
             Arg.Is("Encounter"),
             Arg.Is<string>(q => q.Contains("status=finished")),
-            Arg.Any<string>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -110,7 +95,6 @@ public class AthenaPollingServiceTests
         // Arrange
         var bundle = CreateEmptyBundle();
         _fhirClient.SearchAsync(
-            Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Any<CancellationToken>())
@@ -126,7 +110,6 @@ public class AthenaPollingServiceTests
         await _fhirClient.Received().SearchAsync(
             Arg.Is("Encounter"),
             Arg.Is<string>(q => q.Contains("date=gt")),
-            Arg.Any<string>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -137,7 +120,6 @@ public class AthenaPollingServiceTests
         var bundle = CreateEmptyBundle();
         var callCount = 0;
         _fhirClient.SearchAsync(
-            Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Any<string>(),
             Arg.Any<CancellationToken>())
@@ -163,12 +145,11 @@ public class AthenaPollingServiceTests
         _fhirClient.SearchAsync(
             Arg.Any<string>(),
             Arg.Any<string>(),
-            Arg.Any<string>(),
             Arg.Any<CancellationToken>())
             .Returns(Result<JsonElement>.Success(bundleWithEncounter));
 
         // Create a service and process the encounter
-        var service = new AthenaPollingService(_fhirClient, _tokenResolver, _options, _logger);
+        var service = new AthenaPollingService(_fhirClient, _options, _logger);
 
         // Act - Start, let it process, stop, start again to see if it skips
         await service.StartAsync(CancellationToken.None);
@@ -201,11 +182,10 @@ public class AthenaPollingServiceTests
         _fhirClient.SearchAsync(
             Arg.Any<string>(),
             Arg.Any<string>(),
-            Arg.Any<string>(),
             Arg.Any<CancellationToken>())
             .Returns(Result<JsonElement>.Success(bundleWithEncounter));
 
-        var service = new AthenaPollingService(_fhirClient, _tokenResolver, _options, _logger);
+        var service = new AthenaPollingService(_fhirClient, _options, _logger);
 
         // Act
         await service.StartAsync(CancellationToken.None);
@@ -228,12 +208,11 @@ public class AthenaPollingServiceTests
         _fhirClient.SearchAsync(
             Arg.Any<string>(),
             Arg.Any<string>(),
-            Arg.Any<string>(),
             Arg.Any<CancellationToken>())
             .Returns(Result<JsonElement>.Success(bundle));
 
         // Use a service with short purge window for testing
-        var service = new AthenaPollingService(_fhirClient, _tokenResolver, _options, _logger);
+        var service = new AthenaPollingService(_fhirClient, _options, _logger);
 
         // Act - Add an encounter and manually set it as old
         await service.StartAsync(CancellationToken.None);
@@ -258,11 +237,10 @@ public class AthenaPollingServiceTests
         _fhirClient.SearchAsync(
             Arg.Any<string>(),
             Arg.Any<string>(),
-            Arg.Any<string>(),
             Arg.Any<CancellationToken>())
             .Returns(Result<JsonElement>.Success(bundleWithEncounter));
 
-        var service = new AthenaPollingService(_fhirClient, _tokenResolver, _options, _logger);
+        var service = new AthenaPollingService(_fhirClient, _options, _logger);
 
         // Act
         await service.StartAsync(CancellationToken.None);
@@ -281,7 +259,7 @@ public class AthenaPollingServiceTests
     public async Task AthenaPollingService_Channel_IsUnboundedSingleConsumer()
     {
         // Arrange & Act
-        var service = new AthenaPollingService(_fhirClient, _tokenResolver, _options, _logger);
+        var service = new AthenaPollingService(_fhirClient, _options, _logger);
 
         // Assert - The channel reader should exist
         var reader = service.Encounters;
@@ -289,59 +267,6 @@ public class AthenaPollingServiceTests
 
         // The Encounters property should return a type assignable to ChannelReader<string>
         await Assert.That(reader is ChannelReader<string>).IsTrue();
-
-        service.Dispose();
-    }
-
-    [Test]
-    public async Task AthenaPollingService_ExecuteAsync_ReturnsEarlyWhenTokenUnavailable()
-    {
-        // Arrange - Create a resolver that returns no strategy
-        var noStrategyResolver = new TokenStrategyResolver([]);
-        var service = new AthenaPollingService(_fhirClient, noStrategyResolver, _options, _logger);
-
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
-
-        // Act
-        await service.StartAsync(cts.Token);
-        await Task.Delay(50);
-        await service.StopAsync(CancellationToken.None);
-
-        // Assert - SearchAsync should NOT have been called since token acquisition failed
-        await _fhirClient.DidNotReceive().SearchAsync(
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<CancellationToken>());
-
-        service.Dispose();
-    }
-
-    [Test]
-    public async Task AthenaPollingService_ExecuteAsync_ReturnsEarlyWhenTokenIsNull()
-    {
-        // Arrange - Create a strategy that returns null token
-        var nullTokenStrategy = Substitute.For<ITokenAcquisitionStrategy>();
-        nullTokenStrategy.CanHandle.Returns(true);
-        nullTokenStrategy.AcquireTokenAsync(Arg.Any<CancellationToken>())
-            .Returns((string?)null);
-
-        var nullTokenResolver = new TokenStrategyResolver([nullTokenStrategy]);
-        var service = new AthenaPollingService(_fhirClient, nullTokenResolver, _options, _logger);
-
-        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
-
-        // Act
-        await service.StartAsync(cts.Token);
-        await Task.Delay(50);
-        await service.StopAsync(CancellationToken.None);
-
-        // Assert - SearchAsync should NOT have been called since token was null
-        await _fhirClient.DidNotReceive().SearchAsync(
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<CancellationToken>());
 
         service.Dispose();
     }

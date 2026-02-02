@@ -8,20 +8,24 @@ namespace Gateway.API.Services.Fhir;
 /// <summary>
 /// HTTP client implementation for FHIR R4 API operations.
 /// Handles authentication, request formatting, and response handling.
+/// Token management is handled internally via IFhirTokenProvider.
 /// </summary>
 public sealed class FhirHttpClient : IFhirHttpClient
 {
     private readonly HttpClient _httpClient;
+    private readonly IFhirTokenProvider _tokenProvider;
     private readonly ILogger<FhirHttpClient> _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FhirHttpClient"/> class.
     /// </summary>
     /// <param name="httpClient">HTTP client configured with FHIR base URL.</param>
+    /// <param name="tokenProvider">Provider for FHIR access tokens.</param>
     /// <param name="logger">Logger for diagnostic output.</param>
-    public FhirHttpClient(HttpClient httpClient, ILogger<FhirHttpClient> logger)
+    public FhirHttpClient(HttpClient httpClient, IFhirTokenProvider tokenProvider, ILogger<FhirHttpClient> logger)
     {
         _httpClient = httpClient;
+        _tokenProvider = tokenProvider;
         _logger = logger;
     }
 
@@ -29,11 +33,12 @@ public sealed class FhirHttpClient : IFhirHttpClient
     public async Task<Result<JsonElement>> ReadAsync(
         string resourceType,
         string id,
-        string accessToken,
         CancellationToken ct = default)
     {
         try
         {
+            var accessToken = await _tokenProvider.GetTokenAsync(ct);
+
             using var request = new HttpRequestMessage(HttpMethod.Get, $"{resourceType}/{id}");
             ConfigureRequest(request, accessToken);
 
@@ -63,11 +68,12 @@ public sealed class FhirHttpClient : IFhirHttpClient
     public async Task<Result<JsonElement>> SearchAsync(
         string resourceType,
         string query,
-        string accessToken,
         CancellationToken ct = default)
     {
         try
         {
+            var accessToken = await _tokenProvider.GetTokenAsync(ct);
+
             using var request = new HttpRequestMessage(HttpMethod.Get, $"{resourceType}?{query}");
             ConfigureRequest(request, accessToken);
 
@@ -97,11 +103,12 @@ public sealed class FhirHttpClient : IFhirHttpClient
     public async Task<Result<JsonElement>> CreateAsync(
         string resourceType,
         string resourceJson,
-        string accessToken,
         CancellationToken ct = default)
     {
         try
         {
+            var accessToken = await _tokenProvider.GetTokenAsync(ct);
+
             using var request = new HttpRequestMessage(HttpMethod.Post, resourceType);
             ConfigureRequest(request, accessToken);
             request.Content = new StringContent(resourceJson, Encoding.UTF8, "application/fhir+json");
@@ -137,11 +144,12 @@ public sealed class FhirHttpClient : IFhirHttpClient
     /// <inheritdoc />
     public async Task<Result<byte[]>> ReadBinaryAsync(
         string id,
-        string accessToken,
         CancellationToken ct = default)
     {
         try
         {
+            var accessToken = await _tokenProvider.GetTokenAsync(ct);
+
             using var request = new HttpRequestMessage(HttpMethod.Get, $"Binary/{id}");
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
