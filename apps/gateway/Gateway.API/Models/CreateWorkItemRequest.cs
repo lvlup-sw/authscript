@@ -17,13 +17,15 @@ public sealed record CreateWorkItemRequest
 
     /// <summary>
     /// FHIR ServiceRequest ID for the order requiring prior authorization.
+    /// Optional; populated after analysis.
     /// </summary>
-    public required string ServiceRequestId { get; init; }
+    public string? ServiceRequestId { get; init; }
 
     /// <summary>
     /// CPT code for the procedure requiring prior authorization.
+    /// Optional; populated after analysis.
     /// </summary>
-    public required string ProcedureCode { get; init; }
+    public string? ProcedureCode { get; init; }
 
     /// <summary>
     /// Optional initial status. If not specified, downstream logic assigns MissingData.
