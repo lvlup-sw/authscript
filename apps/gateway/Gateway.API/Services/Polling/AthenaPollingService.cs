@@ -162,7 +162,7 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
     {
         // Capture timestamp BEFORE the search to avoid missing encounters created during the request
         var pollStart = DateTimeOffset.UtcNow;
-        var query = $"status=finished&date=gt{_lastCheck:O}";
+        var query = $"ah-practice={_options.PracticeId}&status=finished&date=gt{_lastCheck:O}";
 
         _logger.LogDebug("Polling for encounters with query: {Query}", query);
 

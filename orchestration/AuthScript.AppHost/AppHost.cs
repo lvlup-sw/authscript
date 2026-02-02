@@ -72,7 +72,7 @@ var gateway = builder
     // Athena configuration
     .WithEnvironment("Athena__ClientId", athenaClientId)
     .WithEnvironment("Athena__ClientSecret", athenaClientSecret)
-    .WithEnvironment("Athena__FhirBaseUrl", "https://api.preview.platform.athenahealth.com/fhir/r4")
+    .WithEnvironment("Athena__FhirBaseUrl", "https://api.preview.platform.athenahealth.com/fhir/r4/")
     .WithEnvironment("Athena__TokenEndpoint", "https://api.preview.platform.athenahealth.com/oauth2/v1/token")
     .WithEnvironment("Athena__PracticeId", athenaPracticeId)
     // Intelligence service
