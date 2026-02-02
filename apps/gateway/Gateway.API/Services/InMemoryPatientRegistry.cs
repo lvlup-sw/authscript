@@ -46,12 +46,25 @@ public sealed class InMemoryPatientRegistry : IPatientRegistry
     /// <inheritdoc/>
     public Task UnregisterAsync(string patientId, CancellationToken ct = default)
     {
-        throw new NotImplementedException();
+        _patients.TryRemove(patientId, out _);
+        return Task.CompletedTask;
     }
 
     /// <inheritdoc/>
     public Task<bool> UpdateAsync(string patientId, DateTimeOffset lastPolled, string status, CancellationToken ct = default)
     {
-        throw new NotImplementedException();
+        if (!_patients.TryGetValue(patientId, out var existing))
+        {
+            return Task.FromResult(false);
+        }
+
+        var updated = existing with
+        {
+            LastPolledAt = lastPolled,
+            CurrentEncounterStatus = status
+        };
+
+        var success = _patients.TryUpdate(patientId, updated, existing);
+        return Task.FromResult(success);
     }
 }

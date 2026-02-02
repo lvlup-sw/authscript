@@ -119,6 +119,58 @@ public class InMemoryPatientRegistryTests
         await Assert.That(active[0].PatientId).IsEqualTo("active");
     }
 
+    [Test]
+    public async Task UnregisterAsync_ExistingPatient_RemovesFromRegistry()
+    {
+        // Arrange
+        var patient = CreatePatient("patient-to-unregister");
+        await _registry.RegisterAsync(patient);
+
+        // Act
+        await _registry.UnregisterAsync("patient-to-unregister");
+
+        // Assert
+        var retrieved = await _registry.GetAsync("patient-to-unregister");
+        await Assert.That(retrieved).IsNull();
+    }
+
+    [Test]
+    public async Task UnregisterAsync_NonExistentPatient_DoesNotThrow()
+    {
+        // Act & Assert - should not throw
+        await _registry.UnregisterAsync("non-existent-patient");
+    }
+
+    [Test]
+    public async Task UpdateAsync_ExistingPatient_UpdatesFields()
+    {
+        // Arrange
+        var patient = CreatePatient("patient-to-update");
+        await _registry.RegisterAsync(patient);
+        var newLastPolled = DateTimeOffset.UtcNow.AddMinutes(5);
+        var newStatus = "checked-in";
+
+        // Act
+        var result = await _registry.UpdateAsync("patient-to-update", newLastPolled, newStatus);
+
+        // Assert
+        await Assert.That(result).IsTrue();
+        var updated = await _registry.GetAsync("patient-to-update");
+        await Assert.That(updated).IsNotNull();
+        await Assert.That(updated!.LastPolledAt).IsEqualTo(newLastPolled);
+        await Assert.That(updated.CurrentEncounterStatus).IsEqualTo(newStatus);
+    }
+
+    [Test]
+    public async Task UpdateAsync_NonExistentPatient_ReturnsFalse()
+    {
+        // Act
+        var result = await _registry.UpdateAsync("non-existent", DateTimeOffset.UtcNow, "status");
+
+        // Assert
+        await Assert.That(result).IsFalse();
+    }
+
     private static RegisteredPatient CreatePatient(string patientId) => new()
     {
         PatientId = patientId,
