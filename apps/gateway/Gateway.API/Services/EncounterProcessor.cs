@@ -67,6 +67,7 @@ public sealed class EncounterProcessor : IEncounterProcessor
             // Step 1: Hydrate clinical context via FHIR data aggregator
             var clinicalBundle = await _aggregator.AggregateClinicalDataAsync(
                 evt.PatientId,
+                evt.EncounterId,
                 ct);
 
             _logger.LogInformation(
@@ -248,6 +249,7 @@ public sealed class EncounterProcessor : IEncounterProcessor
             // Step 1: Hydrate clinical context via FHIR data aggregator
             var clinicalBundle = await _aggregator.AggregateClinicalDataAsync(
                 patientId,
+                encounterId,
                 ct);
 
             _logger.LogInformation(

@@ -35,6 +35,7 @@ public sealed class FhirDataAggregator : IFhirDataAggregator
     /// <inheritdoc />
     public async Task<ClinicalBundle> AggregateClinicalDataAsync(
         string patientId,
+        string? encounterId = null,
         CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Aggregating clinical data for patient {PatientId}", patientId);
@@ -48,7 +49,7 @@ public sealed class FhirDataAggregator : IFhirDataAggregator
         var observationsTask = _fhirClient.SearchObservationsAsync(patientId, observationSince, cancellationToken);
         var proceduresTask = _fhirClient.SearchProceduresAsync(patientId, procedureSince, cancellationToken);
         var documentsTask = _fhirClient.SearchDocumentsAsync(patientId, cancellationToken);
-        var serviceRequestsTask = _fhirClient.SearchServiceRequestsAsync(patientId, null, cancellationToken);
+        var serviceRequestsTask = _fhirClient.SearchServiceRequestsAsync(patientId, encounterId, cancellationToken);
 
         await Task.WhenAll(patientTask, conditionsTask, observationsTask, proceduresTask, documentsTask, serviceRequestsTask);
 

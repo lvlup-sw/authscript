@@ -119,7 +119,7 @@ public sealed class PatientEndpointsTests
         var result = await PatientEndpoints.UnregisterAsync(patientId, _patientRegistry);
 
         // Assert
-        await Assert.That(result.Result).IsTypeOf<Ok>();
+        await Assert.That(result).IsTypeOf<Ok>();
         await _patientRegistry.Received(1).UnregisterAsync(patientId, Arg.Any<CancellationToken>());
     }
 
@@ -133,7 +133,7 @@ public sealed class PatientEndpointsTests
         var result = await PatientEndpoints.UnregisterAsync(patientId, _patientRegistry);
 
         // Assert
-        await Assert.That(result.Result).IsTypeOf<Ok>();
+        await Assert.That(result).IsTypeOf<Ok>();
     }
 
     [Test]

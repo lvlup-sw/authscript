@@ -76,7 +76,7 @@ public sealed class EncounterProcessingAlbaBootstrap : IAsyncInitializer, IAsync
                 // Replace IFhirDataAggregator with mock returning clinical bundle WITH service requests
                 var mockAggregator = Substitute.For<IFhirDataAggregator>();
                 mockAggregator
-                    .AggregateClinicalDataAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                    .AggregateClinicalDataAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
                     .Returns(Task.FromResult(CreateClinicalBundleWithServiceRequest()));
                 services.RemoveAll<IFhirDataAggregator>();
                 services.AddSingleton(mockAggregator);

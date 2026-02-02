@@ -31,7 +31,10 @@ public sealed class EncounterProcessingIntegrationTests
         _fixture = fixture;
     }
 
-    private void AddApiKey(Scenario s) => s.WithRequestHeader(ApiKeyHeader, EncounterProcessingAlbaBootstrap.TestApiKey);
+    private void AddApiKey(Scenario s)
+    {
+        s.WithRequestHeader(ApiKeyHeader, EncounterProcessingAlbaBootstrap.TestApiKey);
+    }
 
     [Test]
     public async Task EncounterCompletion_UpdatesWorkItemStatus()

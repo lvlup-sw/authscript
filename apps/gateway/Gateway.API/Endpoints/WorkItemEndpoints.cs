@@ -103,6 +103,7 @@ public static class WorkItemEndpoints
         // 3. Fetch clinical data (token management handled internally by IFhirTokenProvider)
         var clinicalBundle = await fhirAggregator.AggregateClinicalDataAsync(
             workItem.PatientId,
+            workItem.EncounterId,
             cancellationToken);
 
         // 4. Re-analyze with intelligence service

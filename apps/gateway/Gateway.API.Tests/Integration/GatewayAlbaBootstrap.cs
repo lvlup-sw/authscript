@@ -69,7 +69,7 @@ public sealed class GatewayAlbaBootstrap : IAsyncInitializer, IAsyncDisposable
                 // Replace IFhirDataAggregator with mock returning empty clinical bundle
                 var mockAggregator = Substitute.For<IFhirDataAggregator>();
                 mockAggregator
-                    .AggregateClinicalDataAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                    .AggregateClinicalDataAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
                     .Returns(Task.FromResult(CreateEmptyClinicalBundle()));
                 services.RemoveAll<IFhirDataAggregator>();
                 services.AddSingleton(mockAggregator);

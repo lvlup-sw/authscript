@@ -95,7 +95,7 @@ public static class PatientEndpoints
     /// <param name="patientRegistry">The patient registry service.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>An OK result (idempotent - returns OK even if patient doesn't exist).</returns>
-    public static async Task<Results<Ok, NotFound>> UnregisterAsync(
+    public static async Task<Ok> UnregisterAsync(
         string patientId,
         [FromServices] IPatientRegistry patientRegistry,
         CancellationToken ct = default)

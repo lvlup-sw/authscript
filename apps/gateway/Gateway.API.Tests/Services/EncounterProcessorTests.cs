@@ -62,6 +62,7 @@ public class EncounterProcessorTests
         // Assert
         await _aggregator.Received(1).AggregateClinicalDataAsync(
             patientId,
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -124,7 +125,7 @@ public class EncounterProcessorTests
 
         var clinicalBundle = CreateTestBundle(patientId);
 
-        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<CancellationToken>())
+        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(clinicalBundle));
         _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("Intelligence service unavailable"));
@@ -145,7 +146,7 @@ public class EncounterProcessorTests
 
         var clinicalBundle = CreateTestBundle(patientId);
 
-        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<CancellationToken>())
+        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(clinicalBundle));
         _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("Intelligence service unavailable"));
@@ -172,7 +173,7 @@ public class EncounterProcessorTests
 
         var clinicalBundle = CreateTestBundle(patientId);
 
-        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<CancellationToken>())
+        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(clinicalBundle));
         _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Unexpected internal error"));
@@ -199,7 +200,7 @@ public class EncounterProcessorTests
 
         var clinicalBundle = CreateTestBundle(patientId);
 
-        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<CancellationToken>())
+        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(clinicalBundle));
         _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Sensitive internal error with stack details"));
@@ -289,7 +290,7 @@ public class EncounterProcessorTests
         PAFormData formData,
         byte[] pdfBytes)
     {
-        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<CancellationToken>())
+        _aggregator.AggregateClinicalDataAsync(patientId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(clinicalBundle));
         _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(formData));
@@ -390,13 +391,16 @@ public class EncounterProcessorTests
         };
     }
 
-    private static EncounterCompletedEvent CreateEvent() => new()
+    private static EncounterCompletedEvent CreateEvent()
     {
-        PatientId = "patient-1",
-        EncounterId = "encounter-1",
-        PracticeId = "practice-1",
-        WorkItemId = "workitem-1"
-    };
+        return new EncounterCompletedEvent
+        {
+            PatientId = "patient-1",
+            EncounterId = "encounter-1",
+            PracticeId = "practice-1",
+            WorkItemId = "workitem-1"
+        };
+    }
 
     #region ProcessAsync Tests
 
@@ -421,9 +425,10 @@ public class EncounterProcessorTests
         // Act
         await _sut.ProcessAsync(evt, CancellationToken.None);
 
-        // Assert - aggregator called with correct patient ID
+        // Assert - aggregator called with correct patient ID and encounter ID
         await _aggregator.Received(1).AggregateClinicalDataAsync(
             "patient-123",
+            "encounter-456",
             Arg.Any<CancellationToken>());
     }
 
@@ -582,7 +587,7 @@ public class EncounterProcessorTests
         var evt = CreateEvent();
         var clinicalBundle = CreateTestBundle(evt.PatientId);
 
-        _aggregator.AggregateClinicalDataAsync(evt.PatientId, Arg.Any<CancellationToken>())
+        _aggregator.AggregateClinicalDataAsync(evt.PatientId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(clinicalBundle));
         _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Test error"));
@@ -624,7 +629,7 @@ public class EncounterProcessorTests
         var formData = CreateFormData("APPROVE");
         var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
 
-        _aggregator.AggregateClinicalDataAsync(evt.PatientId, Arg.Any<CancellationToken>())
+        _aggregator.AggregateClinicalDataAsync(evt.PatientId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(clinicalBundle));
         _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(formData));
@@ -776,7 +781,7 @@ public class EncounterProcessorTests
         var formData = CreateFormData("APPROVE");
         var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
 
-        _aggregator.AggregateClinicalDataAsync(evt.PatientId, Arg.Any<CancellationToken>())
+        _aggregator.AggregateClinicalDataAsync(evt.PatientId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(clinicalBundle));
         _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(formData));

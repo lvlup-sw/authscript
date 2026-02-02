@@ -116,7 +116,7 @@ public sealed class WorkItemEndpointsTests
             .Returns(workItem);
 
         _fhirAggregator
-            .AggregateClinicalDataAsync(workItem.PatientId, Arg.Any<CancellationToken>())
+            .AggregateClinicalDataAsync(workItem.PatientId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(clinicalBundle);
 
         _intelligenceClient
@@ -175,7 +175,7 @@ public sealed class WorkItemEndpointsTests
             .Returns(workItem);
 
         _fhirAggregator
-            .AggregateClinicalDataAsync(workItem.PatientId, Arg.Any<CancellationToken>())
+            .AggregateClinicalDataAsync(workItem.PatientId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(clinicalBundle);
 
         _intelligenceClient
@@ -190,9 +190,10 @@ public sealed class WorkItemEndpointsTests
         var result = await InvokeRehydrateAsync(workItemId);
 
         // Assert
-        // Verify IFhirDataAggregator.AggregateClinicalDataAsync was called
+        // Verify IFhirDataAggregator.AggregateClinicalDataAsync was called with encounterId
         await _fhirAggregator.Received(1).AggregateClinicalDataAsync(
             workItem.PatientId,
+            workItem.EncounterId,
             Arg.Any<CancellationToken>());
 
         // Verify IIntelligenceClient.AnalyzeAsync was called with clinical bundle

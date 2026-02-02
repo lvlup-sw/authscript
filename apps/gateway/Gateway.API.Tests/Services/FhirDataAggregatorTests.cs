@@ -76,7 +76,7 @@ public class FhirDataAggregatorTests
             .Returns(Task.FromResult(expectedServiceRequests));
 
         // Act
-        var result = await _sut.AggregateClinicalDataAsync(patientId, CancellationToken.None);
+        var result = await _sut.AggregateClinicalDataAsync(patientId, null, CancellationToken.None);
 
         // Assert
         await Assert.That(result.ServiceRequests).IsNotEmpty();
@@ -92,12 +92,29 @@ public class FhirDataAggregatorTests
         const string patientId = "patient-789";
 
         // Act
-        await _sut.AggregateClinicalDataAsync(patientId, CancellationToken.None);
+        await _sut.AggregateClinicalDataAsync(patientId, null, CancellationToken.None);
 
         // Assert
         await _fhirClient.Received(1).SearchServiceRequestsAsync(
             patientId,
             Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task AggregateClinicalDataAsync_PassesEncounterId_ToSearchServiceRequestsAsync()
+    {
+        // Arrange
+        const string patientId = "patient-123";
+        const string encounterId = "encounter-456";
+
+        // Act
+        await _sut.AggregateClinicalDataAsync(patientId, encounterId, CancellationToken.None);
+
+        // Assert - Verify encounterId is passed to SearchServiceRequestsAsync
+        await _fhirClient.Received(1).SearchServiceRequestsAsync(
+            patientId,
+            encounterId,
             Arg.Any<CancellationToken>());
     }
 
@@ -133,7 +150,7 @@ public class FhirDataAggregatorTests
             });
 
         // Act
-        await _sut.AggregateClinicalDataAsync(patientId, CancellationToken.None);
+        await _sut.AggregateClinicalDataAsync(patientId, null, CancellationToken.None);
 
         // Assert - All methods should have been called
         await Assert.That(callOrder).Contains("Patient");
