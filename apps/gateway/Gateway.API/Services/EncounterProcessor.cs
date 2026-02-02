@@ -16,6 +16,7 @@ public sealed class EncounterProcessor : IEncounterProcessor
     private readonly IPdfFormStamper _pdfStamper;
     private readonly IAnalysisResultStore _resultStore;
     private readonly INotificationHub _notificationHub;
+    private readonly IWorkItemStore _workItemStore;
     private readonly ILogger<EncounterProcessor> _logger;
 
     // Default procedure code when not specified by encounter
@@ -30,6 +31,7 @@ public sealed class EncounterProcessor : IEncounterProcessor
     /// <param name="pdfStamper">PDF form stamper for generating PA forms.</param>
     /// <param name="resultStore">Result store for caching generated PDFs.</param>
     /// <param name="notificationHub">Notification hub for broadcasting completion events.</param>
+    /// <param name="workItemStore">Work item store for updating work item status.</param>
     /// <param name="logger">Logger for diagnostic output.</param>
     public EncounterProcessor(
         IFhirDataAggregator aggregator,
@@ -37,6 +39,7 @@ public sealed class EncounterProcessor : IEncounterProcessor
         IPdfFormStamper pdfStamper,
         IAnalysisResultStore resultStore,
         INotificationHub notificationHub,
+        IWorkItemStore workItemStore,
         ILogger<EncounterProcessor> logger)
     {
         _aggregator = aggregator;
@@ -44,10 +47,129 @@ public sealed class EncounterProcessor : IEncounterProcessor
         _pdfStamper = pdfStamper;
         _resultStore = resultStore;
         _notificationHub = notificationHub;
+        _workItemStore = workItemStore;
         _logger = logger;
     }
 
     /// <inheritdoc />
+    public async Task ProcessAsync(EncounterCompletedEvent evt, CancellationToken ct)
+    {
+        _logger.LogInformation(
+            "Processing encounter {EncounterId} for patient {PatientId} (WorkItem: {WorkItemId})",
+            evt.EncounterId,
+            evt.PatientId,
+            evt.WorkItemId);
+
+        var transactionId = $"pa-{evt.EncounterId}-{DateTime.UtcNow:yyyyMMddHHmmss}";
+
+        try
+        {
+            // Step 1: Hydrate clinical context via FHIR data aggregator
+            var clinicalBundle = await _aggregator.AggregateClinicalDataAsync(
+                evt.PatientId,
+                ct);
+
+            _logger.LogInformation(
+                "Hydrated clinical bundle with {Conditions} conditions, {Observations} observations, {Procedures} procedures",
+                clinicalBundle.Conditions.Count,
+                clinicalBundle.Observations.Count,
+                clinicalBundle.Procedures.Count);
+
+            // Step 2: Send to Intelligence service for PA analysis
+            var formData = await _intelligenceClient.AnalyzeAsync(
+                clinicalBundle,
+                DefaultProcedureCode,
+                ct);
+
+            _logger.LogInformation(
+                "Intelligence analysis complete. Recommendation: {Recommendation}, Confidence: {Confidence:P0}",
+                formData.Recommendation,
+                formData.ConfidenceScore);
+
+            // Step 3: Determine work item status based on recommendation
+            var status = formData.Recommendation switch
+            {
+                "APPROVE" or "DENY" => WorkItemStatus.ReadyForReview,
+                "NEEDS_INFO" => WorkItemStatus.MissingData,
+                "NOT_REQUIRED" => WorkItemStatus.NoPaRequired,
+                _ => WorkItemStatus.ReadyForReview
+            };
+
+            // Step 4: Update work item status
+            await _workItemStore.UpdateStatusAsync(evt.WorkItemId, status, ct);
+
+            _logger.LogInformation(
+                "Updated work item {WorkItemId} to status {Status}",
+                evt.WorkItemId,
+                status);
+
+            // Step 5: Generate PDF from form data
+            var pdfBytes = await _pdfStamper.StampFormAsync(formData, ct);
+
+            _logger.LogInformation(
+                "Generated PDF form: {Size} bytes for encounter {EncounterId}",
+                pdfBytes.Length,
+                evt.EncounterId);
+
+            // Step 6: Store formData and PDF in result store with transaction ID
+            var cacheKey = $"{evt.EncounterId}:{transactionId}";
+            await _resultStore.SetCachedResponseAsync(cacheKey, formData, ct);
+            await _resultStore.SetCachedPdfAsync(cacheKey, pdfBytes, ct);
+
+            _logger.LogInformation(
+                "Stored PDF with cache key {CacheKey}",
+                cacheKey);
+
+            // Step 7: Notify subscribers that PA form is ready
+            var notification = new Notification(
+                Type: "PA_FORM_READY",
+                TransactionId: transactionId,
+                EncounterId: evt.EncounterId,
+                PatientId: evt.PatientId,
+                Message: $"Prior authorization form ready. Recommendation: {formData.Recommendation}"
+            );
+
+            await _notificationHub.WriteAsync(notification, ct);
+
+            _logger.LogInformation(
+                "Notification sent for encounter {EncounterId}: {Type}",
+                evt.EncounterId,
+                notification.Type);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex,
+                "Service error for encounter {EncounterId}: {Message}",
+                evt.EncounterId,
+                ex.Message);
+
+            // Notify subscribers of the processing error
+            await _notificationHub.WriteAsync(new Notification(
+                Type: "PROCESSING_ERROR",
+                TransactionId: transactionId,
+                EncounterId: evt.EncounterId,
+                PatientId: evt.PatientId,
+                Message: $"Service error: {ex.Message}"), ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Unexpected error processing encounter {EncounterId}: {Message}",
+                evt.EncounterId,
+                ex.Message);
+
+            // Notify subscribers of the processing error (no sensitive stack trace)
+            await _notificationHub.WriteAsync(new Notification(
+                Type: "PROCESSING_ERROR",
+                TransactionId: transactionId,
+                EncounterId: evt.EncounterId,
+                PatientId: evt.PatientId,
+                Message: "Unexpected processing error"), ct);
+        }
+    }
+
+    /// <inheritdoc />
+    [Obsolete("Use ProcessAsync(EncounterCompletedEvent, CancellationToken) instead.")]
     public async Task ProcessEncounterAsync(string encounterId, string patientId, CancellationToken ct)
     {
         _logger.LogInformation(

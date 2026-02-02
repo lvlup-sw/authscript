@@ -99,6 +99,7 @@ public class DependencyExtensionsAthenaTests
         services.AddSingleton(Substitute.For<IPdfFormStamper>());
         services.AddSingleton(Substitute.For<IAnalysisResultStore>());
         services.AddSingleton(Substitute.For<INotificationHub>());
+        services.AddSingleton(Substitute.For<IWorkItemStore>());
         var config = BuildValidConfig();
         services.AddSingleton<IConfiguration>(config);
 
