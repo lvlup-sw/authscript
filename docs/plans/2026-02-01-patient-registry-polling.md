@@ -27,7 +27,7 @@ The workflow document describes a **SMART on FHIR embedded app** architecture wh
 ### Current State vs. Required State
 
 | Component | Current | Required |
-|-----------|---------|----------|
+| --------- | ------- | -------- |
 | Polling model | Global (all finished encounters) | Per-patient (registered patients only) |
 | Patient registry | None | `IPatientRegistry` + `InMemoryPatientRegistry` |
 | Registration endpoint | None | `POST /api/patients/register` |
@@ -382,7 +382,8 @@ The workflow document describes a **SMART on FHIR embedded app** architecture wh
 
 2. [GREEN] Register services
    - File: `apps/gateway/Gateway.API/DependencyExtensions.cs`
-   - Add: `services.AddSingleton<IPatientRegistry, InMemoryPatientRegistry>();`
+   - Add: `services.AddScoped<IPatientRegistry, PostgresPatientRegistry>();`
+     (Note: Original plan specified `InMemoryPatientRegistry` as interim; now superseded by `PostgresPatientRegistry`)
    - File: `apps/gateway/Gateway.API/Program.cs`
    - Add: `app.MapPatientEndpoints();`
    - Run: `dotnet test` - MUST PASS
@@ -691,7 +692,7 @@ The workflow document describes a **SMART on FHIR embedded app** architecture wh
 
 ## Parallelization Strategy
 
-```
+```text
                    ┌─────────────────────────────────────────────────────────────────┐
                    │                    PARALLEL GROUP 1                              │
                    │               (Models - No Dependencies)                         │
@@ -741,7 +742,7 @@ The workflow document describes a **SMART on FHIR embedded app** architecture wh
 
 ### Execution Graph
 
-```
+```text
 Time →
 
 Worktree 1:  [001]──┐
@@ -760,7 +761,7 @@ Worktree 5:  [005]──┘                              │                    
 ### Existing Code Changes Required
 
 | File | Change Type | Description |
-|------|-------------|-------------|
+| ---- | ----------- | ----------- |
 | `WorkItemStatus.cs` | Modify | Add `Pending` enum value |
 | `WorkItem.cs` | Modify | Make `ServiceRequestId` and `ProcedureCode` optional |
 | `CreateWorkItemRequest.cs` | Modify | Make `ServiceRequestId` and `ProcedureCode` optional |
@@ -774,13 +775,13 @@ Worktree 5:  [005]──┘                              │                    
 ### New Files
 
 | File | Purpose |
-|------|---------|
+| ---- | ------- |
 | `Models/RegisteredPatient.cs` | Patient registration model |
 | `Models/RegisterPatientRequest.cs` | API request model |
 | `Models/RegisterPatientResponse.cs` | API response with WorkItemId |
 | `Models/EncounterCompletedEvent.cs` | Event for encounter completion |
 | `Contracts/IPatientRegistry.cs` | Registry interface |
-| `Services/InMemoryPatientRegistry.cs` | In-memory implementation |
+| `Services/PostgresPatientRegistry.cs` | PostgreSQL-backed implementation (supersedes InMemoryPatientRegistry) |
 | `Services/AthenaQueryBuilder.cs` | Query formatting helper |
 | `Endpoints/PatientEndpoints.cs` | Patient registration endpoints |
 

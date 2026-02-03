@@ -98,11 +98,12 @@ CREATE TABLE work_items (
     procedure_code VARCHAR(20),
     status INTEGER NOT NULL,
     created_at TIMESTAMPTZ NOT NULL,
-    updated_at TIMESTAMPTZ,
-
-    INDEX idx_work_items_encounter (encounter_id),
-    INDEX idx_work_items_status (status)
+    updated_at TIMESTAMPTZ
 );
+
+-- Indexes for work_items (created via EF Core migrations)
+CREATE INDEX idx_work_items_encounter ON work_items (encounter_id);
+CREATE INDEX idx_work_items_status ON work_items (status);
 
 -- RegisteredPatients table
 CREATE TABLE registered_patients (
@@ -112,10 +113,11 @@ CREATE TABLE registered_patients (
     work_item_id VARCHAR(32) NOT NULL,
     registered_at TIMESTAMPTZ NOT NULL,
     last_polled_at TIMESTAMPTZ,
-    current_encounter_status VARCHAR(50),
-
-    INDEX idx_registered_patients_registered (registered_at)
+    current_encounter_status VARCHAR(50)
 );
+
+-- Indexes for registered_patients (created via EF Core migrations)
+CREATE INDEX idx_registered_patients_registered ON registered_patients (registered_at);
 ```
 
 #### Implementation Structure

@@ -439,7 +439,7 @@ Link: `docs/designs/2026-02-02-observability-persistence-coverage.md`
    - Run: `dotnet test` - MUST PASS
 
 3. [REFACTOR] Clean up (optional)
-   - Apply: Extract common test fixtures if needed
+   - Apply: Extract common test fixtures, if needed
    - Run: `dotnet test` - MUST STAY GREEN
 
 **Verification:**
