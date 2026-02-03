@@ -138,4 +138,20 @@ public sealed class PostgresWorkItemStore : IWorkItemStore
 
         return entities.Select(e => e.ToModel()).ToList();
     }
+
+    /// <inheritdoc/>
+    public async Task DeleteAsync(string id, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+
+        var entity = await _context.WorkItems
+            .FirstOrDefaultAsync(e => e.Id == id, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (entity is not null)
+        {
+            _context.WorkItems.Remove(entity);
+            await _context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
 }

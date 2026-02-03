@@ -225,4 +225,41 @@ public sealed class WorkItemEndpointsTests
     }
 
     #endregion
+
+    #region Delete Endpoint Tests
+
+    [Test]
+    public async Task DeleteAsync_ExistingWorkItem_ReturnsOk()
+    {
+        // Arrange
+        const string workItemId = "wi-delete";
+
+        // Act
+        var result = await WorkItemEndpoints.DeleteAsync(
+            workItemId,
+            _workItemStore,
+            CancellationToken.None);
+
+        // Assert
+        await Assert.That(result).IsTypeOf<Ok>();
+        await _workItemStore.Received(1).DeleteAsync(workItemId, Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task DeleteAsync_NonExistentWorkItem_ReturnsOk()
+    {
+        // Arrange - idempotent: returns OK even if not found
+        const string workItemId = "wi-nonexistent";
+
+        // Act
+        var result = await WorkItemEndpoints.DeleteAsync(
+            workItemId,
+            _workItemStore,
+            CancellationToken.None);
+
+        // Assert
+        await Assert.That(result).IsTypeOf<Ok>();
+    }
+
+    #endregion
 }

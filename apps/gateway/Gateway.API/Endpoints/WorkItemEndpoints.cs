@@ -54,6 +54,12 @@ public static class WorkItemEndpoints
             .WithSummary("Re-fetch clinical data and re-analyze work item")
             .Produces<RehydrateResponse>(StatusCodes.Status200OK)
             .Produces<ErrorResponse>(StatusCodes.Status404NotFound);
+
+        // DELETE
+        group.MapDelete("/{id}", DeleteAsync)
+            .WithName("DeleteWorkItem")
+            .WithSummary("Delete a work item permanently")
+            .Produces(StatusCodes.Status200OK);
     }
 
     /// <summary>
@@ -280,5 +286,21 @@ public static class WorkItemEndpoints
         }
 
         return Results.Ok(updatedItem);
+    }
+
+    /// <summary>
+    /// Deletes a work item permanently.
+    /// </summary>
+    /// <param name="id">The work item identifier.</param>
+    /// <param name="workItemStore">The work item store service.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>OK result (idempotent - returns OK even if not found).</returns>
+    public static async Task<IResult> DeleteAsync(
+        string id,
+        [FromServices] IWorkItemStore workItemStore,
+        CancellationToken cancellationToken)
+    {
+        await workItemStore.DeleteAsync(id, cancellationToken).ConfigureAwait(false);
+        return Results.Ok();
     }
 }

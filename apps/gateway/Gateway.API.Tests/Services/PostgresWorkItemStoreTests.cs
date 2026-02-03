@@ -476,6 +476,65 @@ public class PostgresWorkItemStoreTests
 
     #endregion
 
+    #region DeleteAsync Tests
+
+    [Test]
+    public async Task DeleteAsync_ExistingId_RemovesFromDatabase()
+    {
+        // Arrange
+        using var context = CreateContext();
+        var store = CreateStore(context);
+
+        var workItem = CreateWorkItem("wi-delete", "enc-001", WorkItemStatus.Pending);
+        await store.CreateAsync(workItem);
+
+        // Verify it exists
+        var beforeDelete = await store.GetByIdAsync("wi-delete");
+        await Assert.That(beforeDelete).IsNotNull();
+
+        // Act
+        await store.DeleteAsync("wi-delete");
+
+        // Assert
+        var afterDelete = await store.GetByIdAsync("wi-delete");
+        await Assert.That(afterDelete).IsNull();
+    }
+
+    [Test]
+    public async Task DeleteAsync_NonExistentId_DoesNotThrow()
+    {
+        // Arrange
+        using var context = CreateContext();
+        var store = CreateStore(context);
+
+        // Act & Assert - Should not throw
+        await store.DeleteAsync("non-existent-id");
+    }
+
+    [Test]
+    public async Task DeleteAsync_ExistingId_DoesNotAffectOtherItems()
+    {
+        // Arrange
+        using var context = CreateContext();
+        var store = CreateStore(context);
+
+        var workItem1 = CreateWorkItem("wi-keep", "enc-001", WorkItemStatus.Pending);
+        var workItem2 = CreateWorkItem("wi-delete", "enc-002", WorkItemStatus.ReadyForReview);
+
+        await store.CreateAsync(workItem1);
+        await store.CreateAsync(workItem2);
+
+        // Act
+        await store.DeleteAsync("wi-delete");
+
+        // Assert
+        var remaining = await store.GetAllAsync();
+        await Assert.That(remaining.Count).IsEqualTo(1);
+        await Assert.That(remaining[0].Id).IsEqualTo("wi-keep");
+    }
+
+    #endregion
+
     private static WorkItem CreateWorkItem(string id, string encounterId, WorkItemStatus status)
     {
         return new WorkItem
