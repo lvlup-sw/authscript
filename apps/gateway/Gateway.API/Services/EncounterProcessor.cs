@@ -76,11 +76,35 @@ public sealed class EncounterProcessor : IEncounterProcessor
                 clinicalBundle.Observations.Count,
                 clinicalBundle.Procedures.Count);
 
-            // Step 2: Extract procedure code from ServiceRequest (fall back to default)
+            // Step 2: Extract procedure code from ServiceRequest (check presence before fallback)
             var procedureCode = clinicalBundle.ServiceRequests
                 .FirstOrDefault(sr => sr.Status == "active")
-                ?.Code?.Coding?.FirstOrDefault()?.Code
-                ?? DefaultProcedureCode;
+                ?.Code?.Coding?.FirstOrDefault()?.Code;
+
+            var procedureCodePresent = !string.IsNullOrEmpty(procedureCode);
+            procedureCode ??= DefaultProcedureCode;
+
+            // Step 2b: Log data validation signals (no PHI - only counts and booleans)
+            var hasRequiredData = clinicalBundle.Patient is not null
+                && clinicalBundle.Conditions.Count > 0
+                && procedureCodePresent;
+
+            _logger.LogInformation(
+                "Data validation: HasRequiredData={HasRequiredData}, " +
+                "PatientPresent={PatientPresent}, ConditionsPresent={ConditionsPresent}, " +
+                "ProcedureCodePresent={ProcedureCodePresent}",
+                hasRequiredData,
+                clinicalBundle.Patient is not null,
+                clinicalBundle.Conditions.Count > 0,
+                procedureCodePresent);
+
+            // Step 2c: Log pre-Intelligence call data (no PHI - only procedure code and counts)
+            _logger.LogInformation(
+                "Sending to Intelligence: ProcedureCode={ProcedureCode}, " +
+                "BundleConditions={ConditionCount}, BundleObservations={ObservationCount}",
+                procedureCode,
+                clinicalBundle.Conditions.Count,
+                clinicalBundle.Observations.Count);
 
             // Step 3: Send to Intelligence service for PA analysis
             var formData = await _intelligenceClient.AnalyzeAsync(

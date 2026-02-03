@@ -115,4 +115,11 @@ public sealed class InMemoryWorkItemStore : IWorkItemStore
 
         return Task.FromResult(query.ToList());
     }
+
+    /// <inheritdoc />
+    public Task DeleteAsync(string id, CancellationToken cancellationToken = default)
+    {
+        _store.TryRemove(id, out _);
+        return Task.CompletedTask;
+    }
 }

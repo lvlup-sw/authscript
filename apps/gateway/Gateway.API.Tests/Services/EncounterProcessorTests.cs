@@ -920,4 +920,246 @@ public class EncounterProcessorTests
     }
 
     #endregion
+
+    #region Data Validation Logging Tests
+
+    [Test]
+    public async Task ProcessAsync_WithClinicalData_LogsValidationSignals()
+    {
+        // Arrange
+        var evt = CreateEvent();
+        var clinicalBundle = CreateTestBundle(evt.PatientId);
+        clinicalBundle = clinicalBundle with
+        {
+            ServiceRequests =
+            [
+                new ServiceRequestInfo
+                {
+                    Id = "sr-123",
+                    Status = "active",
+                    Code = new CodeableConcept
+                    {
+                        Coding = [new Coding { Code = "72148", Display = "MRI Lumbar Spine" }],
+                        Text = "MRI Lumbar Spine"
+                    }
+                }
+            ]
+        };
+        var formData = CreateFormData("APPROVE");
+        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+
+        _aggregator.AggregateClinicalDataAsync(evt.PatientId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(clinicalBundle));
+        _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(formData));
+        _pdfStamper.StampFormAsync(Arg.Any<PAFormData>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(pdfBytes));
+
+        var existingWorkItem = new WorkItem
+        {
+            Id = evt.WorkItemId,
+            PatientId = evt.PatientId,
+            EncounterId = evt.EncounterId,
+            Status = WorkItemStatus.Pending,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _workItemStore.GetByIdAsync(evt.WorkItemId, Arg.Any<CancellationToken>())
+            .Returns(existingWorkItem);
+        _workItemStore.UpdateAsync(evt.WorkItemId, Arg.Any<WorkItem>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        // Act
+        await _sut.ProcessAsync(evt, CancellationToken.None);
+
+        // Assert - verify validation log was written with HasRequiredData
+        _logger.Received().Log(
+            LogLevel.Information,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("HasRequiredData")),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [Test]
+    public async Task ProcessAsync_WithClinicalData_LogsPreIntelligenceCallSignals()
+    {
+        // Arrange
+        var evt = CreateEvent();
+        var clinicalBundle = CreateTestBundle(evt.PatientId);
+        clinicalBundle = clinicalBundle with
+        {
+            ServiceRequests =
+            [
+                new ServiceRequestInfo
+                {
+                    Id = "sr-123",
+                    Status = "active",
+                    Code = new CodeableConcept
+                    {
+                        Coding = [new Coding { Code = "72148", Display = "MRI Lumbar Spine" }],
+                        Text = "MRI Lumbar Spine"
+                    }
+                }
+            ]
+        };
+        var formData = CreateFormData("APPROVE");
+        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+
+        _aggregator.AggregateClinicalDataAsync(evt.PatientId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(clinicalBundle));
+        _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(formData));
+        _pdfStamper.StampFormAsync(Arg.Any<PAFormData>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(pdfBytes));
+
+        var existingWorkItem = new WorkItem
+        {
+            Id = evt.WorkItemId,
+            PatientId = evt.PatientId,
+            EncounterId = evt.EncounterId,
+            Status = WorkItemStatus.Pending,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _workItemStore.GetByIdAsync(evt.WorkItemId, Arg.Any<CancellationToken>())
+            .Returns(existingWorkItem);
+        _workItemStore.UpdateAsync(evt.WorkItemId, Arg.Any<WorkItem>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        // Act
+        await _sut.ProcessAsync(evt, CancellationToken.None);
+
+        // Assert - verify pre-Intelligence log was written with Sending to Intelligence
+        _logger.Received().Log(
+            LogLevel.Information,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("Sending to Intelligence")),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [Test]
+    public async Task ProcessAsync_WithMissingPatient_LogsValidationAsFalse()
+    {
+        // Arrange
+        var evt = CreateEvent();
+        var clinicalBundle = new ClinicalBundle
+        {
+            PatientId = evt.PatientId,
+            Patient = null, // Missing patient
+            Conditions = [new ConditionInfo { Id = "cond-1", Code = "M54.5", Display = "Low back pain", ClinicalStatus = "active" }],
+            Observations = [],
+            Procedures = [],
+            Documents = [],
+            ServiceRequests =
+            [
+                new ServiceRequestInfo
+                {
+                    Id = "sr-123",
+                    Status = "active",
+                    Code = new CodeableConcept
+                    {
+                        Coding = [new Coding { Code = "72148", Display = "MRI" }],
+                        Text = "MRI"
+                    }
+                }
+            ]
+        };
+        var formData = CreateFormData("NEEDS_INFO");
+        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+
+        _aggregator.AggregateClinicalDataAsync(evt.PatientId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(clinicalBundle));
+        _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(formData));
+        _pdfStamper.StampFormAsync(Arg.Any<PAFormData>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(pdfBytes));
+
+        var existingWorkItem = new WorkItem
+        {
+            Id = evt.WorkItemId,
+            PatientId = evt.PatientId,
+            EncounterId = evt.EncounterId,
+            Status = WorkItemStatus.Pending,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _workItemStore.GetByIdAsync(evt.WorkItemId, Arg.Any<CancellationToken>())
+            .Returns(existingWorkItem);
+        _workItemStore.UpdateAsync(evt.WorkItemId, Arg.Any<WorkItem>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        // Act
+        await _sut.ProcessAsync(evt, CancellationToken.None);
+
+        // Assert - verify validation log indicates HasRequiredData (will be false due to missing patient)
+        _logger.Received().Log(
+            LogLevel.Information,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("Data validation")),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [Test]
+    public async Task ProcessAsync_WithNoConditions_LogsValidationAsFalse()
+    {
+        // Arrange
+        var evt = CreateEvent();
+        var clinicalBundle = new ClinicalBundle
+        {
+            PatientId = evt.PatientId,
+            Patient = new PatientInfo { Id = evt.PatientId, GivenName = "Test", FamilyName = "Patient", BirthDate = new DateOnly(1980, 1, 15), MemberId = "MEM123" },
+            Conditions = [], // No conditions
+            Observations = [],
+            Procedures = [],
+            Documents = [],
+            ServiceRequests =
+            [
+                new ServiceRequestInfo
+                {
+                    Id = "sr-123",
+                    Status = "active",
+                    Code = new CodeableConcept
+                    {
+                        Coding = [new Coding { Code = "72148", Display = "MRI" }],
+                        Text = "MRI"
+                    }
+                }
+            ]
+        };
+        var formData = CreateFormData("NEEDS_INFO");
+        var pdfBytes = new byte[] { 0x25, 0x50, 0x44, 0x46 };
+
+        _aggregator.AggregateClinicalDataAsync(evt.PatientId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(clinicalBundle));
+        _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(formData));
+        _pdfStamper.StampFormAsync(Arg.Any<PAFormData>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(pdfBytes));
+
+        var existingWorkItem = new WorkItem
+        {
+            Id = evt.WorkItemId,
+            PatientId = evt.PatientId,
+            EncounterId = evt.EncounterId,
+            Status = WorkItemStatus.Pending,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _workItemStore.GetByIdAsync(evt.WorkItemId, Arg.Any<CancellationToken>())
+            .Returns(existingWorkItem);
+        _workItemStore.UpdateAsync(evt.WorkItemId, Arg.Any<WorkItem>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        // Act
+        await _sut.ProcessAsync(evt, CancellationToken.None);
+
+        // Assert - verify validation log indicates ConditionsPresent
+        _logger.Received().Log(
+            LogLevel.Information,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("ConditionsPresent")),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    #endregion
 }

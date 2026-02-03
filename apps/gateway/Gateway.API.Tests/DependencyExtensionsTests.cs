@@ -1,7 +1,15 @@
+// =============================================================================
+// <copyright file="DependencyExtensionsTests.cs" company="Levelup Software">
+// Copyright (c) Levelup Software. All rights reserved.
+// </copyright>
+// =============================================================================
+
 namespace Gateway.API.Tests;
 
 using Gateway.API.Contracts;
+using Gateway.API.Data;
 using Gateway.API.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -11,7 +19,7 @@ using Microsoft.Extensions.DependencyInjection;
 public class DependencyExtensionsTests
 {
     [Test]
-    public async Task AddGatewayServices_ResolvesIWorkItemStore()
+    public async Task AddGatewayServices_DoesNotRegisterWorkItemStore()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -24,13 +32,12 @@ public class DependencyExtensionsTests
         var provider = services.BuildServiceProvider();
         var workItemStore = provider.GetService<IWorkItemStore>();
 
-        // Assert
-        await Assert.That(workItemStore).IsNotNull();
-        await Assert.That(workItemStore).IsTypeOf<InMemoryWorkItemStore>();
+        // Assert - AddGatewayServices does not register IWorkItemStore (use AddGatewayPersistence)
+        await Assert.That(workItemStore).IsNull();
     }
 
     [Test]
-    public async Task AddGatewayServices_RegistersPatientRegistry()
+    public async Task AddGatewayServices_DoesNotRegisterPatientRegistry()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -42,10 +49,34 @@ public class DependencyExtensionsTests
         services.AddGatewayServices();
         var provider = services.BuildServiceProvider();
 
-        // Assert
+        // Assert - AddGatewayServices does not register IPatientRegistry (use AddGatewayPersistence)
         var registry = provider.GetService<IPatientRegistry>();
-        await Assert.That(registry).IsNotNull();
-        await Assert.That(registry).IsTypeOf<InMemoryPatientRegistry>();
+        await Assert.That(registry).IsNull();
+    }
+
+    [Test]
+    public async Task AddGatewayPersistence_RegistersPostgresStores()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        // Add required EF Core in-memory provider for testing
+        services.AddDbContext<GatewayDbContext>(options =>
+            options.UseInMemoryDatabase(Guid.NewGuid().ToString()));
+
+        services.AddGatewayPersistence();
+        var provider = services.BuildServiceProvider();
+
+        // Act
+        using var scope = provider.CreateScope();
+        var workItemStore = scope.ServiceProvider.GetService<IWorkItemStore>();
+        var patientRegistry = scope.ServiceProvider.GetService<IPatientRegistry>();
+
+        // Assert
+        await Assert.That(workItemStore).IsNotNull();
+        await Assert.That(workItemStore).IsTypeOf<PostgresWorkItemStore>();
+        await Assert.That(patientRegistry).IsNotNull();
+        await Assert.That(patientRegistry).IsTypeOf<PostgresPatientRegistry>();
     }
 
     private static IConfiguration CreateTestConfiguration()

@@ -164,6 +164,78 @@ public class FhirDataAggregatorTests
             Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task AggregateClinicalDataAsync_WithData_LogsSignalCountsWithPatientDemographicsFlag()
+    {
+        // Arrange
+        const string patientId = "patient-signal-test";
+
+        // Set up mock returns with test data
+        _fhirClient.GetPatientAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<PatientInfo?>(CreateTestPatient()));
+
+        _fhirClient.SearchConditionsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new List<ConditionInfo>
+            {
+                new() { Id = "cond-1", Code = "J45.909", ClinicalStatus = "active" },
+                new() { Id = "cond-2", Code = "E11.9", ClinicalStatus = "active" }
+            }));
+
+        _fhirClient.SearchObservationsAsync(Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new List<ObservationInfo>
+            {
+                new() { Id = "obs-1", Code = "85354-9" }
+            }));
+
+        _fhirClient.SearchProceduresAsync(Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new List<ProcedureInfo>()));
+
+        _fhirClient.SearchDocumentsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new List<DocumentInfo>
+            {
+                new() { Id = "doc-1", Type = "Clinical Note" }
+            }));
+
+        _fhirClient.SearchServiceRequestsAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new List<ServiceRequestInfo>
+            {
+                new() { Id = "sr-1", Status = "active", Code = new CodeableConcept { Text = "Test Service Request" } }
+            }));
+
+        // Act
+        await _sut.AggregateClinicalDataAsync(patientId);
+
+        // Assert - verify logger received the signal log with HasPatientDemographics
+        _logger.Received().Log(
+            LogLevel.Information,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("HasPatientDemographics")),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [Test]
+    public async Task AggregateClinicalDataAsync_WhenPatientIsNull_LogsHasPatientDemographicsFalse()
+    {
+        // Arrange
+        const string patientId = "patient-no-demographics";
+
+        // Set up mock to return null patient
+        _fhirClient.GetPatientAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<PatientInfo?>(null));
+
+        // Act
+        await _sut.AggregateClinicalDataAsync(patientId);
+
+        // Assert - verify logger received the signal log with HasPatientDemographics=False
+        _logger.Received().Log(
+            LogLevel.Information,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("HasPatientDemographics") && o.ToString()!.Contains("False")),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
     private static PatientInfo CreateTestPatient()
     {
         return new PatientInfo

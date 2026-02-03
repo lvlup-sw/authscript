@@ -4,7 +4,9 @@
 // ===========================================================================
 
 using Gateway.API;
+using Gateway.API.Data;
 using Gateway.API.Endpoints;
+using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,7 +15,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Infrastructure (Aspire)
 // ---------------------------------------------------------------------------
 builder.AddRedisClient("redis");
-builder.AddNpgsqlDataSource("authscript");
+builder.AddDatabaseMigration<GatewayDbContext>("authscript");
 
 // ---------------------------------------------------------------------------
 // Service Registration
@@ -25,6 +27,7 @@ builder.Services
     .AddApiKeyAuthentication()
     .AddAthenaServices()      // Must be before AddFhirClients (registers AthenaOptions)
     .AddGatewayServices()
+    .AddGatewayPersistence()  // PostgreSQL-backed stores (must be after AddGatewayServices)
     .AddFhirClients()         // Uses IOptions<AthenaOptions> for base URL
     .AddIntelligenceClient()
     .AddNotificationServices();
@@ -52,6 +55,7 @@ app.UseHealthChecks("/health");
 // Endpoint Mapping
 // ---------------------------------------------------------------------------
 app.MapAnalysisEndpoints();
+app.MapFhirEndpoints();
 app.MapSseEndpoints();
 app.MapSubmitEndpoints();
 app.MapWorkItemEndpoints();

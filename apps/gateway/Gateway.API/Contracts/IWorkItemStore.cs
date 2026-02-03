@@ -60,4 +60,12 @@ public interface IWorkItemStore
         string? encounterId = null,
         WorkItemStatus? status = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes a work item by its ID.
+    /// </summary>
+    /// <param name="id">The work item ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    Task DeleteAsync(string id, CancellationToken cancellationToken = default);
 }

@@ -119,6 +119,9 @@ jobs:
     needs: changes
     if: needs.changes.outputs.gateway == 'true' || needs.changes.outputs.orchestration == 'true' || needs.changes.outputs.shared == 'true'
     runs-on: ubuntu-latest
+    env:
+      # Enable new Microsoft Testing Platform integration for .NET 10+ / TUnit
+      DOTNET_CLI_TESTINGPLATFORM_ENABLE: '1'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -136,19 +139,38 @@ jobs:
         run: dotnet build apps/gateway/Gateway.API.Tests/Gateway.API.Tests.csproj --no-restore --configuration Release
 
       - name: Test with coverage
-        if: hashFiles('apps/gateway/Gateway.API.Tests/*.csproj') != ''
         run: |
-          dotnet test apps/gateway/Gateway.API.Tests/Gateway.API.Tests.csproj \
+          # TUnit uses Microsoft.Testing.Platform - run tests with native coverage
+          mkdir -p ./apps/gateway/coverage
+          dotnet run --no-build --project apps/gateway/Gateway.API.Tests/Gateway.API.Tests.csproj \
             --configuration Release \
-            --no-build \
-            --logger "console;verbosity=detailed"
+            -- \
+            --coverage \
+            --coverage-output-format cobertura \
+            --coverage-output "${GITHUB_WORKSPACE}/apps/gateway/coverage/coverage.cobertura.xml" \
+            --coverage-settings "${GITHUB_WORKSPACE}/apps/gateway/coverage.settings.xml"
+
+      - name: Check Coverage Threshold
+        if: success()
+        run: |
+          if [ ! -f ./apps/gateway/coverage/coverage.cobertura.xml ]; then
+            echo "::error::Coverage file not found"
+            exit 1
+          fi
+          COVERAGE=$(grep -oP 'line-rate="\K[0-9.]+' ./apps/gateway/coverage/coverage.cobertura.xml | head -1)
+          COVERAGE_PCT=$(echo "$COVERAGE * 100" | bc | cut -d. -f1)
+          echo "Coverage: ${COVERAGE_PCT}%"
+          if [ "$COVERAGE_PCT" -lt "${{ env.COVERAGE_THRESHOLD }}" ]; then
+            echo "::error::Coverage ${COVERAGE_PCT}% is below ${{ env.COVERAGE_THRESHOLD }}% threshold"
+            exit 1
+          fi
 
       - name: Upload coverage
-        if: hashFiles('apps/gateway/coverage/*.xml') != ''
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: gateway-coverage
-          path: apps/gateway/coverage/*.xml
+          path: ./apps/gateway/coverage/coverage.cobertura.xml
           retention-days: 7
           if-no-files-found: warn
 

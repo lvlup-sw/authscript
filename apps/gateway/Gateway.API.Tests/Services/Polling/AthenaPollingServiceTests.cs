@@ -4,8 +4,10 @@ using System.Text.Json;
 using System.Threading.Channels;
 using Gateway.API.Configuration;
 using Gateway.API.Contracts;
+using Gateway.API.Data;
 using Gateway.API.Models;
 using Gateway.API.Services.Polling;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -16,11 +18,16 @@ public class AthenaPollingServiceTests
     private IOptions<AthenaOptions> _options = null!;
     private ILogger<AthenaPollingService> _logger = null!;
     private IPatientRegistry _patientRegistry = null!;
+    private IServiceScopeFactory _scopeFactory = null!;
     private AthenaPollingService _sut = null!;
 
     [Before(Test)]
     public Task Setup()
     {
+        // Mark migration as complete so AthenaPollingService doesn't wait for it in tests
+        MigrationHealthCheck.RegisterExpected(nameof(GatewayDbContext));
+        MigrationHealthCheck.MarkComplete(nameof(GatewayDbContext));
+
         _fhirClient = Substitute.For<IFhirHttpClient>();
         _logger = Substitute.For<ILogger<AthenaPollingService>>();
         _patientRegistry = Substitute.For<IPatientRegistry>();
@@ -33,7 +40,15 @@ public class AthenaPollingServiceTests
             PracticeId = "Organization/a-1.Practice-12345"
         });
 
-        _sut = new AthenaPollingService(_fhirClient, _options, _logger, _patientRegistry);
+        // Create mock scope factory that returns the mocked patient registry
+        var scope = Substitute.For<IServiceScope>();
+        var serviceProvider = Substitute.For<IServiceProvider>();
+        serviceProvider.GetService(typeof(IPatientRegistry)).Returns(_patientRegistry);
+        scope.ServiceProvider.Returns(serviceProvider);
+        _scopeFactory = Substitute.For<IServiceScopeFactory>();
+        _scopeFactory.CreateScope().Returns(scope);
+
+        _sut = new AthenaPollingService(_fhirClient, _options, _logger, _scopeFactory);
         return Task.CompletedTask;
     }
 
@@ -45,7 +60,7 @@ public class AthenaPollingServiceTests
     }
 
     [Test]
-    public async Task Constructor_WithPatientRegistry_StoresReference()
+    public async Task Constructor_WithScopeFactory_StoresReference()
     {
         // Arrange
         var fhirClient = Substitute.For<IFhirHttpClient>();
@@ -57,14 +72,14 @@ public class AthenaPollingServiceTests
             PollingIntervalSeconds = 5
         });
         var logger = Substitute.For<ILogger<AthenaPollingService>>();
-        var patientRegistry = Substitute.For<IPatientRegistry>();
+        var scopeFactory = Substitute.For<IServiceScopeFactory>();
 
         // Act
         var service = new AthenaPollingService(
             fhirClient,
             options,
             logger,
-            patientRegistry);
+            scopeFactory);
 
         // Assert - service was created without error
         await Assert.That(service).IsNotNull();
@@ -128,7 +143,7 @@ public class AthenaPollingServiceTests
     public async Task PurgeProcessedEncountersOlderThan_RemovesOldEntries()
     {
         // Arrange - directly test the purge method without relying on polling
-        var service = new AthenaPollingService(_fhirClient, _options, _logger, _patientRegistry);
+        var service = new AthenaPollingService(_fhirClient, _options, _logger, _scopeFactory);
 
         // Manually mark an encounter as processed (this tests the infrastructure)
         // Since we can't directly add to the dictionary, we test the purge method
@@ -153,7 +168,7 @@ public class AthenaPollingServiceTests
     public async Task AthenaPollingService_Channel_IsUnboundedSingleConsumer()
     {
         // Arrange & Act
-        var service = new AthenaPollingService(_fhirClient, _options, _logger, _patientRegistry);
+        var service = new AthenaPollingService(_fhirClient, _options, _logger, _scopeFactory);
 
         // Assert - The channel reader should exist
         var reader = service.Encounters;
