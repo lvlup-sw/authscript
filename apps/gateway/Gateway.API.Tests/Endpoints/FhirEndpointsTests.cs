@@ -150,4 +150,44 @@ public class FhirEndpointsTests
         // Assert
         await Assert.That(result.Result).IsTypeOf<Ok<JsonElement>>();
     }
+
+    [Test]
+    public async Task SearchPatientsAsync_WithSpecialCharacters_UrlEncodesName()
+    {
+        // Arrange
+        var bundle = JsonDocument.Parse("""{"resourceType": "Bundle", "entry": []}""").RootElement;
+
+        // Name with special characters that need URL encoding
+        var nameWithSpecialChars = "John O'Brien & Smith";
+
+        // Expected: special chars are URL-encoded
+        _fhirClient.SearchAsync("Patient", "name=John+O%27Brien+%26+Smith&ah-practice=ah-practice-123", Arg.Any<CancellationToken>())
+            .Returns(Result<JsonElement>.Success(bundle));
+
+        // Act
+        var result = await FhirEndpoints.SearchPatientsAsync(nameWithSpecialChars, _fhirClient, _options);
+
+        // Assert
+        await Assert.That(result.Result).IsTypeOf<Ok<JsonElement>>();
+    }
+
+    [Test]
+    public async Task SearchEncountersAsync_WithSpecialCharacters_UrlEncodesPatientId()
+    {
+        // Arrange
+        var bundle = JsonDocument.Parse("""{"resourceType": "Bundle", "entry": []}""").RootElement;
+
+        // Patient ID with special characters (rare but possible with certain ID schemes)
+        var patientIdWithSpecialChars = "123/456";
+
+        // Expected: special chars are URL-encoded
+        _fhirClient.SearchAsync("Encounter", "patient=Patient/123%2F456&ah-practice=ah-practice-123", Arg.Any<CancellationToken>())
+            .Returns(Result<JsonElement>.Success(bundle));
+
+        // Act
+        var result = await FhirEndpoints.SearchEncountersAsync(patientIdWithSpecialChars, _fhirClient, _options);
+
+        // Assert
+        await Assert.That(result.Result).IsTypeOf<Ok<JsonElement>>();
+    }
 }

@@ -4,6 +4,7 @@
 // </copyright>
 // =============================================================================
 
+using System.Net;
 using System.Text.Json;
 using Gateway.API.Configuration;
 using Gateway.API.Contracts;
@@ -57,7 +58,7 @@ public static class FhirEndpoints
         [FromServices] IOptions<AthenaOptions> options,
         CancellationToken ct = default)
     {
-        var query = BuildQuery($"name={name}", options.Value.PracticeId);
+        var query = BuildQuery($"name={WebUtility.UrlEncode(name)}", options.Value.PracticeId);
         var result = await fhirClient.SearchAsync("Patient", query, ct).ConfigureAwait(false);
 
         return result.Match<Results<Ok<JsonElement>, ProblemHttpResult>>(
@@ -106,7 +107,7 @@ public static class FhirEndpoints
         [FromServices] IOptions<AthenaOptions> options,
         CancellationToken ct = default)
     {
-        var query = BuildQuery($"patient=Patient/{patientId}", options.Value.PracticeId);
+        var query = BuildQuery($"patient=Patient/{WebUtility.UrlEncode(patientId)}", options.Value.PracticeId);
         var result = await fhirClient.SearchAsync("Encounter", query, ct).ConfigureAwait(false);
 
         return result.Match<Results<Ok<JsonElement>, ProblemHttpResult>>(

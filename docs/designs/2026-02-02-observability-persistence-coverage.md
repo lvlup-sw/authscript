@@ -122,7 +122,7 @@ CREATE INDEX idx_registered_patients_registered ON registered_patients (register
 
 #### Implementation Structure
 
-```
+```text
 Gateway.API/
 ├── Data/
 │   ├── GatewayDbContext.cs
@@ -290,6 +290,8 @@ Create GitHub issue for future work:
 - Replace in-memory notification channel with Redis pub/sub for multi-instance support
 - Consider Redis for session affinity in load-balanced deployments
 - AnalysisResultStore already uses Redis (no changes needed)
+
+Note: See https://GitHub.com/lvlup-sw/authscript for the main repository.
 
 ## Testing Strategy
 

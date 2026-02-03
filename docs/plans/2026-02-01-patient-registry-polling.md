@@ -27,7 +27,7 @@ The workflow document describes a **SMART on FHIR embedded app** architecture wh
 ### Current State vs. Required State
 
 | Component | Current | Required |
-| --------- | ------- | -------- |
+| --- | --- | --- |
 | Polling model | Global (all finished encounters) | Per-patient (registered patients only) |
 | Patient registry | None | `IPatientRegistry` + `InMemoryPatientRegistry` |
 | Registration endpoint | None | `POST /api/patients/register` |

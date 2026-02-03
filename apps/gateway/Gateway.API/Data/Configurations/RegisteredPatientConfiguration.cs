@@ -40,7 +40,7 @@ public sealed class RegisteredPatientConfiguration : IEntityTypeConfiguration<Re
             .IsRequired();
 
         builder.Property(e => e.WorkItemId)
-            .HasMaxLength(32)
+            .HasMaxLength(36) // "wi-" (3) + Guid N-format (32) + buffer = 36
             .IsRequired();
 
         builder.Property(e => e.RegisteredAt)

@@ -478,7 +478,7 @@ Can run in parallel after Group B completes:
 - Task 014: Alba bootstrap update (after 012)
 - Task 015: Alba persistence tests (after 014)
 
-```
+```text
 Group A (parallel):          Group B (sequential):
 [001] ─┐                     [003] → [004] ─┬─→ [006] → [007]
 [002] ─┼─→ (independent)            └─[005]─┘
