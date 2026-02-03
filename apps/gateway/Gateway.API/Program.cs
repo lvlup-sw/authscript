@@ -55,6 +55,7 @@ app.UseHealthChecks("/health");
 // Endpoint Mapping
 // ---------------------------------------------------------------------------
 app.MapAnalysisEndpoints();
+app.MapFhirEndpoints();
 app.MapSseEndpoints();
 app.MapSubmitEndpoints();
 app.MapWorkItemEndpoints();
