@@ -14,7 +14,7 @@ namespace Gateway.API.Data;
 /// Background service that handles database migrations for a specific DbContext.
 /// </summary>
 /// <typeparam name="TContext">The DbContext type to migrate.</typeparam>
-public class MigrationService<TContext> : BackgroundService
+public sealed class MigrationService<TContext> : BackgroundService
     where TContext : DbContext
 {
     private readonly IServiceProvider _serviceProvider;
@@ -112,9 +112,9 @@ public class MigrationService<TContext> : BackgroundService
 
             _logger.LogWarning("Database does not exist for {ContextName}.", typeof(TContext).Name);
 
-            if ((await context.Database.GetPendingMigrationsAsync(cancellationToken).ConfigureAwait(false)).Any())
+            if (context.Database.GetMigrations().Any())
             {
-                _logger.LogInformation("There are pending migrations for {ContextName}. MigrateAsync will create the database and apply migrations.", typeof(TContext).Name);
+                _logger.LogInformation("Migrations are defined for {ContextName}. MigrateAsync will create the database and apply migrations.", typeof(TContext).Name);
                 return;
             }
 
