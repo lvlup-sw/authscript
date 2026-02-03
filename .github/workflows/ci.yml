@@ -149,7 +149,7 @@ jobs:
             --coverage \
             --coverage-output-format cobertura \
             --coverage-output "${GITHUB_WORKSPACE}/apps/gateway/coverage/coverage.cobertura.xml" \
-            --coverage-exclude "[Gateway.API]Gateway.API.Data.Migrations*"
+            --coverage-settings "${GITHUB_WORKSPACE}/apps/gateway/coverage.settings.xml"
 
       - name: Check Coverage Threshold
         if: hashFiles('apps/gateway/coverage/coverage.cobertura.xml') != ''
