@@ -24,6 +24,19 @@ namespace Gateway.API.Data.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.Sql(@"
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1
+        FROM registered_patients
+        WHERE length(""WorkItemId"") > 32
+      ) THEN
+        RAISE EXCEPTION 'Cannot downgrade: registered_patients.WorkItemId length > 32';
+      END IF;
+    END $$;
+");
+
             migrationBuilder.AlterColumn<string>(
                 name: "WorkItemId",
                 table: "registered_patients",

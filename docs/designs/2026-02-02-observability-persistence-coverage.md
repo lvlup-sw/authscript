@@ -91,7 +91,7 @@ _logger.LogInformation(
 ```sql
 -- WorkItems table
 CREATE TABLE work_items (
-    id VARCHAR(32) PRIMARY KEY,
+    id VARCHAR(36) PRIMARY KEY,
     patient_id VARCHAR(100) NOT NULL,
     encounter_id VARCHAR(100) NOT NULL,
     service_request_id VARCHAR(100),
@@ -110,7 +110,7 @@ CREATE TABLE registered_patients (
     patient_id VARCHAR(100) PRIMARY KEY,
     encounter_id VARCHAR(100) NOT NULL,
     practice_id VARCHAR(50) NOT NULL,
-    work_item_id VARCHAR(32) NOT NULL,
+    work_item_id VARCHAR(36) NOT NULL,
     registered_at TIMESTAMPTZ NOT NULL,
     last_polled_at TIMESTAMPTZ,
     current_encounter_status VARCHAR(50)
