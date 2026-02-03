@@ -116,18 +116,27 @@ public sealed class AthenaPollingService : BackgroundService, IEncounterPollingS
     {
         _logger.LogInformation("AthenaPollingService starting");
 
-        // Wait for database migrations to complete before polling
+        // Wait for database migrations to complete before polling (with timeout)
         _logger.LogInformation("Waiting for database migrations to complete...");
+
+        using var waitCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+        waitCts.CancelAfter(TimeSpan.FromMinutes(2));
+
         try
         {
             await MigrationHealthCheck.WaitForMigrationAsync(
                 nameof(GatewayDbContext),
-                stoppingToken).ConfigureAwait(false);
+                waitCts.Token).ConfigureAwait(false);
             _logger.LogInformation("Database migrations complete, starting polling");
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
             _logger.LogInformation("AthenaPollingService cancelled while waiting for migrations");
+            return;
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogError("Timed out waiting for database migrations after 2 minutes; polling will not start");
             return;
         }
 
