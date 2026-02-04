@@ -74,6 +74,7 @@ export function ConfidenceMeter({
 
       {/* Progress Bar */}
       <div
+        data-testid="confidence-meter"
         role="meter"
         aria-valuenow={percentage}
         aria-valuemin={0}
@@ -85,6 +86,7 @@ export function ConfidenceMeter({
         )}
       >
         <div
+          data-testid="confidence-fill"
           className={cn(
             'h-full rounded-full bg-gradient-to-r transition-all duration-700 ease-out',
             config.gradient

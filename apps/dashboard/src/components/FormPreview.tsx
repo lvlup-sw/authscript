@@ -27,7 +27,7 @@ export function FormPreview({
 
   if (loading) {
     return (
-      <div className={cn('space-y-4', className)}>
+      <div className={cn('space-y-4', className)} data-testid="form-skeleton">
         <div className="grid grid-cols-2 gap-4">
           {[1, 2, 3, 4, 5, 6].map(i => (
             <div key={i} className="space-y-2">
@@ -76,6 +76,8 @@ export function FormPreview({
         {regularFields.map(([key, value]) => (
           <div
             key={key}
+            data-field
+            data-highlighted={showHighlights && !!value ? 'true' : undefined}
             className={cn(
               'p-4 rounded-xl border transition-all group hover:shadow-glow',
               showHighlights && value 
@@ -102,6 +104,8 @@ export function FormPreview({
       {longFormFields.map(([key, value]) => (
         <div
           key={key}
+          data-field
+          data-highlighted={showHighlights && !!value ? 'true' : undefined}
           className={cn(
             'p-5 rounded-xl border transition-all group hover:shadow-glow',
             showHighlights && value 

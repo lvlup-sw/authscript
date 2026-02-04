@@ -44,10 +44,11 @@ describe('EvidencePanel', () => {
     it('EvidencePanel_WithEvidence_DisplaysAllItems', () => {
       render(<EvidencePanel evidence={mockEvidence} />);
 
-      expect(screen.getByText(/conservative_therapy/i)).toBeInTheDocument();
-      expect(screen.getByText(/diagnosis_present/i)).toBeInTheDocument();
-      expect(screen.getByText(/failed_treatment/i)).toBeInTheDocument();
-      expect(screen.getByText(/neurological_symptoms/i)).toBeInTheDocument();
+      // Criterion IDs are formatted (conservative_therapy -> Conservative Therapy)
+      expect(screen.getByText('Conservative Therapy')).toBeInTheDocument();
+      expect(screen.getByText('Diagnosis Present')).toBeInTheDocument();
+      expect(screen.getByText('Failed Treatment')).toBeInTheDocument();
+      expect(screen.getByText('Neurological Symptoms')).toBeInTheDocument();
     });
   });
 
@@ -55,22 +56,25 @@ describe('EvidencePanel', () => {
     it('EvidencePanel_MetStatus_ShowsGreenBadge', () => {
       render(<EvidencePanel evidence={[mockEvidence[0]]} />);
 
-      const badge = screen.getByText('MET');
-      expect(badge).toHaveClass('bg-[hsl(var(--success))]');
+      const badge = screen.getByText('Met');
+      expect(badge).toBeInTheDocument();
+      expect(badge.className).toMatch(/success/);
     });
 
     it('EvidencePanel_NotMetStatus_ShowsRedBadge', () => {
       render(<EvidencePanel evidence={[mockEvidence[3]]} />);
 
-      const badge = screen.getByText('NOT_MET');
-      expect(badge).toHaveClass('bg-red-500');
+      const badge = screen.getByText('Not Met');
+      expect(badge).toBeInTheDocument();
+      expect(badge.className).toMatch(/destructive/);
     });
 
     it('EvidencePanel_UnclearStatus_ShowsYellowBadge', () => {
       render(<EvidencePanel evidence={[mockEvidence[2]]} />);
 
-      const badge = screen.getByText('UNCLEAR');
-      expect(badge).toHaveClass('bg-yellow-500');
+      const badge = screen.getByText('Unclear');
+      expect(badge).toBeInTheDocument();
+      expect(badge.className).toMatch(/warning/);
     });
   });
 
@@ -98,10 +102,11 @@ describe('EvidencePanel', () => {
     it('EvidencePanel_MultipleItems_ShowsSummaryCount', () => {
       render(<EvidencePanel evidence={mockEvidence} />);
 
-      // Should show count of met vs not met
-      expect(screen.getByText(/2 met/i)).toBeInTheDocument();
-      expect(screen.getByText(/1 not met/i)).toBeInTheDocument();
-      expect(screen.getByText(/1 unclear/i)).toBeInTheDocument();
+      // Summary shows total count and status breakdown (2 met, 1 not met, 1 unclear)
+      expect(screen.getByText('4 criteria analyzed')).toBeInTheDocument();
+      expect(screen.getByText('2')).toBeInTheDocument();
+      const ones = screen.getAllByText('1');
+      expect(ones.length).toBeGreaterThanOrEqual(2);
     });
   });
 

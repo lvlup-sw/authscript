@@ -47,7 +47,7 @@ function formatCriterionId(id: string): string {
 export function EvidencePanel({ evidence, loading, className }: EvidencePanelProps) {
   if (loading) {
     return (
-      <div className={cn('space-y-4', className)}>
+      <div className={cn('space-y-4', className)} data-testid="evidence-skeleton">
         {[1, 2, 3].map(i => (
           <div key={i} className="p-4 rounded-xl border border-border/50 space-y-3">
             <div className="flex justify-between">
