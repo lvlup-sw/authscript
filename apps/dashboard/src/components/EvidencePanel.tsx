@@ -1,8 +1,8 @@
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { EvidenceItem } from '@authscript/types';
+import { CheckCircle2, XCircle, HelpCircle, FileText, Sparkles, TrendingUp } from 'lucide-react';
 
 interface EvidencePanelProps {
   evidence: EvidenceItem[];
@@ -10,122 +10,149 @@ interface EvidencePanelProps {
   className?: string;
 }
 
-/**
- * Get badge color class based on evidence status
- */
-function getStatusBadgeClass(status: EvidenceItem['status']): string {
-  switch (status) {
-    case 'MET':
-      return 'bg-[hsl(var(--success))] hover:bg-[hsl(var(--success)/0.8)]';
-    case 'NOT_MET':
-      return 'bg-red-500 hover:bg-red-600';
-    case 'UNCLEAR':
-      return 'bg-yellow-500 hover:bg-yellow-600';
-    default:
-      return 'bg-gray-500';
-  }
-}
+const statusConfig = {
+  MET: {
+    icon: CheckCircle2,
+    gradient: 'from-[hsl(160,84%,39%)] to-[hsl(172,66%,50%)]',
+    bg: 'bg-success/5',
+    border: 'border-success/20',
+    text: 'text-success',
+    badge: 'bg-success/10 text-success border-success/30',
+    label: 'Met',
+  },
+  NOT_MET: {
+    icon: XCircle,
+    gradient: 'from-[hsl(0,84%,60%)] to-[hsl(0,72%,50%)]',
+    bg: 'bg-destructive/5',
+    border: 'border-destructive/20',
+    text: 'text-destructive',
+    badge: 'bg-destructive/10 text-destructive border-destructive/30',
+    label: 'Not Met',
+  },
+  UNCLEAR: {
+    icon: HelpCircle,
+    gradient: 'from-[hsl(38,92%,50%)] to-[hsl(25,95%,53%)]',
+    bg: 'bg-warning/5',
+    border: 'border-warning/20',
+    text: 'text-warning',
+    badge: 'bg-warning/10 text-warning border-warning/30',
+    label: 'Unclear',
+  },
+};
 
-/**
- * Format confidence as percentage
- */
-function formatConfidence(confidence: number): string {
-  return `${Math.round(confidence * 100)}%`;
-}
-
-/**
- * Format criterion ID to display name
- */
 function formatCriterionId(id: string): string {
-  return id
-    .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+  return id.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
-/**
- * Evidence Panel Component
- * Displays extracted policy evidence with status badges and confidence scores
- */
 export function EvidencePanel({ evidence, loading, className }: EvidencePanelProps) {
-  // Loading state
   if (loading) {
     return (
-      <Card className={className} data-testid="evidence-skeleton">
-        <CardHeader>
-          <Skeleton className="h-6 w-32" />
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {[1, 2, 3].map(i => (
-            <Skeleton key={i} className="h-24 w-full" />
-          ))}
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Empty state
-  if (!evidence || evidence.length === 0) {
-    return (
-      <Card className={className}>
-        <CardHeader>
-          <CardTitle>Policy Evidence</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">No evidence extracted yet</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Calculate summary counts
-  const metCount = evidence.filter(e => e.status === 'MET').length;
-  const notMetCount = evidence.filter(e => e.status === 'NOT_MET').length;
-  const unclearCount = evidence.filter(e => e.status === 'UNCLEAR').length;
-
-  return (
-    <Card className={className}>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>Policy Evidence</CardTitle>
-          <div className="flex gap-2 text-sm">
-            <span className="text-[hsl(var(--success))]">{metCount} met</span>
-            <span className="text-muted-foreground">|</span>
-            <span className="text-red-600">{notMetCount} not met</span>
-            <span className="text-muted-foreground">|</span>
-            <span className="text-yellow-600">{unclearCount} unclear</span>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {evidence.map((item, index) => (
-          <div
-            key={`${item.criterionId}-${index}`}
-            className="border rounded-lg p-4 space-y-2"
-          >
-            {/* Header: Criterion + Status */}
-            <div className="flex items-center justify-between">
-              <h4 className="font-medium">
-                {formatCriterionId(item.criterionId)}
-                <span className="sr-only">{item.criterionId}</span>
-              </h4>
-              <Badge className={cn('text-white', getStatusBadgeClass(item.status))}>
-                {item.status}
-              </Badge>
+      <div className={cn('space-y-4', className)}>
+        {[1, 2, 3].map(i => (
+          <div key={i} className="p-4 rounded-xl border border-border/50 space-y-3">
+            <div className="flex justify-between">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-5 w-16" />
             </div>
-
-            {/* Evidence text */}
-            <p className="text-sm text-foreground">{item.evidence}</p>
-
-            {/* Footer: Source + Confidence */}
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Source: {item.source}</span>
-              <span>Confidence: {formatConfidence(item.confidence)}</span>
+            <Skeleton className="h-12 w-full" />
+            <div className="flex justify-between">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-20" />
             </div>
           </div>
         ))}
-      </CardContent>
-    </Card>
+      </div>
+    );
+  }
+
+  if (!evidence?.length) {
+    return (
+      <div className={cn('text-center py-12', className)}>
+        <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
+          <FileText className="h-7 w-7 text-muted-foreground" />
+        </div>
+        <p className="text-muted-foreground">No evidence extracted yet</p>
+      </div>
+    );
+  }
+
+  const counts = {
+    met: evidence.filter(e => e.status === 'MET').length,
+    notMet: evidence.filter(e => e.status === 'NOT_MET').length,
+    unclear: evidence.filter(e => e.status === 'UNCLEAR').length,
+  };
+
+  return (
+    <div className={cn('space-y-4', className)}>
+      {/* Summary */}
+      <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-primary/5 via-transparent to-accent/5 border border-border/50">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-lg bg-gradient-to-br from-[hsl(243,75%,59%)] to-[hsl(280,75%,55%)]">
+            <Sparkles className="h-4 w-4 text-white" />
+          </div>
+          <span className="font-medium">{evidence.length} criteria analyzed</span>
+        </div>
+        <div className="flex items-center gap-4 text-sm">
+          <span className="flex items-center gap-1.5 text-success">
+            <CheckCircle2 className="h-4 w-4" />
+            {counts.met}
+          </span>
+          <span className="flex items-center gap-1.5 text-destructive">
+            <XCircle className="h-4 w-4" />
+            {counts.notMet}
+          </span>
+          <span className="flex items-center gap-1.5 text-warning">
+            <HelpCircle className="h-4 w-4" />
+            {counts.unclear}
+          </span>
+        </div>
+      </div>
+
+      {/* Evidence Items */}
+      <div className="space-y-3">
+        {evidence.map((item, index) => {
+          const config = statusConfig[item.status] || statusConfig.UNCLEAR;
+          const Icon = config.icon;
+
+          return (
+            <div
+              key={`${item.criterionId}-${index}`}
+              className={cn(
+                'p-4 rounded-xl border transition-all hover:shadow-glow',
+                config.bg,
+                config.border
+              )}
+            >
+              <div className="flex items-start justify-between gap-4 mb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className={cn('p-1.5 rounded-lg bg-gradient-to-br', config.gradient)}>
+                    <Icon className="h-4 w-4 text-white" />
+                  </div>
+                  <h4 className="font-semibold text-sm">{formatCriterionId(item.criterionId)}</h4>
+                </div>
+                <Badge className={config.badge}>{config.label}</Badge>
+              </div>
+
+              <p className="text-sm text-foreground/80 mb-3 leading-relaxed">{item.evidence}</p>
+
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  <FileText className="h-3 w-3" />
+                  {item.source}
+                </span>
+                <span className={cn(
+                  'font-medium flex items-center gap-1',
+                  item.confidence >= 0.8 ? 'text-success' : item.confidence >= 0.5 ? 'text-warning' : 'text-destructive'
+                )}>
+                  <TrendingUp className="h-3 w-3" />
+                  {Math.round(item.confidence * 100)}%
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

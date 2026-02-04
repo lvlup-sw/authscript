@@ -1,149 +1,142 @@
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Download } from 'lucide-react';
+import { FileText, CheckCircle2, Sparkles, Edit3 } from 'lucide-react';
 
 interface FormPreviewProps {
   fieldMappings: Record<string, string>;
   loading?: boolean;
   showHighlights?: boolean;
-  onDownload?: () => void;
   className?: string;
 }
 
-/**
- * Format field name from snake_case to Title Case
- */
 function formatFieldName(name: string): string {
-  return name
-    .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+  return name.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
-/**
- * Check if field is a special long-form field
- */
 function isLongFormField(name: string): boolean {
-  return ['clinical_summary', 'justification', 'notes'].includes(name);
+  return ['clinical_summary', 'justification', 'notes', 'medical_necessity'].includes(name);
 }
 
-/**
- * Form Preview Component
- * Displays filled PA form fields with optional highlighting and download
- */
 export function FormPreview({
   fieldMappings,
   loading = false,
   showHighlights = true,
-  onDownload,
   className,
 }: FormPreviewProps) {
   const fields = Object.entries(fieldMappings);
-  const hasFields = fields.length > 0;
 
-  // Loading state
   if (loading) {
     return (
-      <Card className={className} data-testid="form-skeleton">
-        <CardHeader>
-          <Skeleton className="h-6 w-32" />
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {[1, 2, 3, 4, 5].map(i => (
+      <div className={cn('space-y-4', className)}>
+        <div className="grid grid-cols-2 gap-4">
+          {[1, 2, 3, 4, 5, 6].map(i => (
             <div key={i} className="space-y-2">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-12 w-full rounded-xl" />
             </div>
           ))}
-        </CardContent>
-      </Card>
+        </div>
+        <Skeleton className="h-28 w-full rounded-xl" />
+      </div>
     );
   }
 
-  // Empty state
-  if (!hasFields) {
+  if (!fields.length) {
     return (
-      <Card className={className}>
-        <CardHeader>
-          <CardTitle>PA Form Preview</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">No form data available</p>
-        </CardContent>
-      </Card>
+      <div className={cn('text-center py-12', className)}>
+        <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
+          <FileText className="h-7 w-7 text-muted-foreground" />
+        </div>
+        <p className="text-muted-foreground">No form data available</p>
+      </div>
     );
   }
 
-  // Separate regular fields from long-form fields
   const regularFields = fields.filter(([key]) => !isLongFormField(key));
   const longFormFields = fields.filter(([key]) => isLongFormField(key));
 
   return (
-    <Card className={className}>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>PA Form Preview</CardTitle>
-          {onDownload && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onDownload}
-              disabled={loading}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Download PDF
-            </Button>
-          )}
+    <div className={cn('space-y-6', className)}>
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-success/5 via-transparent to-accent/5 border border-success/20">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-lg bg-gradient-to-br from-[hsl(160,84%,39%)] to-[hsl(172,66%,50%)]">
+            <Sparkles className="h-4 w-4 text-white" />
+          </div>
+          <span className="font-medium">{fields.length} fields populated</span>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Regular fields in grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {regularFields.map(([key, value]) => (
-            <div
-              key={key}
-              data-field={key}
-              className={cn(
-                'p-3 rounded-lg border',
-                showHighlights && value && 'bg-[hsl(var(--success)/0.1)] border-[hsl(var(--success)/0.3)]'
-              )}
-            >
-              <p className="text-xs font-medium text-muted-foreground mb-1">
-                {formatFieldName(key)}
-              </p>
-              <p className="text-sm font-medium">{value || '—'}</p>
-            </div>
-          ))}
+        <div className="flex items-center gap-1.5 text-sm text-success">
+          <CheckCircle2 className="h-4 w-4" />
+          AI auto-filled
         </div>
+      </div>
 
-        {/* Long-form fields (clinical summary, etc.) */}
-        {longFormFields.map(([key, value]) => (
+      {/* Regular Fields */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {regularFields.map(([key, value]) => (
           <div
             key={key}
-            data-field={key}
             className={cn(
-              'p-4 rounded-lg border',
-              showHighlights && value && 'bg-[hsl(var(--success)/0.1)] border-[hsl(var(--success)/0.3)]'
+              'p-4 rounded-xl border transition-all group hover:shadow-glow',
+              showHighlights && value 
+                ? 'bg-success/5 border-success/20 hover:border-success/40' 
+                : 'bg-muted/30 border-border/50 hover:border-border'
             )}
           >
-            <p className="text-xs font-medium text-muted-foreground mb-2">
-              {formatFieldName(key)}
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                {formatFieldName(key)}
+              </p>
+              {showHighlights && value && (
+                <Edit3 className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+              )}
+            </div>
+            <p className="text-sm font-medium">
+              {value || <span className="text-muted-foreground italic">Not provided</span>}
             </p>
-            <p className="text-sm whitespace-pre-wrap">{value || '—'}</p>
           </div>
         ))}
+      </div>
 
-        {/* Highlight legend */}
-        {showHighlights && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground pt-4 border-t">
-            <div className="w-3 h-3 rounded bg-[hsl(var(--success)/0.3)] border border-[hsl(var(--success)/0.5)]" />
-            <span>AI-filled fields</span>
+      {/* Long Form Fields */}
+      {longFormFields.map(([key, value]) => (
+        <div
+          key={key}
+          className={cn(
+            'p-5 rounded-xl border transition-all group hover:shadow-glow',
+            showHighlights && value 
+              ? 'bg-success/5 border-success/20 hover:border-success/40' 
+              : 'bg-muted/30 border-border/50 hover:border-border'
+          )}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+              {formatFieldName(key)}
+            </p>
+            {showHighlights && value && (
+              <Edit3 className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+            )}
           </div>
-        )}
-      </CardContent>
-    </Card>
+          <p className="text-sm whitespace-pre-wrap leading-relaxed">
+            {value || <span className="text-muted-foreground italic">Not provided</span>}
+          </p>
+        </div>
+      ))}
+
+      {/* Legend */}
+      {showHighlights && (
+        <div className="flex items-center gap-6 pt-4 border-t border-border/50 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded-md bg-success/20 border border-success/40" />
+            <span>AI-populated</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded-md bg-muted border border-border" />
+            <span>Empty</span>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

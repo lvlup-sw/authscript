@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { Shield, AlertTriangle, TrendingUp } from 'lucide-react';
 
 interface ConfidenceMeterProps {
   score: number;
@@ -7,54 +8,41 @@ interface ConfidenceMeterProps {
   className?: string;
 }
 
-/**
- * Confidence thresholds for color coding
- */
-const CONFIDENCE_THRESHOLDS = {
-  high: 0.8,
-  medium: 0.5,
-} as const;
+const THRESHOLDS = { high: 0.8, medium: 0.5 };
 
-/**
- * Get color class based on confidence score
- */
-function getConfidenceColor(score: number): string {
-  if (score >= CONFIDENCE_THRESHOLDS.high) {
-    return 'bg-[hsl(var(--success))]';
-  }
-  if (score >= CONFIDENCE_THRESHOLDS.medium) {
-    return 'bg-yellow-500';
-  }
-  return 'bg-red-500';
-}
-
-/**
- * Get confidence label based on score
- */
-function getConfidenceLabel(score: number): string {
-  if (score >= CONFIDENCE_THRESHOLDS.high) {
-    return 'High Confidence';
-  }
-  if (score >= CONFIDENCE_THRESHOLDS.medium) {
-    return 'Medium Confidence';
-  }
-  return 'Low Confidence';
-}
-
-/**
- * Clamp value between 0 and 1
- */
 function clampScore(score: number): number {
-  if (typeof score !== 'number' || isNaN(score)) {
-    return 0;
-  }
+  if (typeof score !== 'number' || isNaN(score)) return 0;
   return Math.max(0, Math.min(1, score));
 }
 
-/**
- * Confidence Meter Component
- * Visual indicator of AI confidence score with color coding
- */
+function getConfig(score: number) {
+  if (score >= THRESHOLDS.high) {
+    return {
+      label: 'High Confidence',
+      icon: Shield,
+      gradient: 'from-[hsl(160,84%,39%)] to-[hsl(172,66%,50%)]',
+      text: 'text-success',
+      bg: 'bg-success/10',
+    };
+  }
+  if (score >= THRESHOLDS.medium) {
+    return {
+      label: 'Medium Confidence',
+      icon: TrendingUp,
+      gradient: 'from-[hsl(38,92%,50%)] to-[hsl(25,95%,53%)]',
+      text: 'text-warning',
+      bg: 'bg-warning/10',
+    };
+  }
+  return {
+    label: 'Low Confidence',
+    icon: AlertTriangle,
+    gradient: 'from-[hsl(0,84%,60%)] to-[hsl(0,72%,50%)]',
+    text: 'text-destructive',
+    bg: 'bg-destructive/10',
+  };
+}
+
 export function ConfidenceMeter({
   score,
   showLabel = false,
@@ -63,41 +51,57 @@ export function ConfidenceMeter({
 }: ConfidenceMeterProps) {
   const clampedScore = clampScore(score);
   const percentage = Math.round(clampedScore * 100);
-  const colorClass = getConfidenceColor(clampedScore);
-  const label = getConfidenceLabel(clampedScore);
+  const config = getConfig(clampedScore);
+  const Icon = config.icon;
 
   return (
-    <div className={cn('space-y-1', className)}>
-      {/* Label and percentage */}
-      <div className="flex items-center justify-between text-sm">
+    <div className={cn('space-y-4', className)}>
+      {/* Score Display */}
+      <div className="flex items-center justify-between">
         {showLabel && (
-          <span className="text-muted-foreground">{label}</span>
+          <div className={cn('inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium', config.bg, config.text)}>
+            <Icon className="h-3.5 w-3.5" />
+            {config.label}
+          </div>
         )}
-        <span className="font-medium">{percentage}%</span>
+        <div className="flex items-baseline gap-1 ml-auto">
+          <span className={cn('text-4xl font-bold tracking-tight', config.text)}>
+            {percentage}
+          </span>
+          <span className="text-lg text-muted-foreground">%</span>
+        </div>
       </div>
 
-      {/* Meter bar */}
+      {/* Progress Bar */}
       <div
         role="meter"
         aria-valuenow={percentage}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-label={`AI confidence: ${percentage}%`}
-        data-testid="confidence-container"
         className={cn(
-          'w-full bg-muted rounded-full overflow-hidden',
-          variant === 'compact' ? 'h-2' : 'h-4'
+          'w-full rounded-full overflow-hidden bg-muted',
+          variant === 'compact' ? 'h-2' : 'h-3'
         )}
       >
         <div
-          data-testid="confidence-fill"
           className={cn(
-            'h-full transition-all duration-300 rounded-full',
-            colorClass
+            'h-full rounded-full bg-gradient-to-r transition-all duration-700 ease-out',
+            config.gradient
           )}
           style={{ width: `${percentage}%` }}
         />
       </div>
+
+      {/* Threshold Markers */}
+      {variant === 'default' && (
+        <div className="flex justify-between text-[10px] text-muted-foreground">
+          <span>0%</span>
+          <span className="text-warning">50%</span>
+          <span className="text-success">80%</span>
+          <span>100%</span>
+        </div>
+      )}
     </div>
   );
 }
