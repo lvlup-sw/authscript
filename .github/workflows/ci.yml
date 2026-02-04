@@ -234,6 +234,9 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
+      - name: Install Linux native bindings
+        run: npm install @rollup/rollup-linux-x64-gnu lightningcss-linux-x64-gnu --no-save --legacy-peer-deps
+
       - name: Build shared packages
         run: |
           npm run build --workspace=shared/types --if-present
