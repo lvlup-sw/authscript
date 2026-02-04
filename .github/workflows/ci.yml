@@ -230,13 +230,10 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      - name: Install dependencies
+      - name: Install dependencies (fresh install for native bindings)
         run: |
-          npm ci --legacy-peer-deps
-          npm install @rollup/rollup-linux-x64-gnu lightningcss-linux-x64-gnu --no-save --legacy-peer-deps
-
-      - name: Rebuild native modules
-        run: npm rebuild lightningcss rollup
+          rm -f package-lock.json
+          npm install --legacy-peer-deps
 
       - name: Build shared packages
         run: |
