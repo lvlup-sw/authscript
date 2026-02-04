@@ -123,7 +123,7 @@ function WorkflowPipeline() {
 const LOW_CONFIDENCE_THRESHOLD = 70;
 
 // Request Row
-function RequestRow({ request, index = 0 }: { request: PARequest; index?: number }) {
+function RequestRow({ request, index = 0, now }: { request: PARequest; index?: number; now: number }) {
   const isReady = request.status === 'ready';
   const lowConfidence = isReady && request.confidence < LOW_CONFIDENCE_THRESHOLD;
   
@@ -133,7 +133,7 @@ function RequestRow({ request, index = 0 }: { request: PARequest; index?: number
                           'text-destructive bg-destructive/10';
   
   const getTimeAgo = (dateString: string) => {
-    const diff = Date.now() - new Date(dateString).getTime();
+    const diff = now - new Date(dateString).getTime();
     const minutes = Math.floor(diff / 60000);
     if (minutes < 60) return `${minutes} min ago`;
     const hours = Math.floor(minutes / 60);
@@ -237,6 +237,13 @@ function DashboardPage() {
   const [stats, setStats] = useState({ ready: 0, processing: 0, submitted: 0, attention: 0, total: 0 });
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [now, setNow] = useState(() => Date.now());
+
+  // Update "now" every minute for relative time display (avoids impure Date.now() during render)
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(id);
+  }, []);
 
   // Load data with initial loading state
   useEffect(() => {
@@ -466,7 +473,7 @@ function DashboardPage() {
               </div>
             ) : (
               filteredRequests.map((request, index) => (
-                <RequestRow key={request.id} request={request} index={index} />
+                <RequestRow key={request.id} request={request} index={index} now={now} />
               ))
             )}
           </div>

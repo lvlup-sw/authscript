@@ -48,7 +48,7 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [serviceType, setServiceType] = useState<'procedure' | 'medication'>('procedure');
   const [selectedService, setSelectedService] = useState<Procedure | Medication | null>(null);
-  const [_selectedDiagnosis, setSelectedDiagnosis] = useState<{ code: string; name: string } | null>(null);
+  const [, setSelectedDiagnosis] = useState<{ code: string; name: string } | null>(null);
   const [processingStep, setProcessingStep] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
 

@@ -45,4 +45,5 @@ function Badge({
   )
 }
 
+/* eslint-disable-next-line react-refresh/only-export-components -- badgeVariants is a CVA config used with Badge */
 export { Badge, badgeVariants }
