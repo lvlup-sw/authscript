@@ -29,4 +29,14 @@ public sealed class EpicFhirOptions
     /// Token endpoint for client credentials flow.
     /// </summary>
     public string? TokenEndpoint { get; init; }
+
+    /// <summary>
+    /// Path to the private key file for JWT signing.
+    /// </summary>
+    public string? PrivateKeyPath { get; init; }
+
+    /// <summary>
+    /// Signing algorithm for JWT (RS256, RS384, RS512). Defaults to RS384.
+    /// </summary>
+    public string SigningAlgorithm { get; init; } = "RS384";
 }

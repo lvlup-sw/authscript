@@ -27,10 +27,9 @@ public sealed class FhirClient : IFhirClient
     /// <inheritdoc />
     public async Task<PatientInfo?> GetPatientAsync(
         string patientId,
-        string accessToken,
         CancellationToken cancellationToken = default)
     {
-        var result = await _httpClient.ReadAsync("Patient", patientId, accessToken, cancellationToken);
+        var result = await _httpClient.ReadAsync("Patient", patientId, cancellationToken);
 
         if (result.IsFailure)
         {
@@ -45,8 +44,8 @@ public sealed class FhirClient : IFhirClient
         return new PatientInfo
         {
             Id = patientId,
-            GivenName = ExtractName(json, "given"),
-            FamilyName = ExtractName(json, "family"),
+            GivenName = ExtractGivenName(json),
+            FamilyName = ExtractFamilyName(json),
             BirthDate = ExtractDate(json, "birthDate"),
             Gender = json.TryGetProperty("gender", out var gender) ? gender.GetString() : null
         };
@@ -55,14 +54,11 @@ public sealed class FhirClient : IFhirClient
     /// <inheritdoc />
     public async Task<List<ConditionInfo>> SearchConditionsAsync(
         string patientId,
-        string accessToken,
         CancellationToken cancellationToken = default)
     {
-        var results = new List<ConditionInfo>();
         var result = await _httpClient.SearchAsync(
             "Condition",
             $"patient={patientId}&clinical-status=active",
-            accessToken,
             cancellationToken);
 
         if (result.IsFailure)
@@ -71,45 +67,21 @@ public sealed class FhirClient : IFhirClient
                 "Failed to search conditions for {PatientId}: {Error}",
                 patientId,
                 result.Error?.Message);
-            return results;
+            return [];
         }
 
-        var json = result.Value!;
-        if (!json.TryGetProperty("entry", out var entries)) return results;
-        
-        foreach (var entry in entries.EnumerateArray())
-        {
-            if (!entry.TryGetProperty("resource", out var resource)) continue;
-            
-            var coding = ExtractFirstCoding(resource, "code");
-            if (coding is not null)
-            {
-                results.Add(new ConditionInfo
-                {
-                    Id = resource.TryGetProperty("id", out var id) ? id.GetString()! : Guid.NewGuid().ToString(),
-                    Code = coding.Value.code,
-                    CodeSystem = coding.Value.system,
-                    Display = coding.Value.display,
-                    ClinicalStatus = ExtractClinicalStatus(resource)
-                });
-            }
-        }
-
-        return results;
+        return ExtractResourcesFromBundle(result.Value!, MapCondition);
     }
 
     /// <inheritdoc />
     public async Task<List<ObservationInfo>> SearchObservationsAsync(
         string patientId,
         DateOnly since,
-        string accessToken,
         CancellationToken cancellationToken = default)
     {
-        var results = new List<ObservationInfo>();
         var result = await _httpClient.SearchAsync(
             "Observation",
             $"patient={patientId}&category=laboratory&date=ge{since:yyyy-MM-dd}",
-            accessToken,
             cancellationToken);
 
         if (result.IsFailure)
@@ -118,46 +90,21 @@ public sealed class FhirClient : IFhirClient
                 "Failed to search observations for {PatientId}: {Error}",
                 patientId,
                 result.Error?.Message);
-            return results;
+            return [];
         }
 
-        var json = result.Value!;
-        if (!json.TryGetProperty("entry", out var entries)) return results;
-        
-        foreach (var entry in entries.EnumerateArray())
-        {
-            if (!entry.TryGetProperty("resource", out var resource)) continue;
-            
-            var coding = ExtractFirstCoding(resource, "code");
-            if (coding is not null)
-            {
-                results.Add(new ObservationInfo
-                {
-                    Id = resource.TryGetProperty("id", out var id) ? id.GetString()! : Guid.NewGuid().ToString(),
-                    Code = coding.Value.code,
-                    CodeSystem = coding.Value.system,
-                    Display = coding.Value.display,
-                    Value = ExtractObservationValue(resource),
-                    Unit = ExtractObservationUnit(resource)
-                });
-            }
-        }
-
-        return results;
+        return ExtractResourcesFromBundle(result.Value!, MapObservation);
     }
 
     /// <inheritdoc />
     public async Task<List<ProcedureInfo>> SearchProceduresAsync(
         string patientId,
         DateOnly since,
-        string accessToken,
         CancellationToken cancellationToken = default)
     {
-        var results = new List<ProcedureInfo>();
         var result = await _httpClient.SearchAsync(
             "Procedure",
             $"patient={patientId}&date=ge{since:yyyy-MM-dd}",
-            accessToken,
             cancellationToken);
 
         if (result.IsFailure)
@@ -166,44 +113,20 @@ public sealed class FhirClient : IFhirClient
                 "Failed to search procedures for {PatientId}: {Error}",
                 patientId,
                 result.Error?.Message);
-            return results;
+            return [];
         }
 
-        var json = result.Value!;
-        if (!json.TryGetProperty("entry", out var entries)) return results;
-        
-        foreach (var entry in entries.EnumerateArray())
-        {
-            if (!entry.TryGetProperty("resource", out var resource)) continue;
-            
-            var coding = ExtractFirstCoding(resource, "code");
-            if (coding is not null)
-            {
-                results.Add(new ProcedureInfo
-                {
-                    Id = resource.TryGetProperty("id", out var id) ? id.GetString()! : Guid.NewGuid().ToString(),
-                    Code = coding.Value.code,
-                    CodeSystem = coding.Value.system,
-                    Display = coding.Value.display,
-                    Status = resource.TryGetProperty("status", out var status) ? status.GetString() : null
-                });
-            }
-        }
-
-        return results;
+        return ExtractResourcesFromBundle(result.Value!, MapProcedure);
     }
 
     /// <inheritdoc />
     public async Task<List<DocumentInfo>> SearchDocumentsAsync(
         string patientId,
-        string accessToken,
         CancellationToken cancellationToken = default)
     {
-        var results = new List<DocumentInfo>();
         var result = await _httpClient.SearchAsync(
             "DocumentReference",
             $"patient={patientId}&status=current",
-            accessToken,
             cancellationToken);
 
         if (result.IsFailure)
@@ -212,70 +135,199 @@ public sealed class FhirClient : IFhirClient
                 "Failed to search documents for {PatientId}: {Error}",
                 patientId,
                 result.Error?.Message);
-            return results;
+            return [];
         }
 
-        var json = result.Value!;
-        if (!json.TryGetProperty("entry", out var entries)) return results;
-        
-        foreach (var entry in entries.EnumerateArray())
-        {
-            if (!entry.TryGetProperty("resource", out var resource)) continue;
-            
-            var docId = resource.TryGetProperty("id", out var id) ? id.GetString()! : Guid.NewGuid().ToString();
-            var type = ExtractFirstCoding(resource, "type");
-
-            results.Add(new DocumentInfo
-            {
-                Id = docId,
-                Type = type?.display ?? type?.code ?? "Unknown",
-                ContentType = ExtractContentType(resource),
-                Title = ExtractDocumentTitle(resource)
-            });
-        }
-
-        return results;
+        return ExtractResourcesFromBundle(result.Value!, MapDocument);
     }
 
     /// <inheritdoc />
     public async Task<byte[]?> GetDocumentContentAsync(
         string documentId,
-        string accessToken,
         CancellationToken cancellationToken = default)
     {
-        var result = await _httpClient.ReadBinaryAsync(documentId, accessToken, cancellationToken);
+        var result = await _httpClient.ReadBinaryAsync(documentId, cancellationToken);
 
         if (!result.IsFailure) return result.Value;
-        
+
         _logger.LogWarning(
             "Failed to fetch document content {DocumentId}: {Error}",
             documentId,
             result.Error?.Message);
-        
-        return null;
 
+        return null;
     }
 
-    private static string? ExtractName(JsonElement json, string part)
+    /// <inheritdoc />
+    public async Task<List<ServiceRequestInfo>> SearchServiceRequestsAsync(
+        string patientId,
+        string? encounterId,
+        CancellationToken cancellationToken = default)
+    {
+        var query = $"patient={patientId}";
+        if (!string.IsNullOrEmpty(encounterId))
+        {
+            query += $"&encounter={encounterId}";
+        }
+
+        var result = await _httpClient.SearchAsync(
+            "ServiceRequest",
+            query,
+            cancellationToken);
+
+        if (result.IsFailure)
+        {
+            _logger.LogWarning(
+                "Failed to search service requests for {PatientId}: {Error}",
+                patientId,
+                result.Error?.Message);
+            return [];
+        }
+
+        return ExtractResourcesFromBundle(result.Value!, MapServiceRequest);
+    }
+
+    #region Bundle Extraction
+
+    private static List<T> ExtractResourcesFromBundle<T>(
+        JsonElement bundle,
+        Func<JsonElement, T?> resourceMapper) where T : class
+    {
+        var results = new List<T>();
+
+        if (!bundle.TryGetProperty("entry", out var entries)) return results;
+
+        foreach (var entry in entries.EnumerateArray())
+        {
+            if (!entry.TryGetProperty("resource", out var resource)) continue;
+
+            var mapped = resourceMapper(resource);
+            if (mapped is not null)
+            {
+                results.Add(mapped);
+            }
+        }
+
+        return results;
+    }
+
+    private static ConditionInfo? MapCondition(JsonElement resource)
+    {
+        var coding = ExtractFirstCoding(resource, "code");
+        if (coding is null) return null;
+
+        return new ConditionInfo
+        {
+            Id = resource.TryGetProperty("id", out var id) ? id.GetString()! : Guid.NewGuid().ToString(),
+            Code = coding.Value.code,
+            CodeSystem = coding.Value.system,
+            Display = coding.Value.display,
+            ClinicalStatus = ExtractClinicalStatus(resource)
+        };
+    }
+
+    private static ObservationInfo? MapObservation(JsonElement resource)
+    {
+        var coding = ExtractFirstCoding(resource, "code");
+        if (coding is null) return null;
+
+        return new ObservationInfo
+        {
+            Id = resource.TryGetProperty("id", out var id) ? id.GetString()! : Guid.NewGuid().ToString(),
+            Code = coding.Value.code,
+            CodeSystem = coding.Value.system,
+            Display = coding.Value.display,
+            Value = ExtractObservationValue(resource),
+            Unit = ExtractObservationUnit(resource)
+        };
+    }
+
+    private static ProcedureInfo? MapProcedure(JsonElement resource)
+    {
+        var coding = ExtractFirstCoding(resource, "code");
+        if (coding is null) return null;
+
+        return new ProcedureInfo
+        {
+            Id = resource.TryGetProperty("id", out var id) ? id.GetString()! : Guid.NewGuid().ToString(),
+            Code = coding.Value.code,
+            CodeSystem = coding.Value.system,
+            Display = coding.Value.display,
+            Status = resource.TryGetProperty("status", out var status) ? status.GetString() : null
+        };
+    }
+
+    private static DocumentInfo MapDocument(JsonElement resource)
+    {
+        var docId = resource.TryGetProperty("id", out var id) ? id.GetString()! : Guid.NewGuid().ToString();
+        var type = ExtractFirstCoding(resource, "type");
+
+        return new DocumentInfo
+        {
+            Id = docId,
+            Type = type?.display ?? type?.code ?? "Unknown",
+            ContentType = ExtractContentType(resource),
+            Title = ExtractDocumentTitle(resource)
+        };
+    }
+
+    private static ServiceRequestInfo? MapServiceRequest(JsonElement resource)
+    {
+        var code = ExtractCodeableConcept(resource, "code");
+        if (code is null) return null;
+
+        var resourceId = resource.TryGetProperty("id", out var id) ? id.GetString()! : Guid.NewGuid().ToString();
+        var rawStatus = resource.TryGetProperty("status", out var s) ? s.GetString() : null;
+        var status = string.IsNullOrWhiteSpace(rawStatus) ? "unknown" : rawStatus;
+
+        return new ServiceRequestInfo
+        {
+            Id = resourceId,
+            Status = status,
+            Code = code,
+            EncounterId = ExtractEncounterId(resource),
+            AuthoredOn = ExtractDateTimeOffset(resource, "authoredOn")
+        };
+    }
+
+    #endregion
+
+    #region Name Extraction
+
+    private static string? ExtractGivenName(JsonElement json)
     {
         if (!json.TryGetProperty("name", out var names)) return null;
 
         foreach (var name in names.EnumerateArray())
         {
-            switch (part)
+            if (name.TryGetProperty("given", out var given))
             {
-                case "given" when name.TryGetProperty("given", out var given):
-                {
-                    var givenNames = given.EnumerateArray().Select(g => g.GetString() ?? "").ToList();
-                    return string.Join(" ", givenNames);
-                }
-                case "family" when name.TryGetProperty("family", out var family):
-                    return family.GetString();
+                var givenNames = given.EnumerateArray().Select(g => g.GetString() ?? "").ToList();
+                return string.Join(" ", givenNames);
             }
         }
 
         return null;
     }
+
+    private static string? ExtractFamilyName(JsonElement json)
+    {
+        if (!json.TryGetProperty("name", out var names)) return null;
+
+        foreach (var name in names.EnumerateArray())
+        {
+            if (name.TryGetProperty("family", out var family))
+            {
+                return family.GetString();
+            }
+        }
+
+        return null;
+    }
+
+    #endregion
+
+    #region JSON Property Extraction
 
     private static DateOnly? ExtractDate(JsonElement json, string property)
     {
@@ -315,9 +367,9 @@ public sealed class FhirClient : IFhirClient
         {
             return quantity.TryGetProperty("value", out var v) ? v.ToString() : null;
         }
-        
-        return resource.TryGetProperty("valueString", out var str) 
-            ? str.GetString() 
+
+        return resource.TryGetProperty("valueString", out var str)
+            ? str.GetString()
             : null;
     }
 
@@ -330,10 +382,11 @@ public sealed class FhirClient : IFhirClient
     private static string? ExtractContentType(JsonElement resource)
     {
         if (!resource.TryGetProperty("content", out var contents)) return null;
+
         foreach (var content in contents.EnumerateArray())
         {
             if (!content.TryGetProperty("attachment", out var attachment)) continue;
-            
+
             if (attachment.TryGetProperty("contentType", out var ct))
             {
                 return ct.GetString();
@@ -345,10 +398,11 @@ public sealed class FhirClient : IFhirClient
     private static string? ExtractDocumentTitle(JsonElement resource)
     {
         if (!resource.TryGetProperty("content", out var contents)) return null;
+
         foreach (var content in contents.EnumerateArray())
         {
             if (!content.TryGetProperty("attachment", out var attachment)) continue;
-            
+
             if (attachment.TryGetProperty("title", out var title))
             {
                 return title.GetString();
@@ -356,4 +410,59 @@ public sealed class FhirClient : IFhirClient
         }
         return null;
     }
+
+    private static CodeableConcept? ExtractCodeableConcept(JsonElement resource, string property)
+    {
+        if (!resource.TryGetProperty(property, out var codeableConcept)) return null;
+
+        var codings = new List<Coding>();
+        if (codeableConcept.TryGetProperty("coding", out var codingsArray) &&
+            codingsArray.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var coding in codingsArray.EnumerateArray())
+            {
+                codings.Add(new Coding
+                {
+                    System = coding.TryGetProperty("system", out var sys) ? sys.GetString() : null,
+                    Code = coding.TryGetProperty("code", out var code) ? code.GetString() : null,
+                    Display = coding.TryGetProperty("display", out var display) ? display.GetString() : null
+                });
+            }
+        }
+
+        return new CodeableConcept
+        {
+            Coding = codings.Count > 0 ? codings : null,
+            Text = codeableConcept.TryGetProperty("text", out var text) ? text.GetString() : null
+        };
+    }
+
+    private static string? ExtractEncounterId(JsonElement resource)
+    {
+        if (!resource.TryGetProperty("encounter", out var encounter)) return null;
+        if (!encounter.TryGetProperty("reference", out var reference)) return null;
+
+        var refStr = reference.GetString();
+        if (string.IsNullOrEmpty(refStr)) return null;
+
+        // Parse "Encounter/{id}" format
+        const string prefix = "Encounter/";
+        if (refStr.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return refStr[prefix.Length..];
+        }
+
+        return null;
+    }
+
+    private static DateTimeOffset? ExtractDateTimeOffset(JsonElement resource, string property)
+    {
+        if (!resource.TryGetProperty(property, out var value)) return null;
+        var str = value.GetString();
+        if (string.IsNullOrEmpty(str)) return null;
+
+        return DateTimeOffset.TryParse(str, out var result) ? result : null;
+    }
+
+    #endregion
 }

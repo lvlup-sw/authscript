@@ -42,6 +42,12 @@ public sealed class CachingIntelligenceClient : IIntelligenceClient
         string procedureCode,
         CancellationToken cancellationToken = default)
     {
+        // Pass-through when caching is disabled
+        if (!_settings.Enabled)
+        {
+            return await _inner.AnalyzeAsync(clinicalBundle, procedureCode, cancellationToken);
+        }
+
         var cacheKey = BuildCacheKey(clinicalBundle.PatientId, procedureCode);
 
         var result = await _cache.GetOrCreateAsync(

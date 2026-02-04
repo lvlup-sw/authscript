@@ -75,18 +75,30 @@ The Aspire Dashboard opens automatically at https://localhost:15888 showing all 
 
 ## Schema Synchronization
 
-**Before creating a PR**, ensure TypeScript types are in sync with backend schemas:
+Regenerate types after modifying API contracts:
 
 ```bash
 npm run sync:schemas
 ```
 
-This regenerates:
-- TypeScript types from OpenAPI specs
-- Zod validation schemas
-- React Query hooks
+This generates:
+- **TypeScript** — React Query hooks, Zod schemas (`shared/types/`, `shared/validation/`)
+- **Python** — Pydantic models from Gateway spec (`apps/intelligence/src/models/generated/`)
+- **C#** — Records from Intelligence spec (`apps/gateway/Gateway.API/Models/Generated/`)
 
-If you modified any API contracts in the Gateway or Intelligence services, always run schema sync and commit the generated files.
+CI runs schema sync and fails if generated files drift from committed versions.
+
+### Gateway OpenAPI Extraction
+
+Gateway uses runtime OpenAPI generation. To extract locally:
+
+```bash
+# Start Gateway, then fetch spec
+curl http://localhost:5000/openapi/v1.json > apps/gateway/openapi.json
+npm run sync:schemas
+```
+
+See [shared/schemas/README.md](shared/schemas/README.md) for contract ownership.
 
 ## Services
 

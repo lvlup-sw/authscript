@@ -123,9 +123,4 @@ public sealed record SubmitToFhirRequest
     /// Gets the optional FHIR Encounter resource ID for context.
     /// </summary>
     public string? EncounterId { get; init; }
-
-    /// <summary>
-    /// Gets the OAuth access token for FHIR authentication.
-    /// </summary>
-    public required string AccessToken { get; init; }
 }

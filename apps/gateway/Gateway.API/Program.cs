@@ -4,57 +4,49 @@
 // ===========================================================================
 
 using Gateway.API;
+using Gateway.API.Data;
 using Gateway.API.Endpoints;
+using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // ---------------------------------------------------------------------------
+// Infrastructure (Aspire)
+// ---------------------------------------------------------------------------
+builder.AddRedisClient("redis");
+builder.AddDatabaseMigration<GatewayDbContext>("authscript");
+
+// ---------------------------------------------------------------------------
 // Service Registration
 // ---------------------------------------------------------------------------
-builder.Services.AddOpenApi();
-
-// Health checks
-builder.Services.AddHealthChecks();
-
-// Redis cache
-builder.AddRedisClient("redis");
-
-// PostgreSQL
-builder.AddNpgsqlDataSource("authscript");
-
-// Gateway services
-builder.Services.AddGatewayServices(builder.Configuration);
-builder.Services.AddFhirClients(builder.Configuration);
-builder.Services.AddIntelligenceClient(builder.Configuration);
-
-// CORS for dashboard
-builder.Services.AddCors(options =>
-{
-    options.AddDefaultPolicy(policy =>
-    {
-        policy
-            .WithOrigins("http://localhost:5173")
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
-    });
-});
+builder.Services
+    .AddApiDocumentation()
+    .AddHealthMonitoring()
+    .AddCorsPolicy()
+    .AddApiKeyAuthentication()
+    .AddAthenaServices()      // Must be before AddFhirClients (registers AthenaOptions)
+    .AddGatewayServices()
+    .AddGatewayPersistence()  // PostgreSQL-backed stores (must be after AddGatewayServices)
+    .AddFhirClients()         // Uses IOptions<AthenaOptions> for base URL
+    .AddIntelligenceClient()
+    .AddNotificationServices();
 
 var app = builder.Build();
 
 // ---------------------------------------------------------------------------
 // Middleware Pipeline
 // ---------------------------------------------------------------------------
-if (app.Environment.IsDevelopment())
+app.MapOpenApi();
+app.MapScalarApiReference(options =>
 {
-    app.MapOpenApi();
-    app.MapScalarApiReference(options =>
+    options.Title = "AuthScript Gateway API";
+    options.Theme = ScalarTheme.DeepSpace;
+    options.Authentication = new ScalarAuthenticationOptions
     {
-        options.Title = "AuthScript Gateway API";
-        options.Theme = ScalarTheme.DeepSpace;
-    });
-}
+        PreferredSecuritySchemes = ["ApiKey"],
+    };
+});
 
 app.UseCors();
 app.UseHealthChecks("/health");
@@ -63,5 +55,10 @@ app.UseHealthChecks("/health");
 // Endpoint Mapping
 // ---------------------------------------------------------------------------
 app.MapAnalysisEndpoints();
+app.MapFhirEndpoints();
+app.MapSseEndpoints();
+app.MapSubmitEndpoints();
+app.MapWorkItemEndpoints();
+app.MapPatientEndpoints();
 
 app.Run();

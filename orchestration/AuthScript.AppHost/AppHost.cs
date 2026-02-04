@@ -9,7 +9,11 @@ var builder = DistributedApplication.CreateBuilder(args);
 // Secrets (configure via dotnet user-secrets)
 // LLM Provider: Set LLM_PROVIDER to "github", "azure", "gemini", or "openai"
 // ---------------------------------------------------------------------------
-var epicClientId = builder.AddParameter("epic-client-id", secret: true);
+
+// Athena API (for CSE 589 demo)
+var athenaClientId = builder.AddParameter("athena-client-id", secret: true);
+var athenaClientSecret = builder.AddParameter("athena-client-secret", secret: true);
+var athenaPracticeId = builder.AddParameter("athena-practice-id");
 
 // GitHub Models (default - free with GitHub account)
 var githubToken = builder.AddParameter("github-token", secret: true);
@@ -65,8 +69,13 @@ var gateway = builder
     .WaitFor(intelligence)
     .WithHttpEndpoint(port: 5000, name: "gateway-api")
     .WithExternalHttpEndpoints()
-    .WithEnvironment("Epic__ClientId", epicClientId)
-    .WithEnvironment("Epic__FhirBaseUrl", "https://fhir.epic.com/interconnect-fhir-oauth/api/FHIR/R4")
+    // Athena configuration
+    .WithEnvironment("Athena__ClientId", athenaClientId)
+    .WithEnvironment("Athena__ClientSecret", athenaClientSecret)
+    .WithEnvironment("Athena__FhirBaseUrl", "https://api.preview.platform.athenahealth.com/fhir/r4/")
+    .WithEnvironment("Athena__TokenEndpoint", "https://api.preview.platform.athenahealth.com/oauth2/v1/token")
+    .WithEnvironment("Athena__PracticeId", athenaPracticeId)
+    // Intelligence service
     .WithEnvironment("Intelligence__BaseUrl", intelligence.GetEndpoint("intelligence-api"))
     .WithEnvironment("Demo__EnableCaching", "true");
 

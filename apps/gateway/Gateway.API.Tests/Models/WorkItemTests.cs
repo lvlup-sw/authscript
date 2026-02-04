@@ -1,0 +1,101 @@
+namespace Gateway.API.Tests.Models;
+
+using Gateway.API.Models;
+
+public class WorkItemTests
+{
+    [Test]
+    public async Task WorkItem_RequiredProperties_InitializesCorrectly()
+    {
+        // Arrange
+        var createdAt = DateTimeOffset.UtcNow;
+
+        // Act
+        var workItem = new WorkItem
+        {
+            Id = "wi-123",
+            EncounterId = "enc-456",
+            PatientId = "pat-789",
+            ServiceRequestId = "sr-101",
+            Status = WorkItemStatus.ReadyForReview,
+            ProcedureCode = "72148",
+            CreatedAt = createdAt
+        };
+
+        // Assert
+        await Assert.That(workItem.Id).IsEqualTo("wi-123");
+        await Assert.That(workItem.EncounterId).IsEqualTo("enc-456");
+        await Assert.That(workItem.PatientId).IsEqualTo("pat-789");
+        await Assert.That(workItem.ServiceRequestId).IsEqualTo("sr-101");
+        await Assert.That(workItem.Status).IsEqualTo(WorkItemStatus.ReadyForReview);
+        await Assert.That(workItem.ProcedureCode).IsEqualTo("72148");
+        await Assert.That(workItem.CreatedAt).IsEqualTo(createdAt);
+        await Assert.That(workItem.UpdatedAt).IsNull();
+    }
+
+    [Test]
+    public async Task WorkItem_OptionalProperties_CanBeSet()
+    {
+        // Arrange
+        var createdAt = DateTimeOffset.UtcNow;
+        var updatedAt = DateTimeOffset.UtcNow.AddMinutes(5);
+
+        // Act
+        var workItem = new WorkItem
+        {
+            Id = "wi-123",
+            EncounterId = "enc-456",
+            PatientId = "pat-789",
+            ServiceRequestId = "sr-101",
+            Status = WorkItemStatus.MissingData,
+            ProcedureCode = "72148",
+            CreatedAt = createdAt,
+            UpdatedAt = updatedAt
+        };
+
+        // Assert
+        await Assert.That(workItem.UpdatedAt).IsEqualTo(updatedAt);
+        await Assert.That(workItem.Status).IsEqualTo(WorkItemStatus.MissingData);
+    }
+
+    [Test]
+    public async Task WorkItem_CanBeCreatedWithoutServiceRequestInfo()
+    {
+        // Arrange & Act - Create with null optional fields (populated after analysis)
+        var workItem = new WorkItem
+        {
+            Id = "wi-123",
+            EncounterId = "enc-456",
+            PatientId = "pat-789",
+            ServiceRequestId = null, // Optional: populated after analysis
+            Status = WorkItemStatus.ReadyForReview,
+            ProcedureCode = null, // Optional: populated after analysis
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+
+        // Assert
+        await Assert.That(workItem.ServiceRequestId).IsNull();
+        await Assert.That(workItem.ProcedureCode).IsNull();
+        await Assert.That(workItem.Id).IsEqualTo("wi-123");
+    }
+
+    [Test]
+    public async Task WorkItem_CanBeCreatedWithServiceRequestInfo()
+    {
+        // Arrange & Act - Create with all fields
+        var workItem = new WorkItem
+        {
+            Id = "wi-123",
+            EncounterId = "enc-456",
+            PatientId = "pat-789",
+            ServiceRequestId = "sr-abc",
+            Status = WorkItemStatus.ReadyForReview,
+            ProcedureCode = "99213",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+
+        // Assert
+        await Assert.That(workItem.ServiceRequestId).IsEqualTo("sr-abc");
+        await Assert.That(workItem.ProcedureCode).IsEqualTo("99213");
+    }
+}
