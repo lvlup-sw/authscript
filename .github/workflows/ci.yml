@@ -229,10 +229,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
 
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: |
+          npm ci --legacy-peer-deps
+          npm install @rollup/rollup-linux-x64-gnu lightningcss-linux-x64-gnu --no-save --legacy-peer-deps
+
+      - name: Rebuild native modules
+        run: npm rebuild lightningcss rollup
 
       - name: Build shared packages
         run: |
