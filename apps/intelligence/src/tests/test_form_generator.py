@@ -1,6 +1,7 @@
 """Tests for form generator stub implementation."""
 
 from datetime import date
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -53,10 +54,12 @@ async def test_generate_form_data_returns_approve(
     sample_policy: dict,
 ) -> None:
     """Stub should return APPROVE recommendation."""
-    result = await generate_form_data(sample_bundle, sample_evidence, sample_policy)
+    mock_llm = AsyncMock(return_value="Patient requires this procedure.")
+    with patch("src.reasoning.form_generator.chat_completion", mock_llm):
+        result = await generate_form_data(sample_bundle, sample_evidence, sample_policy)
 
     assert result.recommendation == "APPROVE"
-    assert result.confidence_score == 0.95
+    assert result.confidence_score == 0.9
 
 
 @pytest.mark.asyncio

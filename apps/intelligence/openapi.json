@@ -12,7 +12,7 @@
           "Analysis"
         ],
         "summary": "Analyze",
-        "description": "Analyze clinical data and generate PA form response.\n\nSTUB IMPLEMENTATION: Always returns APPROVE with 1.0 confidence.\nProduction version would evaluate clinical data against payer policies.",
+        "description": "Analyze clinical data and generate PA form response.\n\nUses LLM to extract evidence from clinical data and generate PA form.",
         "operationId": "analyze_analyze_post",
         "requestBody": {
           "content": {
@@ -54,7 +54,7 @@
           "Analysis"
         ],
         "summary": "Analyze With Documents",
-        "description": "Analyze clinical data with attached PDF documents.\n\nSTUB IMPLEMENTATION: Documents are acknowledged but not processed.\nProduction version would extract text and analyze documents.",
+        "description": "Analyze clinical data with attached PDF documents.\n\nParses PDF documents and includes extracted text in the analysis.",
         "operationId": "analyze_with_documents_analyze_with_documents_post",
         "parameters": [
           {
