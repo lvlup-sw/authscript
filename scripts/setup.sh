@@ -102,6 +102,27 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# OpenAI (optional - use placeholder if not configured)
+# ---------------------------------------------------------------------------
+OPENAI_KEY="${OPENAI_API_KEY:-not-configured}"
+OPENAI_ORG="${OPENAI_ORG_ID:-not-configured}"
+
+dotnet user-secrets set "Parameters:openai-api-key" "$OPENAI_KEY"
+dotnet user-secrets set "Parameters:openai-org-id" "$OPENAI_ORG"
+
+if [[ "$OPENAI_KEY" != "not-configured" ]]; then
+    info "Set openai-api-key from environment"
+else
+    info "Set openai-api-key placeholder (optional)"
+fi
+
+if [[ "$OPENAI_ORG" != "not-configured" ]]; then
+    info "Set openai-org-id from environment"
+else
+    info "Set openai-org-id placeholder (optional)"
+fi
+
+# ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 echo ""
@@ -117,7 +138,7 @@ while read -r line; do
     else
         echo "  $key = (not configured)"
     fi
-done < <(dotnet user-secrets list | grep -E "llm-provider|github-token|azure-openai|google-api" || true)
+done < <(dotnet user-secrets list | grep -E "llm-provider|github-token|azure-openai|google-api|openai-api|openai-org" || true)
 
 echo ""
 info "To switch LLM providers:"
@@ -130,3 +151,6 @@ echo "  LLM_PROVIDER=azure AZURE_OPENAI_API_KEY=... AZURE_OPENAI_ENDPOINT=https:
 echo ""
 echo "  # Google Gemini"
 echo "  LLM_PROVIDER=gemini GOOGLE_API_KEY=... ./scripts/setup.sh"
+echo ""
+echo "  # OpenAI"
+echo "  LLM_PROVIDER=openai OPENAI_API_KEY=... OPENAI_ORG_ID=... ./scripts/setup.sh"

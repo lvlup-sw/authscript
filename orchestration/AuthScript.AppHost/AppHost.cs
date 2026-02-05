@@ -25,6 +25,10 @@ var azureOpenAiEndpoint = builder.AddParameter("azure-openai-endpoint");
 // Google Gemini (alternative)
 var googleApiKey = builder.AddParameter("google-api-key", secret: true);
 
+// OpenAI (alternative)
+var openaiApiKey = builder.AddParameter("openai-api-key", secret: true);
+var openaiOrgId = builder.AddParameter("openai-org-id", secret: true);
+
 // LLM Provider selection (github, azure, gemini, or openai)
 var llmProvider = builder.AddParameter("llm-provider");
 
@@ -53,6 +57,8 @@ var intelligence = builder
     .WithEnvironment("AZURE_OPENAI_API_KEY", azureOpenAiKey)
     .WithEnvironment("AZURE_OPENAI_ENDPOINT", azureOpenAiEndpoint)
     .WithEnvironment("GOOGLE_API_KEY", googleApiKey)
+    .WithEnvironment("OPENAI_API_KEY", openaiApiKey)
+    .WithEnvironment("OPENAI_ORG_ID", openaiOrgId)
     .WithEnvironment("DATABASE_URL", postgres.Resource.ConnectionStringExpression)
     .WaitFor(postgres);
 
