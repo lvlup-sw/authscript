@@ -102,23 +102,25 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# OpenAI (optional - use placeholder if not configured)
+# OpenAI (optional - use empty string if not configured)
 # ---------------------------------------------------------------------------
-OPENAI_KEY="${OPENAI_API_KEY:-not-configured}"
-OPENAI_ORG="${OPENAI_ORG_ID:-not-configured}"
+OPENAI_KEY="${OPENAI_API_KEY:-}"
+OPENAI_ORG="${OPENAI_ORG_ID:-}"
 
-dotnet user-secrets set "Parameters:openai-api-key" "$OPENAI_KEY"
-dotnet user-secrets set "Parameters:openai-org-id" "$OPENAI_ORG"
-
-if [[ "$OPENAI_KEY" != "not-configured" ]]; then
+# Only set secrets if values are provided
+if [[ -n "$OPENAI_KEY" ]]; then
+    dotnet user-secrets set "Parameters:openai-api-key" "$OPENAI_KEY"
     info "Set openai-api-key from environment"
 else
+    dotnet user-secrets set "Parameters:openai-api-key" ""
     info "Set openai-api-key placeholder (optional)"
 fi
 
-if [[ "$OPENAI_ORG" != "not-configured" ]]; then
+if [[ -n "$OPENAI_ORG" ]]; then
+    dotnet user-secrets set "Parameters:openai-org-id" "$OPENAI_ORG"
     info "Set openai-org-id from environment"
 else
+    dotnet user-secrets set "Parameters:openai-org-id" ""
     info "Set openai-org-id placeholder (optional)"
 fi
 

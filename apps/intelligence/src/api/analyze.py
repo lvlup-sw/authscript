@@ -54,17 +54,14 @@ async def analyze(request: AnalyzeRequest) -> PAFormResponse:
             detail="patient.birth_date is required",
         )
 
-    # Load policy (using example policy for now)
-    policy = EXAMPLE_POLICY
+    # Load policy with requested procedure code
+    policy = {**EXAMPLE_POLICY, "procedure_codes": [request.procedure_code]}
 
     # Extract evidence using LLM
     evidence = await extract_evidence(bundle, policy)
 
     # Generate form data using LLM
     form_response = await generate_form_data(bundle, evidence, policy)
-
-    # Override procedure code from request
-    form_response.procedure_code = request.procedure_code
 
     return form_response
 
@@ -88,6 +85,13 @@ async def analyze_with_documents(
         clinical_data_dict = json.loads(clinical_data)
     except json.JSONDecodeError as e:
         raise HTTPException(status_code=400, detail=f"Invalid clinical data JSON: {e}")
+
+    # Check if procedure is supported
+    if procedure_code not in SUPPORTED_PROCEDURE_CODES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Procedure code {procedure_code} not supported",
+        )
 
     # Parse clinical data into structured format
     bundle = ClinicalBundle.from_dict(patient_id, clinical_data_dict)
@@ -113,17 +117,14 @@ async def analyze_with_documents(
             detail="patient.birth_date is required",
         )
 
-    # Load policy
-    policy = EXAMPLE_POLICY
+    # Load policy with requested procedure code
+    policy = {**EXAMPLE_POLICY, "procedure_codes": [procedure_code]}
 
     # Extract evidence using LLM
     evidence = await extract_evidence(bundle, policy)
 
     # Generate form data using LLM
     form_response = await generate_form_data(bundle, evidence, policy)
-
-    # Override procedure code from request
-    form_response.procedure_code = procedure_code
 
     return form_response
 

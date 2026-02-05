@@ -3,6 +3,7 @@
 Uses LLM to evaluate policy criteria against clinical data.
 """
 
+import re
 from typing import Any, Literal
 
 from src.llm_client import chat_completion
@@ -29,9 +30,8 @@ async def extract_evidence(
     # Build clinical data summary for LLM
     patient_info = ""
     if clinical_bundle.patient:
-        patient_info = f"Patient: {clinical_bundle.patient.name}"
-        if clinical_bundle.patient.birth_date:
-            patient_info += f", DOB: {clinical_bundle.patient.birth_date.isoformat()}"
+        # Avoid sending direct identifiers to external LLMs by default
+        patient_info = "Patient: [REDACTED]"
 
     conditions_text = ", ".join(
         [f"{c.code} ({c.display})" for c in clinical_bundle.conditions if c.display]
@@ -92,14 +92,14 @@ explanation of the evidence found.
 
         if llm_response:
             response_upper = llm_response.upper()
-            # Check NOT_MET first since it contains "MET" as substring
-            if "NOT_MET" in response_upper:
+            # Use regex to handle "NOT MET", "NOT_MET", "NOTMET" variants
+            if re.search(r"\bNOT[\s_]?MET\b", response_upper):
                 status = "NOT_MET"
                 confidence = 0.8
-            elif "MET" in response_upper:
+            elif re.search(r"\bMET\b", response_upper):
                 status = "MET"
                 confidence = 0.8
-            elif "UNCLEAR" in response_upper:
+            elif re.search(r"\bUNCLEAR\b", response_upper):
                 status = "UNCLEAR"
                 confidence = 0.5
 

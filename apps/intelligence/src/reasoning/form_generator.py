@@ -59,9 +59,10 @@ async def generate_form_data(
     )
 
     has_not_met = any(e.status == "NOT_MET" for e in evidence)
+    has_unclear = any(e.status == "UNCLEAR" for e in evidence)
 
     recommendation: Literal["APPROVE", "NEED_INFO", "MANUAL_REVIEW"]
-    if met_required and not has_not_met:
+    if met_required and not has_not_met and not has_unclear:
         recommendation = "APPROVE"
         confidence_score = 0.9
     elif has_not_met:
@@ -90,7 +91,7 @@ Based on the following evidence evaluation, generate a brief clinical summary
 Evidence Summary:
 {evidence_summary}
 
-Patient: {patient_name}
+Patient: [REDACTED]
 Diagnoses: {', '.join(diagnosis_codes)}
 Procedure: {procedure_code}
 
