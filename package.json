@@ -15,7 +15,7 @@
     "build": "npm run build --workspaces --if-present",
     "build:dashboard": "npm run build -w apps/dashboard",
     "build:shared": "npm run build -w shared/types && npm run build -w shared/validation",
-    "build:containers": "docker build -t authscript-intelligence ./apps/intelligence && docker build -t authscript-gateway ./apps/gateway/Gateway.API && docker build -t authscript-dashboard ./apps/dashboard",
+    "build:containers": "docker build -t authscript-intelligence ./apps/intelligence && docker build -t authscript-gateway ./apps/gateway/Gateway.API",
     "test": "npm run test --workspaces --if-present",
     "test:dashboard": "npm run test -w apps/dashboard",
     "test:intelligence": "cd apps/intelligence && uv run pytest",
@@ -34,7 +34,14 @@
   "engines": {
     "node": ">=20.0.0"
   },
+  "overrides": {
+    "@tanstack/router-core": "1.131.35"
+  },
   "dependencies": {
     "seroval": "^1.5.0"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "^4.56.0",
+    "lightningcss-linux-x64-gnu": "^1.30.0"
   }
 }

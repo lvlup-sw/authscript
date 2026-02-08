@@ -44,7 +44,5 @@ orchestration/
 *.tmp
 
 # Keep these (explicitly)
-!apps/dashboard/dist/
-!apps/dashboard/nginx.conf
 !shared/types/dist/
 !shared/validation/dist/
