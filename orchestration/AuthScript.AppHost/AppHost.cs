@@ -86,16 +86,7 @@ var gateway = builder
     .WithEnvironment("Demo__EnableCaching", "true");
 
 // ---------------------------------------------------------------------------
-// Dashboard (React/Vite + nginx in container)
-// Containerized for production-like SPA serving with nginx
-// Uses Dockerfile.build from monorepo root to access shared packages
+// Dashboard: Run separately with `npm run dev:dashboard` from repo root
 // ---------------------------------------------------------------------------
-var dashboard = builder
-    .AddDockerfile("dashboard", "../..", "apps/dashboard/Dockerfile.build")
-    .WithHttpEndpoint(port: 3000, targetPort: 80, name: "dashboard-ui")
-    .WaitFor(gateway)
-    .WithExternalHttpEndpoints()
-    // Enable host.docker.internal resolution on Linux
-    .WithContainerRuntimeArgs("--add-host=host.docker.internal:host-gateway");
 
 builder.Build().Run();

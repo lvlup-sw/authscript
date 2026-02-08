@@ -10,12 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SmartLaunchRouteImport } from './routes/smart-launch'
+import { Route as HelpRouteImport } from './routes/help'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AnalysisTransactionIdRouteImport } from './routes/analysis.$transactionId'
 
 const SmartLaunchRoute = SmartLaunchRouteImport.update({
   id: '/smart-launch',
   path: '/smart-launch',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpRoute = HelpRouteImport.update({
+  id: '/help',
+  path: '/help',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -31,30 +37,34 @@ const AnalysisTransactionIdRoute = AnalysisTransactionIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/help': typeof HelpRoute
   '/smart-launch': typeof SmartLaunchRoute
   '/analysis/$transactionId': typeof AnalysisTransactionIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/help': typeof HelpRoute
   '/smart-launch': typeof SmartLaunchRoute
   '/analysis/$transactionId': typeof AnalysisTransactionIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/help': typeof HelpRoute
   '/smart-launch': typeof SmartLaunchRoute
   '/analysis/$transactionId': typeof AnalysisTransactionIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/smart-launch' | '/analysis/$transactionId'
+  fullPaths: '/' | '/help' | '/smart-launch' | '/analysis/$transactionId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/smart-launch' | '/analysis/$transactionId'
-  id: '__root__' | '/' | '/smart-launch' | '/analysis/$transactionId'
+  to: '/' | '/help' | '/smart-launch' | '/analysis/$transactionId'
+  id: '__root__' | '/' | '/help' | '/smart-launch' | '/analysis/$transactionId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  HelpRoute: typeof HelpRoute
   SmartLaunchRoute: typeof SmartLaunchRoute
   AnalysisTransactionIdRoute: typeof AnalysisTransactionIdRoute
 }
@@ -66,6 +76,13 @@ declare module '@tanstack/react-router' {
       path: '/smart-launch'
       fullPath: '/smart-launch'
       preLoaderRoute: typeof SmartLaunchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help': {
+      id: '/help'
+      path: '/help'
+      fullPath: '/help'
+      preLoaderRoute: typeof HelpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -87,6 +104,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  HelpRoute: HelpRoute,
   SmartLaunchRoute: SmartLaunchRoute,
   AnalysisTransactionIdRoute: AnalysisTransactionIdRoute,
 }

@@ -71,7 +71,7 @@ jobs:
         run: dotnet tool restore
 
       - name: Install npm dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm install --legacy-peer-deps
 
       - name: Install Python dev dependencies
         working-directory: apps/intelligence
@@ -229,10 +229,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+      - name: Install dependencies (fresh install for native bindings)
+        run: |
+          rm -f package-lock.json
+          npm install --legacy-peer-deps
 
       - name: Build shared packages
         run: |

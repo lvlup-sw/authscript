@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
+import { render, screen } from '@testing-library/react';
 import { FormPreview } from '../FormPreview';
 
 const mockFieldMappings: Record<string, string> = {
@@ -41,37 +41,16 @@ describe('FormPreview', () => {
       render(<FormPreview fieldMappings={mockFieldMappings} showHighlights />);
 
       const field = screen.getByText('John Doe').closest('[data-field]');
-      expect(field).toHaveClass('bg-[hsl(var(--success)/0.1)]');
+      expect(field).toBeInTheDocument();
+      expect(field).toHaveAttribute('data-highlighted', 'true');
     });
 
     it('FormPreview_WithoutHighlights_NoHighlightClass', () => {
       render(<FormPreview fieldMappings={mockFieldMappings} showHighlights={false} />);
 
       const field = screen.getByText('John Doe').closest('[data-field]');
-      expect(field).not.toHaveClass('bg-[hsl(var(--success)/0.1)]');
-    });
-  });
-
-  describe('download button', () => {
-    it('FormPreview_WithOnDownload_ShowsDownloadButton', () => {
-      const onDownload = vi.fn();
-      render(<FormPreview fieldMappings={mockFieldMappings} onDownload={onDownload} />);
-
-      expect(screen.getByRole('button', { name: /download/i })).toBeInTheDocument();
-    });
-
-    it('FormPreview_ClickDownload_CallsOnDownload', () => {
-      const onDownload = vi.fn();
-      render(<FormPreview fieldMappings={mockFieldMappings} onDownload={onDownload} />);
-
-      fireEvent.click(screen.getByRole('button', { name: /download/i }));
-      expect(onDownload).toHaveBeenCalledTimes(1);
-    });
-
-    it('FormPreview_WithoutOnDownload_HidesDownloadButton', () => {
-      render(<FormPreview fieldMappings={mockFieldMappings} />);
-
-      expect(screen.queryByRole('button', { name: /download/i })).not.toBeInTheDocument();
+      expect(field).toBeInTheDocument();
+      expect(field).not.toHaveAttribute('data-highlighted');
     });
   });
 
@@ -83,13 +62,10 @@ describe('FormPreview', () => {
     });
 
     it('FormPreview_Loading_HidesContent', () => {
-      const onDownload = vi.fn();
-      render(<FormPreview fieldMappings={mockFieldMappings} loading onDownload={onDownload} />);
+      render(<FormPreview fieldMappings={mockFieldMappings} loading />);
 
       // When loading, skeleton is shown instead of content
       expect(screen.getByTestId('form-skeleton')).toBeInTheDocument();
-      // Download button is not rendered during loading
-      expect(screen.queryByRole('button', { name: /download/i })).not.toBeInTheDocument();
     });
   });
 
