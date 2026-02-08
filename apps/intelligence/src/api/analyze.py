@@ -1,7 +1,6 @@
 """Analysis endpoint for processing clinical data and generating PA form.
 
-This is a stub implementation that returns APPROVE for all requests.
-Production implementation would include policy evaluation and LLM reasoning.
+Uses LLM-powered reasoning to extract evidence and generate PA form responses.
 """
 
 from typing import Any
@@ -11,6 +10,10 @@ from pydantic import BaseModel
 
 from src.models.clinical_bundle import ClinicalBundle
 from src.models.pa_form import PAFormResponse
+from src.parsers.pdf_parser import parse_pdf
+from src.policies.example_policy import EXAMPLE_POLICY
+from src.reasoning.evidence_extractor import extract_evidence
+from src.reasoning.form_generator import generate_form_data
 
 router = APIRouter()
 
@@ -31,8 +34,7 @@ async def analyze(request: AnalyzeRequest) -> PAFormResponse:
     """
     Analyze clinical data and generate PA form response.
 
-    STUB IMPLEMENTATION: Always returns APPROVE with 1.0 confidence.
-    Production version would evaluate clinical data against payer policies.
+    Uses LLM to extract evidence from clinical data and generate PA form.
     """
     # Check if procedure is supported
     if request.procedure_code not in SUPPORTED_PROCEDURE_CODES:
@@ -52,19 +54,16 @@ async def analyze(request: AnalyzeRequest) -> PAFormResponse:
             detail="patient.birth_date is required",
         )
 
-    # Build stub response
-    return PAFormResponse(
-        patient_name=patient.name,
-        patient_dob=patient.birth_date.isoformat(),
-        member_id=patient.member_id if patient.member_id else "Unknown",
-        diagnosis_codes=[c.code for c in bundle.conditions] if bundle.conditions else [],
-        procedure_code=request.procedure_code,
-        clinical_summary="Awaiting production configuration",
-        supporting_evidence=[],
-        recommendation="APPROVE",
-        confidence_score=1.0,
-        field_mappings=_build_field_mappings(bundle, request.procedure_code),
-    )
+    # Load policy with requested procedure code
+    policy = {**EXAMPLE_POLICY, "procedure_codes": [request.procedure_code]}
+
+    # Extract evidence using LLM
+    evidence = await extract_evidence(bundle, policy)
+
+    # Generate form data using LLM
+    form_response = await generate_form_data(bundle, evidence, policy)
+
+    return form_response
 
 
 @router.post("/with-documents", response_model=PAFormResponse)
@@ -77,8 +76,7 @@ async def analyze_with_documents(
     """
     Analyze clinical data with attached PDF documents.
 
-    STUB IMPLEMENTATION: Documents are acknowledged but not processed.
-    Production version would extract text and analyze documents.
+    Parses PDF documents and includes extracted text in the analysis.
     """
     import json
 
@@ -88,14 +86,47 @@ async def analyze_with_documents(
     except json.JSONDecodeError as e:
         raise HTTPException(status_code=400, detail=f"Invalid clinical data JSON: {e}")
 
-    # Build request and process (documents ignored in stub)
-    request = AnalyzeRequest(
-        patient_id=patient_id,
-        procedure_code=procedure_code,
-        clinical_data=clinical_data_dict,
-    )
+    # Check if procedure is supported
+    if procedure_code not in SUPPORTED_PROCEDURE_CODES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Procedure code {procedure_code} not supported",
+        )
 
-    return await analyze(request)
+    # Parse clinical data into structured format
+    bundle = ClinicalBundle.from_dict(patient_id, clinical_data_dict)
+
+    # Parse PDF documents and add to bundle
+    document_texts = []
+    for document in documents:
+        pdf_bytes = await document.read()
+        try:
+            text = await parse_pdf(pdf_bytes)
+            document_texts.append(text)
+        except Exception as e:
+            # Log error but continue processing
+            document_texts.append(f"[PDF parsing error: {e}]")
+
+    bundle.document_texts = document_texts
+
+    # Validate required patient data
+    patient = bundle.patient
+    if not patient or not patient.birth_date:
+        raise HTTPException(
+            status_code=400,
+            detail="patient.birth_date is required",
+        )
+
+    # Load policy with requested procedure code
+    policy = {**EXAMPLE_POLICY, "procedure_codes": [procedure_code]}
+
+    # Extract evidence using LLM
+    evidence = await extract_evidence(bundle, policy)
+
+    # Generate form data using LLM
+    form_response = await generate_form_data(bundle, evidence, policy)
+
+    return form_response
 
 
 def _build_field_mappings(bundle: ClinicalBundle, procedure_code: str) -> dict[str, str]:

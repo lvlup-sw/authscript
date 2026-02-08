@@ -35,8 +35,7 @@ import type {
 /**
  * Analyze clinical data and generate PA form response.
 
-STUB IMPLEMENTATION: Always returns APPROVE with 1.0 confidence.
-Production version would evaluate clinical data against payer policies.
+Uses LLM to extract evidence from clinical data and generate PA form.
  * @summary Analyze
  */
 export type analyzeAnalyzePostResponse200 = {
@@ -135,8 +134,7 @@ export const useAnalyzeAnalyzePost = <TError = HTTPValidationError,
     /**
  * Analyze clinical data with attached PDF documents.
 
-STUB IMPLEMENTATION: Documents are acknowledged but not processed.
-Production version would extract text and analyze documents.
+Parses PDF documents and includes extracted text in the analysis.
  * @summary Analyze With Documents
  */
 export type analyzeWithDocumentsAnalyzeWithDocumentsPostResponse200 = {

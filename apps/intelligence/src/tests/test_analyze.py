@@ -1,5 +1,7 @@
 """Tests for analyze API endpoint stub implementation."""
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from fastapi import HTTPException
 
@@ -28,10 +30,15 @@ def valid_request() -> AnalyzeRequest:
 @pytest.mark.asyncio
 async def test_analyze_returns_approve(valid_request: AnalyzeRequest) -> None:
     """Stub should return APPROVE recommendation."""
-    result = await analyze(valid_request)
+    mock_llm = AsyncMock(return_value="The criterion is MET based on the evidence.")
+    with (
+        patch("src.reasoning.evidence_extractor.chat_completion", mock_llm),
+        patch("src.reasoning.form_generator.chat_completion", mock_llm),
+    ):
+        result = await analyze(valid_request)
 
     assert result.recommendation == "APPROVE"
-    assert result.confidence_score == 1.0
+    assert result.confidence_score == 0.9
 
 
 @pytest.mark.asyncio

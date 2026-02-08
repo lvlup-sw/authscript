@@ -30,11 +30,13 @@ The script configures LLM provider settings via `dotnet user-secrets`:
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| `llm-provider` | LLM backend: `github`, `azure`, or `gemini` | `github` |
+| `llm-provider` | LLM backend: `github`, `azure`, `gemini`, or `openai` | `github` |
 | `github-token` | GitHub PAT for GitHub Models (auto-detected from `gh auth`) | — |
 | `azure-openai-key` | Azure OpenAI API key | — |
 | `azure-openai-endpoint` | Azure OpenAI endpoint URL | — |
 | `google-api-key` | Google Gemini API key | — |
+| `openai-api-key` | OpenAI API key | — |
+| `openai-org-id` | OpenAI organization ID (optional) | — |
 
 To use a different provider:
 
@@ -44,6 +46,9 @@ LLM_PROVIDER=azure AZURE_OPENAI_API_KEY=... AZURE_OPENAI_ENDPOINT=... ./scripts/
 
 # Google Gemini
 LLM_PROVIDER=gemini GOOGLE_API_KEY=... ./scripts/setup.sh
+
+# OpenAI
+LLM_PROVIDER=openai OPENAI_API_KEY=... OPENAI_ORG_ID=... ./scripts/setup.sh
 ```
 
 ## IDE Setup
@@ -105,7 +110,7 @@ See [shared/schemas/README.md](shared/schemas/README.md) for contract ownership.
 | Service | Technology | Purpose |
 |---------|-----------|---------|
 | **Gateway** | .NET 10, iText7, Polly | CDS Hooks, FHIR aggregation, PDF generation |
-| **Intelligence** | Python 3.11, FastAPI | Clinical reasoning (GitHub/Azure/Gemini) |
+| **Intelligence** | Python 3.11, FastAPI | Clinical reasoning (GitHub/Azure/Gemini/OpenAI) |
 | **Dashboard** | React 19, Vite, TanStack | Shadow dashboard + SMART fallback |
 
 ## Testing
@@ -130,11 +135,13 @@ For production or CI/CD, set these environment variables:
 
 | Variable | Service | Description |
 |----------|---------|-------------|
-| `LLM_PROVIDER` | Intelligence | Provider: `github`, `azure`, `gemini` |
+| `LLM_PROVIDER` | Intelligence | Provider: `github`, `azure`, `gemini`, `openai` |
 | `GITHUB_TOKEN` | Intelligence | GitHub PAT for GitHub Models |
 | `AZURE_OPENAI_API_KEY` | Intelligence | Azure OpenAI API key |
 | `AZURE_OPENAI_ENDPOINT` | Intelligence | Azure OpenAI endpoint URL |
 | `GOOGLE_API_KEY` | Intelligence | Google Gemini API key |
+| `OPENAI_API_KEY` | Intelligence | OpenAI API key |
+| `OPENAI_ORG_ID` | Intelligence | OpenAI organization ID (optional) |
 | `Epic__ClientId` | Gateway | Epic Launchpad client ID |
 | `Epic__FhirBaseUrl` | Gateway | FHIR R4 endpoint (has default) |
 

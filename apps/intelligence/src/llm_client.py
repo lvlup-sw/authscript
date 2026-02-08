@@ -103,7 +103,13 @@ class OpenAIProvider(LLMProvider):
     async def complete(self, request: CompletionRequest) -> str:
         from openai import AsyncOpenAI
 
-        client = AsyncOpenAI(api_key=settings.openai_api_key)
+        if settings.openai_org_id:
+            client = AsyncOpenAI(
+                api_key=settings.openai_api_key,
+                organization=settings.openai_org_id,
+            )
+        else:
+            client = AsyncOpenAI(api_key=settings.openai_api_key)
 
         response = await client.chat.completions.create(
             model=settings.openai_model,

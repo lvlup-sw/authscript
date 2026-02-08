@@ -39,6 +39,7 @@ class Settings(BaseSettings):
 
     # OpenAI (fallback/alternative)
     openai_api_key: str = ""
+    openai_org_id: str = ""  # Optional: Organization ID for usage tracking
     openai_model: str = "gpt-4.1"
 
     # Database

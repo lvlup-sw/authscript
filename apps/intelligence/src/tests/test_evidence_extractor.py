@@ -1,5 +1,7 @@
 """Tests for evidence extractor stub implementation."""
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 
 from src.models.clinical_bundle import ClinicalBundle, Condition, PatientInfo
@@ -34,7 +36,9 @@ async def test_extract_evidence_returns_met_for_all_criteria(
     sample_policy: dict,
 ) -> None:
     """Stub should return MET status for all policy criteria."""
-    evidence = await extract_evidence(sample_bundle, sample_policy)
+    mock_llm = AsyncMock(return_value="The criterion is MET based on the evidence.")
+    with patch("src.reasoning.evidence_extractor.chat_completion", mock_llm):
+        evidence = await extract_evidence(sample_bundle, sample_policy)
 
     assert len(evidence) == 2
     assert all(e.status == "MET" for e in evidence)
@@ -58,7 +62,9 @@ async def test_extract_evidence_confidence_score(
     sample_bundle: ClinicalBundle,
     sample_policy: dict,
 ) -> None:
-    """Stub should return 0.90 confidence for all items."""
-    evidence = await extract_evidence(sample_bundle, sample_policy)
+    """Stub should return 0.80 confidence for all items."""
+    mock_llm = AsyncMock(return_value="The criterion is MET based on the evidence.")
+    with patch("src.reasoning.evidence_extractor.chat_completion", mock_llm):
+        evidence = await extract_evidence(sample_bundle, sample_policy)
 
-    assert all(e.confidence == 0.90 for e in evidence)
+    assert all(e.confidence == 0.80 for e in evidence)
