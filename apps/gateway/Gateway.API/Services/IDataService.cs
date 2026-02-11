@@ -77,4 +77,15 @@ public interface IDataService
     /// <summary>Deletes a PA request.</summary>
     /// <param name="id">The PA request identifier.</param>
     bool DeletePARequest(string id);
+
+    /// <summary>Approves a PA request that is waiting for insurance.</summary>
+    /// <param name="id">The PA request identifier.</param>
+    /// <returns>The updated model, or null if the request was not found or not in the correct status.</returns>
+    PARequestModel? ApprovePA(string id);
+
+    /// <summary>Denies a PA request that is waiting for insurance.</summary>
+    /// <param name="id">The PA request identifier.</param>
+    /// <param name="reason">The denial reason.</param>
+    /// <returns>The updated model, or null if the request was not found or not in the correct status.</returns>
+    PARequestModel? DenyPA(string id, string reason);
 }

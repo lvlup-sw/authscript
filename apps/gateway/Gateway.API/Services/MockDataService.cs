@@ -281,6 +281,40 @@ public sealed class MockDataService : IDataService
         }
     }
 
+    /// <inheritdoc />
+    public PARequestModel? ApprovePA(string id)
+    {
+        lock (_lock)
+        {
+            var index = _paRequests.FindIndex(p => p.Id == id);
+            if (index < 0) return null;
+
+            var existing = _paRequests[index];
+            if (existing.Status != "waiting_for_insurance") return null;
+
+            var updated = existing with { Status = "approved", UpdatedAt = DateTime.UtcNow.ToString("O") };
+            _paRequests[index] = updated;
+            return updated;
+        }
+    }
+
+    /// <inheritdoc />
+    public PARequestModel? DenyPA(string id, string reason)
+    {
+        lock (_lock)
+        {
+            var index = _paRequests.FindIndex(p => p.Id == id);
+            if (index < 0) return null;
+
+            var existing = _paRequests[index];
+            if (existing.Status != "waiting_for_insurance") return null;
+
+            var updated = existing with { Status = "denied", UpdatedAt = DateTime.UtcNow.ToString("O") };
+            _paRequests[index] = updated;
+            return updated;
+        }
+    }
+
     private static PARequestModel CreatePAFromProcedure(PatientModel patient, ProcedureModel procedure, DiagnosisModel diagnosis, ProviderModel provider, string status, int confidence, DateTime createdAt, DateTime? readyAt = null, DateTime? submittedAt = null, int reviewTimeSeconds = 0)
     {
         var baseReq = CreatePARequestInternal(patient, procedure.Code, procedure.Name, diagnosis, provider, status, confidence, createdAt);

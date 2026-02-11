@@ -59,4 +59,10 @@ public sealed class Mutation
     {
         return mockData.DeletePARequest(id);
     }
+
+    public PARequestModel? ApprovePARequest(string id, [Service] MockDataService mockData)
+        => mockData.ApprovePA(id);
+
+    public PARequestModel? DenyPARequest(string id, string reason, [Service] MockDataService mockData)
+        => mockData.DenyPA(id, reason);
 }
