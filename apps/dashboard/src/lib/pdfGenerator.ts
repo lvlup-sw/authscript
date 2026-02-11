@@ -200,9 +200,9 @@ export function generatePAPdf(request: PARequest): string {
 <body>
   <div class="header">
     <div class="logo">
-      <div class="logo-icon">AS</div>
+      <div class="logo-icon">${(request.payer || 'PA').slice(0, 2).toUpperCase()}</div>
       <div>
-        <div class="logo-text">AuthScript</div>
+        <div class="logo-text">${request.payer || 'Prior Authorization'}</div>
         <div class="logo-subtitle">Prior Authorization Request</div>
       </div>
     </div>

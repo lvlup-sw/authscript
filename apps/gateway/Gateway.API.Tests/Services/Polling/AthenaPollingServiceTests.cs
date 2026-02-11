@@ -204,7 +204,7 @@ public class AthenaPollingServiceTests
 
         // Act - run one iteration then cancel
         var task = _sut.StartAsync(cts.Token);
-        await Task.Delay(100); // Allow one poll cycle
+        await Task.Delay(800); // Allow one poll cycle (migration wait + first PollForFinishedEncountersAsync)
         cts.Cancel();
 
         try
