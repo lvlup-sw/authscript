@@ -11,7 +11,7 @@ namespace Gateway.API.Services;
 /// In-memory mock data service for patients, procedures, medications, payers, providers,
 /// diagnoses, and PA requests. Used by GraphQL resolvers.
 /// </summary>
-public sealed class MockDataService
+public sealed class MockDataService : IDataService
 {
     private readonly List<PARequestModel> _paRequests = [];
     private readonly object _lock = new();
@@ -344,6 +344,40 @@ public sealed class MockDataService
         {
             var removed = _paRequests.RemoveAll(r => r.Id == id);
             return removed > 0;
+        }
+    }
+
+    /// <inheritdoc />
+    public PARequestModel? ApprovePA(string id)
+    {
+        lock (_lock)
+        {
+            var index = _paRequests.FindIndex(p => p.Id == id);
+            if (index < 0) return null;
+
+            var existing = _paRequests[index];
+            if (existing.Status != "waiting_for_insurance") return null;
+
+            var updated = existing with { Status = "approved", UpdatedAt = DateTime.UtcNow.ToString("O") };
+            _paRequests[index] = updated;
+            return updated;
+        }
+    }
+
+    /// <inheritdoc />
+    public PARequestModel? DenyPA(string id, string reason)
+    {
+        lock (_lock)
+        {
+            var index = _paRequests.FindIndex(p => p.Id == id);
+            if (index < 0) return null;
+
+            var existing = _paRequests[index];
+            if (existing.Status != "waiting_for_insurance") return null;
+
+            var updated = existing with { Status = "denied", UpdatedAt = DateTime.UtcNow.ToString("O") };
+            _paRequests[index] = updated;
+            return updated;
         }
     }
 
