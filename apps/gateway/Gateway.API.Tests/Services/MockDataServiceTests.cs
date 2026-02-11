@@ -5,7 +5,9 @@
 // =============================================================================
 
 using Gateway.API.GraphQL.Models;
+using Gateway.API.GraphQL.Queries;
 using Gateway.API.Services;
+using NSubstitute;
 
 namespace Gateway.API.Tests.Services;
 
@@ -104,5 +106,44 @@ public class MockDataServiceTests
 
         // Assert
         await Assert.That(result).IsNull();
+    }
+
+    [Test]
+    public async Task Query_GetPARequests_WorksWithIDataService()
+    {
+        // Arrange
+        var mockService = Substitute.For<IDataService>();
+        mockService.GetPARequests().Returns(new List<PARequestModel>
+        {
+            new()
+            {
+                Id = "PA-TEST",
+                Status = "draft",
+                PatientId = "T001",
+                Patient = new PatientModel { Id = "T001", Name = "Test Patient", Mrn = "T001", Dob = "2000-01-01", MemberId = "M001", Payer = "Test", Address = "", Phone = "" },
+                ProcedureCode = "72148",
+                ProcedureName = "MRI Lumbar Spine w/o Contrast",
+                Diagnosis = "Low Back Pain",
+                DiagnosisCode = "M54.5",
+                Payer = "Test",
+                Provider = "Dr. Test",
+                ProviderNpi = "0000000000",
+                ServiceDate = "January 1, 2025",
+                PlaceOfService = "Outpatient",
+                ClinicalSummary = "Test summary",
+                Confidence = 0,
+                CreatedAt = "",
+                UpdatedAt = "",
+                Criteria = [],
+            },
+        });
+
+        // Act
+        var query = new Query();
+        var result = query.GetPARequests(mockService);
+
+        // Assert
+        await Assert.That(result.Count).IsEqualTo(1);
+        await Assert.That(result[0].Id).IsEqualTo("PA-TEST");
     }
 }

@@ -132,7 +132,6 @@ public static class DependencyExtensions
         services.AddScoped<IFhirDataAggregator, FhirDataAggregator>();
         services.AddScoped<IPdfFormStamper, PdfFormStamper>();
         services.AddSingleton<IAnalysisResultStore, AnalysisResultStore>();
-        services.AddSingleton<MockDataService>();
 
         return services;
     }
