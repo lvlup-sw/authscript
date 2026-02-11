@@ -37,7 +37,9 @@ export function SubmissionProgressOverlay({
   const [phase, setPhase] = useState<SubmissionPhase>('locating');
   const processingStep = phase === 'locating' ? 0 : 1;
   const onCompleteRef = useRef(onComplete);
-  onCompleteRef.current = onComplete;
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => {
     const t1 = setTimeout(() => {

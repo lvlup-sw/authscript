@@ -19,14 +19,17 @@ export function PdfViewerModal({ isOpen, onClose, request }: PdfViewerModalProps
   const printIframeRef = useRef<HTMLIFrameElement | null>(null);
   const printTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const pdfUrlRef = useRef<string | null>(null);
+
   const reset = useCallback(() => {
-    if (pdfUrl) {
-      URL.revokeObjectURL(pdfUrl);
+    if (pdfUrlRef.current) {
+      URL.revokeObjectURL(pdfUrlRef.current);
+      pdfUrlRef.current = null;
     }
     setPdfUrl(null);
     setIsGenerating(false);
     setError(null);
-  }, [pdfUrl]);
+  }, []);
 
   const handleClose = useCallback(() => {
     reset();
@@ -46,7 +49,9 @@ export function PdfViewerModal({ isOpen, onClose, request }: PdfViewerModalProps
     generatePAPdfBlob(request)
       .then((blob) => {
         if (cancelled) return;
-        setPdfUrl(URL.createObjectURL(blob));
+        const url = URL.createObjectURL(blob);
+        pdfUrlRef.current = url;
+        setPdfUrl(url);
         setIsGenerating(false);
       })
       .catch((err) => {
@@ -58,13 +63,16 @@ export function PdfViewerModal({ isOpen, onClose, request }: PdfViewerModalProps
     return () => {
       cancelled = true;
     };
-  }, [isOpen, request]);
+  }, [isOpen, request, reset]);
 
   useEffect(() => {
     return () => {
-      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+      if (pdfUrlRef.current) {
+        URL.revokeObjectURL(pdfUrlRef.current);
+        pdfUrlRef.current = null;
+      }
     };
-  }, [pdfUrl]);
+  }, []);
 
   // Clean up print iframe and timeout on unmount
   useEffect(() => {
