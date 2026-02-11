@@ -5,6 +5,8 @@
  * @module api/customFetch
  */
 
+import { getAuthToken } from './auth';
+
 /**
  * Options for customFetch, extending standard RequestInit with URL
  */
@@ -138,21 +140,13 @@ export async function customFetch<T>(options: CustomFetchOptions): Promise<T> {
 
 /**
  * Retrieves the stored access token from session storage.
- * Used for SMART on FHIR authentication.
+ * Delegates to shared getAuthToken() which checks authscript_session first,
+ * then falls back to smart_session (SMART on FHIR).
  *
  * @returns Access token if found and valid, null otherwise
  */
 function getStoredAccessToken(): string | null {
-  try {
-    const smartSession = sessionStorage.getItem('smart_session');
-    if (!smartSession) return null;
-
-    const session = JSON.parse(smartSession) as { accessToken?: string };
-    return session.accessToken || null;
-  } catch {
-    // Ignore parse errors - treat as no token
-    return null;
-  }
+  return getAuthToken();
 }
 
 export default customFetch;
