@@ -197,14 +197,16 @@ public class AthenaPollingServiceTests
     public async Task ExecuteAsync_NoRegisteredPatients_DoesNotQueryFhir()
     {
         // Arrange
+        var getActiveCalled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         _patientRegistry.GetActiveAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<RegisteredPatient>());
+            .Returns(new List<RegisteredPatient>())
+            .AndDoes(_ => getActiveCalled.TrySetResult());
 
         using var cts = new CancellationTokenSource();
 
-        // Act - run one iteration then cancel
+        // Act - run until first poll (GetActiveAsync) happens, then cancel
         var task = _sut.StartAsync(cts.Token);
-        await Task.Delay(800); // Allow one poll cycle (migration wait + first PollForFinishedEncountersAsync)
+        await Task.WhenAny(getActiveCalled.Task, Task.Delay(TimeSpan.FromSeconds(10)));
         cts.Cancel();
 
         try
