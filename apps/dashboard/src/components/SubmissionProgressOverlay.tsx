@@ -4,7 +4,7 @@
  * Phases: "Locating the correct submission method" → "Found submission <name>"
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, Check, CheckCircle2 } from 'lucide-react';
 import { Sparkles } from 'lucide-react';
@@ -36,6 +36,8 @@ export function SubmissionProgressOverlay({
 }: SubmissionProgressOverlayProps) {
   const [phase, setPhase] = useState<SubmissionPhase>('locating');
   const processingStep = phase === 'locating' ? 0 : 1;
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   useEffect(() => {
     const t1 = setTimeout(() => {
@@ -44,14 +46,14 @@ export function SubmissionProgressOverlay({
 
     const totalDuration = PHASE_DURATIONS.locating + PHASE_DURATIONS.found;
     const t2 = setTimeout(() => {
-      onComplete?.();
+      onCompleteRef.current?.();
     }, totalDuration);
 
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
     };
-  }, [onComplete]);
+  }, []);
 
   return createPortal(
     <div

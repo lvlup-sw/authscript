@@ -51,6 +51,7 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
   const [, setSelectedDiagnosis] = useState<{ code: string; name: string } | null>(null);
   const [processingStep, setProcessingStep] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [processingError, setProcessingError] = useState<string | null>(null);
 
   const patients = ATHENA_TEST_PATIENTS;
   const { data: procedures = [] } = useProcedures(isOpen);
@@ -85,6 +86,7 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
     setSelectedService(null);
     setSelectedDiagnosis(null);
     setIsTransitioning(false);
+    setProcessingError(null);
     onClose();
   };
 
@@ -110,31 +112,42 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
 
   const handleDiagnosisSelect = async (diagnosis: { code: string; name: string }) => {
     setSelectedDiagnosis(diagnosis);
+    setProcessingError(null);
     transitionToStep('processing', 500);
 
-    const newRequest = await createMutation.mutateAsync({
-      patient: {
-        id: selectedPatient!.id,
-        patientId: selectedPatient!.patientId,
-        fhirId: selectedPatient!.fhirId,
-        name: selectedPatient!.name,
-        mrn: selectedPatient!.mrn,
-        dob: selectedPatient!.dob,
-        memberId: selectedPatient!.memberId,
-        payer: selectedPatient!.payer,
-        address: selectedPatient!.address,
-        phone: selectedPatient!.phone,
-      },
-      procedureCode: selectedService!.code,
-      diagnosisCode: diagnosis.code,
-      diagnosisName: diagnosis.name,
-    });
-    if (!newRequest) return;
+    try {
+      const newRequest = await createMutation.mutateAsync({
+        patient: {
+          id: selectedPatient!.id,
+          patientId: selectedPatient!.patientId,
+          fhirId: selectedPatient!.fhirId,
+          name: selectedPatient!.name,
+          mrn: selectedPatient!.mrn,
+          dob: selectedPatient!.dob,
+          memberId: selectedPatient!.memberId,
+          payer: selectedPatient!.payer,
+          address: selectedPatient!.address,
+          phone: selectedPatient!.phone,
+        },
+        procedureCode: selectedService!.code,
+        diagnosisCode: diagnosis.code,
+        diagnosisName: diagnosis.name,
+      });
+      if (!newRequest) {
+        transitionToStep('diagnosis');
+        setProcessingError('Failed to create PA request. Please try again.');
+        return;
+      }
 
-    await processMutation.mutateAsync(newRequest.id);
+      await processMutation.mutateAsync(newRequest.id);
 
-    resetAndClose();
-    navigate({ to: '/analysis/$transactionId', params: { transactionId: newRequest.id } });
+      resetAndClose();
+      navigate({ to: '/analysis/$transactionId', params: { transactionId: newRequest.id } });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Something went wrong';
+      setProcessingError(message);
+      transitionToStep('diagnosis');
+    }
   };
 
   const filteredPatients = patients.filter(p =>
@@ -438,6 +451,11 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
           {/* Diagnosis Selection */}
           {step === 'diagnosis' && !isTransitioning && (
             <>
+              {processingError && (
+                <div className="mb-4 p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm">
+                  {processingError}
+                </div>
+              )}
               {/* Selected Patient & Service */}
               <div className="space-y-2 mb-4">
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-teal/5 border border-teal/20">
@@ -500,7 +518,10 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
             <button
               onClick={() => {
                 if (step === 'service') transitionToStep('patient', 300);
-                if (step === 'diagnosis') transitionToStep('service', 300);
+                if (step === 'diagnosis') {
+                  setProcessingError(null);
+                  transitionToStep('service', 300);
+                }
               }}
               className={cn(
                 'px-4 py-2 text-sm font-medium rounded-lg transition-colors click-effect',

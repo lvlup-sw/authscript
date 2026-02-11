@@ -160,8 +160,10 @@ function AnalysisPage() {
   const [editedData, setEditedData] = useState<Partial<PARequest>>({});
   const [showSubmissionOverlay, setShowSubmissionOverlay] = useState(false);
   const [showPdfModal, setShowPdfModal] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const enteredAtRef = useRef<number>(Date.now());
   const submittedRef = useRef(false);
+  const isSubmittingRef = useRef(false);
 
   const { data: request, isLoading } = usePARequest(transactionId);
   const updateMutation = useUpdatePARequest();
@@ -259,27 +261,37 @@ function AnalysisPage() {
     request.status === 'denied' ||
     request.status === 'waiting_for_insurance';
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     setShowSubmissionOverlay(true);
   };
 
   const handleSubmissionAnimationComplete = async () => {
     try {
-      submittedRef.current = true;
       const reviewSeconds = Math.floor((Date.now() - enteredAtRef.current) / 1000);
       await submitMutation.mutateAsync({ id: transactionId, addReviewTimeSeconds: reviewSeconds });
+      submittedRef.current = true;
     } finally {
+      isSubmittingRef.current = false;
       setShowSubmissionOverlay(false);
     }
   };
 
   const handleSaveEdits = async () => {
-    const updated = await updateMutation.mutateAsync({
-      id: transactionId,
-      ...editedData,
-    });
-    if (updated) {
-      setIsEditing(false);
+    setSaveError(null);
+    try {
+      const updated = await updateMutation.mutateAsync({
+        id: transactionId,
+        ...editedData,
+      });
+      if (updated) {
+        setIsEditing(false);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to save changes';
+      setSaveError(message);
+      console.error('Save edits failed', err);
     }
   };
 
@@ -321,6 +333,14 @@ function AnalysisPage() {
           submissionName={getSubmissionNameForPayer(request.payer)}
           onComplete={handleSubmissionAnimationComplete}
         />
+      )}
+
+      {/* Save error */}
+      {saveError && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-800">
+          <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-600" />
+          <p className="text-sm font-medium">{saveError}</p>
+        </div>
       )}
 
       {/* Low confidence banner */}

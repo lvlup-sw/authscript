@@ -106,7 +106,7 @@ The dashboard communicates with the Gateway via **GraphQL** at `/api/graphql`. T
 | Get PA request | `query { paRequest(id: "...") { ... } }` | Analysis detail page |
 | Get stats | `query { paStats { ... } }` | Stats cards |
 | Get activity | `query { activity { ... } }` | Recent activity feed |
-| Reference data | `query { patients, procedures, medications, diagnoses }` | New PA modal |
+| Reference data | `query { procedures, medications, providers, payers, diagnoses }` | New PA modal |
 | Create PA | `mutation { createPARequest(input: {...}) { ... } }` | New PA flow |
 | Process PA | `mutation { processPARequest(id: "...") { ... } }` | Simulate AI processing |
 | Update PA | `mutation { updatePARequest(input: {...}) { ... } }` | Edit form data |

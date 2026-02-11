@@ -4,13 +4,14 @@
  * Skip if backend unavailable: npm run test:run -- --run graphqlService.integration
  */
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { GraphQLClient, gql } from 'graphql-request';
 
 const GRAPHQL_URL = 'http://localhost:5000/api/graphql';
 const client = new GraphQLClient(GRAPHQL_URL);
 
 let backendAvailable = false;
+const createdPAIds: string[] = [];
 
 beforeAll(async () => {
   try {
@@ -25,7 +26,27 @@ beforeAll(async () => {
   }
 });
 
+async function deletePARequest(id: string): Promise<void> {
+  const mutation = gql`
+    mutation DeletePARequest($id: String!) {
+      deletePARequest(id: $id)
+    }
+  `;
+  await client.request<{ deletePARequest: boolean }>(mutation, { id });
+}
+
 describe('GraphQL API Integration', () => {
+  afterAll(async () => {
+    if (!backendAvailable) return;
+    for (const id of createdPAIds) {
+      try {
+        await deletePARequest(id);
+      } catch {
+        // ignore cleanup errors
+      }
+    }
+  });
+
   it('paRequests: returns PA request list', async () => {
     if (!backendAvailable) return;
 
@@ -221,12 +242,44 @@ describe('GraphQL API Integration', () => {
     expect(data.createPARequest.id).toBeDefined();
     expect(data.createPARequest.status).toBe('draft');
     expect((data.createPARequest.patient as Record<string, unknown>).name).toBe('Rebecca Sandbox');
+    createdPAIds.push(data.createPARequest.id as string);
   });
 
   it('submitPARequest: submits PA request', async () => {
     if (!backendAvailable) return;
 
-    const mutation = gql`
+    const createMutation = gql`
+      mutation CreatePARequest($input: CreatePARequestInput!) {
+        createPARequest(input: $input) {
+          id
+          status
+        }
+      }
+    `;
+    const createInput = {
+      patient: {
+        id: '60182',
+        patientId: '60182',
+        name: 'Rebecca Sandbox',
+        mrn: '60182',
+        dob: '09/14/1990',
+        memberId: 'ATH60182',
+        payer: 'Blue Cross Blue Shield',
+        address: '654 Birch Road',
+        phone: '(253) 555-0654',
+      },
+      procedureCode: '97110',
+      diagnosisCode: 'M54.5',
+      diagnosisName: 'Low Back Pain',
+    };
+    const createData = await client.request<{ createPARequest: { id: string; status: string } }>(
+      createMutation,
+      { input: createInput }
+    );
+    const paId = createData.createPARequest.id;
+    createdPAIds.push(paId);
+
+    const submitMutation = gql`
       mutation SubmitPARequest($id: String!) {
         submitPARequest(id: $id) {
           id
@@ -235,8 +288,8 @@ describe('GraphQL API Integration', () => {
       }
     `;
     const data = await client.request<{ submitPARequest: Record<string, unknown> | null }>(
-      mutation,
-      { id: 'PA-002' }
+      submitMutation,
+      { id: paId }
     );
     expect(data.submitPARequest).toBeDefined();
     if (data.submitPARequest) {

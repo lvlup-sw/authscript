@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, FileText, Printer, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -16,6 +16,8 @@ export function PdfViewerModal({ isOpen, onClose, request }: PdfViewerModalProps
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const printIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const printTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const reset = useCallback(() => {
     if (pdfUrl) {
@@ -64,19 +66,49 @@ export function PdfViewerModal({ isOpen, onClose, request }: PdfViewerModalProps
     };
   }, [pdfUrl]);
 
+  // Clean up print iframe and timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (printTimeoutRef.current !== null) {
+        clearTimeout(printTimeoutRef.current);
+        printTimeoutRef.current = null;
+      }
+      const iframe = printIframeRef.current;
+      if (iframe?.parentNode) {
+        iframe.remove();
+      }
+      printIframeRef.current = null;
+    };
+  }, []);
+
   if (!isOpen) return null;
 
   const handlePrint = () => {
     if (!pdfUrl) return;
+    if (printIframeRef.current?.parentNode) {
+      printIframeRef.current.remove();
+      printIframeRef.current = null;
+    }
+    if (printTimeoutRef.current !== null) {
+      clearTimeout(printTimeoutRef.current);
+      printTimeoutRef.current = null;
+    }
     const iframe = document.createElement('iframe');
     iframe.style.display = 'none';
     iframe.src = pdfUrl;
+    printIframeRef.current = iframe;
     document.body.appendChild(iframe);
     iframe.onload = () => {
       try {
         iframe.contentWindow?.print();
       } finally {
-        setTimeout(() => document.body.removeChild(iframe), 1000);
+        printTimeoutRef.current = setTimeout(() => {
+          printTimeoutRef.current = null;
+          if (iframe.parentNode) {
+            iframe.remove();
+          }
+          printIframeRef.current = null;
+        }, 1000);
       }
     };
   };

@@ -117,7 +117,11 @@ public sealed class MockDataService
         ["default"] = "Patient requires {procedure} for {diagnosis}. Clinical evaluation supports medical necessity for this procedure. Prior conservative treatments have been attempted as appropriate.",
     };
 
-    public IReadOnlyList<PARequestModel> GetPARequests() => _paRequests.ToList();
+    public IReadOnlyList<PARequestModel> GetPARequests()
+    {
+        lock (_lock)
+            return _paRequests.ToList();
+    }
 
     public PARequestModel? GetPARequest(string id)
     {
@@ -144,10 +148,9 @@ public sealed class MockDataService
         {
             var activities = new List<ActivityItemModel>();
             var requests = _paRequests.OrderByDescending(r => r.UpdatedAt).Take(10).ToList();
-            for (var i = 0; i < requests.Count; i++)
+            foreach (var req in requests)
             {
-                var req = requests[i];
-                var timeAgo = i switch { 0 => "2m ago", 1 => "5m ago", 2 => "12m ago", 3 => "1h ago", _ => $"{i + 1}h ago" };
+                var timeAgo = ToRelativeTimeAgo(req.UpdatedAt);
                 if (req.Status == "approved" || req.Status == "denied" || req.Status == "waiting_for_insurance")
                     activities.Add(new ActivityItemModel { Id = $"act-{req.Id}-submitted", Action = "PA submitted", PatientName = req.Patient.Name, ProcedureCode = req.ProcedureCode, Time = timeAgo, Type = "success" });
                 else if (req.Status == "ready")
@@ -155,6 +158,19 @@ public sealed class MockDataService
             }
             return activities.Take(5).ToList();
         }
+    }
+
+    private static string ToRelativeTimeAgo(string updatedAt)
+    {
+        if (string.IsNullOrEmpty(updatedAt)) return "—";
+        if (!DateTimeOffset.TryParse(updatedAt, null, System.Globalization.DateTimeStyles.RoundtripKind, out var dt))
+            return "—";
+        var ago = DateTimeOffset.UtcNow - dt;
+        if (ago.TotalSeconds < 60) return $"{(int)ago.TotalSeconds}s ago";
+        if (ago.TotalMinutes < 60) return $"{(int)ago.TotalMinutes}m ago";
+        if (ago.TotalHours < 24) return $"{(int)ago.TotalHours}h ago";
+        if (ago.TotalDays < 30) return $"{(int)ago.TotalDays}d ago";
+        return $"{((int)ago.TotalDays / 30)}mo ago";
     }
 
     public PARequestModel CreatePARequest(PatientModel patient, string procedureCode, string diagnosisCode, string diagnosisName, string providerId = "DR001")
