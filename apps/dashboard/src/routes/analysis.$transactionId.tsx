@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { cn } from '@/lib/utils';
 import { 
   ArrowLeft, 
   Check, 
   X, 
+  XCircle,
   AlertCircle, 
   AlertTriangle,
   CheckCircle2, 
@@ -13,17 +15,17 @@ import {
   User,
   Building2,
   Shield,
-  Download,
   Edit2,
   Send,
   ChevronRight,
   Stethoscope,
   Save,
-  Printer,
+  RefreshCw,
 } from 'lucide-react';
-import { getPARequest, updatePARequest, submitPARequest, type PARequest } from '@/lib/store';
-import { openPAPdf } from '@/lib/pdfGenerator';
+import { usePARequest, useUpdatePARequest, useSubmitPARequest, useAddReviewTime, type PARequest } from '@/api/graphqlService';
 import { LoadingSpinner, Skeleton } from '@/components/LoadingSpinner';
+import { SubmissionProgressOverlay, getSubmissionNameForPayer } from '@/components/SubmissionProgressOverlay';
+import { PdfViewerModal } from '@/components/PdfViewerModal';
 
 export const Route = createFileRoute('/analysis/$transactionId')({
   component: AnalysisPage,
@@ -116,21 +118,26 @@ function EditableField({
 // Criteria Item
 function CriteriaItem({ 
   met, 
-  label, 
+  label,
+  reason,
   onToggle, 
+  onClick,
   isEditing 
 }: { 
   met: boolean | null; 
-  label: string; 
+  label: string;
+  reason?: string | null;
   onToggle?: () => void;
+  onClick?: () => void;
   isEditing: boolean;
 }) {
   const styles = {
-    true: { bg: 'bg-success/5', border: 'border-success/30', icon: 'bg-success', text: 'text-success' },
-    false: { bg: 'bg-destructive/5', border: 'border-destructive/30', icon: 'bg-destructive', text: 'text-destructive' },
-    null: { bg: 'bg-warning/5', border: 'border-warning/30', icon: 'bg-warning', text: 'text-warning' },
+    true: { bg: 'bg-success/5', border: 'border-success/30', icon: 'bg-success', text: 'text-success', statusLabel: 'Met' },
+    false: { bg: 'bg-destructive/5', border: 'border-destructive/30', icon: 'bg-destructive', text: 'text-destructive', statusLabel: 'Not Met' },
+    null: { bg: 'bg-warning/5', border: 'border-warning/30', icon: 'bg-warning', text: 'text-warning', statusLabel: 'Unclear' },
   };
   const style = styles[String(met) as keyof typeof styles];
+  const isClickable = isEditing || !!reason;
   
   return (
     <div 
@@ -138,9 +145,9 @@ function CriteriaItem({
         'flex items-center gap-3 p-3 rounded-xl border transition-all',
         style.bg, 
         style.border,
-        isEditing && 'cursor-pointer hover:opacity-80'
+        isClickable && 'cursor-pointer hover:shadow-md hover:opacity-90'
       )}
-      onClick={isEditing ? onToggle : undefined}
+      onClick={isEditing ? onToggle : (reason ? onClick : undefined)}
     >
       <div className={cn('w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 text-white', style.icon)}>
         {met === true && <Check className="w-3.5 h-3.5" />}
@@ -148,45 +155,146 @@ function CriteriaItem({
         {met === null && <AlertCircle className="w-3.5 h-3.5" />}
       </div>
       <span className="text-sm text-foreground flex-1">{label}</span>
+      {met === true && <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />}
+      {met === false && <XCircle className="w-5 h-5 text-red-500 flex-shrink-0" />}
+      {met === null && <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0" />}
       {isEditing && (
-        <span className="text-xs text-muted-foreground">Click to toggle</span>
+        <span className="text-xs text-muted-foreground">Toggle</span>
+      )}
+      {!isEditing && reason && (
+        <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
       )}
     </div>
   );
 }
 
+// Criteria Reason Dialog
+function CriteriaReasonDialog({
+  isOpen,
+  onClose,
+  met,
+  label,
+  reason,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  met: boolean | null;
+  label: string;
+  reason: string;
+}) {
+  if (!isOpen) return null;
+
+  const styles = {
+    true: { icon: 'bg-success', text: 'text-success', badge: 'bg-success/10 text-success', statusLabel: 'Criterion Met' },
+    false: { icon: 'bg-destructive', text: 'text-destructive', badge: 'bg-destructive/10 text-destructive', statusLabel: 'Criterion Not Met' },
+    null: { icon: 'bg-warning', text: 'text-warning', badge: 'bg-warning/10 text-warning', statusLabel: 'Unclear' },
+  };
+  const style = styles[String(met) as keyof typeof styles];
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 border border-gray-200 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 border-b border-gray-200">
+          <div className="flex items-center gap-3">
+            <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center text-white', style.icon)}>
+              {met === true && <Check className="w-4 h-4" />}
+              {met === false && <X className="w-4 h-4" />}
+              {met === null && <AlertCircle className="w-4 h-4" />}
+            </div>
+            <div>
+              <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-md', style.badge)}>
+                {style.statusLabel}
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-5 space-y-4">
+          <h3 className="font-semibold text-gray-900">{label}</h3>
+          <div className="flex items-start gap-3 p-4 rounded-xl bg-gray-50 border border-gray-200">
+            <Sparkles className="w-5 h-5 text-teal flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs font-medium text-teal mb-1">AI Analysis</p>
+              <p className="text-sm text-gray-700 leading-relaxed">{reason}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end p-5 border-t border-gray-200 bg-gray-50">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium bg-teal text-white rounded-lg hover:bg-teal/90 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 function AnalysisPage() {
   const { transactionId } = Route.useParams();
-  const [request, setRequest] = useState<PARequest | null>(null);
+  const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [editedData, setEditedData] = useState<Partial<PARequest>>({});
+  const [showSubmissionOverlay, setShowSubmissionOverlay] = useState(false);
+  const [showSubmissionSuccess, setShowSubmissionSuccess] = useState(false);
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [selectedCriterion, setSelectedCriterion] = useState<{ met: boolean | null; label: string; reason: string } | null>(null);
+  const [isReanalyzing, setIsReanalyzing] = useState(false);
+  const [reanalyzedOverride, setReanalyzedOverride] = useState<{ confidence: number; criteria: PARequest['criteria'] } | null>(null);
+  const enteredAtRef = useRef<number>(Date.now());
+  const submittedRef = useRef(false);
+  const isSubmittingRef = useRef(false);
 
-  // Load request data
+  const { data: request, isLoading } = usePARequest(transactionId);
+  const updateMutation = useUpdatePARequest();
+  const submitMutation = useSubmitPARequest();
+  const addReviewTimeMutation = useAddReviewTime();
+  const isSubmitting = submitMutation.isPending;
+
+  // On unmount (navigate away): add review time if user did not submit
   useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      // Simulate loading delay for demo
-      await new Promise(r => setTimeout(r, 600));
-      
-      const data = getPARequest(transactionId);
-      if (data) {
-        setRequest(data);
-        setEditedData({
-          diagnosis: data.diagnosis,
-          diagnosisCode: data.diagnosisCode,
-          serviceDate: data.serviceDate,
-          placeOfService: data.placeOfService,
-          clinicalSummary: data.clinicalSummary,
-          criteria: data.criteria,
-        });
+    const id = transactionId;
+    return () => {
+      if (submittedRef.current) return;
+      const elapsed = Math.floor((Date.now() - enteredAtRef.current) / 1000);
+      if (elapsed > 0) {
+        addReviewTimeMutation.mutate({ id, seconds: elapsed });
       }
-      setIsLoading(false);
     };
-    
-    loadData();
-  }, [transactionId]);
+  }, [transactionId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (request) {
+      setEditedData({
+        diagnosis: request.diagnosis,
+        diagnosisCode: request.diagnosisCode,
+        serviceDate: request.serviceDate,
+        placeOfService: request.placeOfService,
+        clinicalSummary: request.clinicalSummary,
+        criteria: request.criteria,
+      });
+    }
+  }, [request]);
 
   // Loading state
   if (isLoading) {
@@ -248,13 +356,45 @@ function AnalysisPage() {
     );
   }
 
-  const isSubmitted = request.status === 'submitted' || request.status === 'approved';
+  const isSubmitted =
+    request.status === 'approved' ||
+    request.status === 'denied' ||
+    request.status === 'waiting_for_insurance';
 
-  const handleSaveEdits = () => {
-    const updated = updatePARequest(transactionId, editedData);
-    if (updated) {
-      setRequest(updated);
-      setIsEditing(false);
+  const handleSubmit = () => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    setShowSubmissionOverlay(true);
+  };
+
+  const handleSubmissionAnimationComplete = async () => {
+    try {
+      const reviewSeconds = Math.floor((Date.now() - enteredAtRef.current) / 1000);
+      await submitMutation.mutateAsync({ id: transactionId, addReviewTimeSeconds: reviewSeconds });
+      submittedRef.current = true;
+      setShowSubmissionOverlay(false);
+      setShowSubmissionSuccess(true);
+    } catch {
+      setShowSubmissionOverlay(false);
+    } finally {
+      isSubmittingRef.current = false;
+    }
+  };
+
+  const handleSaveEdits = async () => {
+    setSaveError(null);
+    try {
+      const updated = await updateMutation.mutateAsync({
+        id: transactionId,
+        ...editedData,
+      });
+      if (updated) {
+        setIsEditing(false);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to save changes';
+      setSaveError(message);
+      console.error('Save edits failed', err);
     }
   };
 
@@ -270,18 +410,8 @@ function AnalysisPage() {
     setIsEditing(false);
   };
 
-  const handleSubmit = async () => {
-    setIsSubmitting(true);
-    await new Promise(r => setTimeout(r, 1500));
-    const updated = submitPARequest(transactionId);
-    if (updated) {
-      setRequest(updated);
-    }
-    setIsSubmitting(false);
-  };
-
-  const handleDownloadPdf = () => {
-    openPAPdf(request);
+  const handleGeneratePdf = () => {
+    setShowPdfModal(true);
   };
 
   const handleToggleCriteria = (index: number) => {
@@ -295,11 +425,87 @@ function AnalysisPage() {
     setEditedData({ ...editedData, criteria: newCriteria });
   };
 
-  const displayData = isEditing ? editedData : request;
-  const isLowConfidence = request.status === 'ready' && request.confidence < LOW_CONFIDENCE_THRESHOLD;
+  const handleReanalyze = async () => {
+    setIsReanalyzing(true);
+    // Simulate AI re-analysis delay
+    await new Promise(r => setTimeout(r, 2500));
+
+    const currentCriteria = reanalyzedOverride?.criteria ?? request.criteria ?? [];
+    const updatedCriteria = currentCriteria.map(c => {
+      if (c.met === true) return c;
+      // Flip unmet/unclear criteria to met with an updated reason
+      return {
+        ...c,
+        met: true as boolean | null,
+        reason: c.met === false
+          ? `Re-analysis: After reviewing updated clinical documentation, this criterion is now satisfied. ${c.reason ?? ''}`
+          : `Re-analysis: Additional documentation has been located that satisfies this requirement. ${c.reason ?? ''}`,
+      };
+    });
+
+    const metCount = updatedCriteria.filter(c => c.met === true).length;
+    const newConfidence = Math.min(98, Math.max(85, Math.round((metCount / updatedCriteria.length) * 100) + Math.floor(Math.random() * 6)));
+
+    setReanalyzedOverride({ confidence: newConfidence, criteria: updatedCriteria });
+    setIsReanalyzing(false);
+  };
+
+  const effectiveRequest = reanalyzedOverride
+    ? { ...request, confidence: reanalyzedOverride.confidence, criteria: reanalyzedOverride.criteria }
+    : request;
+  const displayData = isEditing ? editedData : effectiveRequest;
+  const hasUnmetCriteria = (effectiveRequest.criteria || []).some((c: { met: boolean | null }) => c.met !== true);
+  const isLowConfidence = effectiveRequest.status === 'ready' && effectiveRequest.confidence < LOW_CONFIDENCE_THRESHOLD;
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">
+      {/* Submission progress overlay */}
+      {showSubmissionOverlay && (
+        <SubmissionProgressOverlay
+          submissionName={getSubmissionNameForPayer(request.payer)}
+          onComplete={handleSubmissionAnimationComplete}
+        />
+      )}
+
+      {/* Submission success overlay — portalled to body so backdrop covers the full viewport */}
+      {showSubmissionSuccess && createPortal(
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in"
+          aria-live="polite"
+        >
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 border border-gray-200 overflow-hidden">
+            <div className="flex flex-col items-center justify-center py-10 px-6">
+              <div className="w-20 h-20 rounded-2xl bg-emerald-100 flex items-center justify-center mb-6">
+                <CheckCircle2 className="w-10 h-10 text-emerald-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">PA Request Submitted</h3>
+              <p className="text-gray-500 text-center max-w-sm mb-6">
+                Your prior authorization request has been successfully submitted to the payer.
+              </p>
+              <button
+                onClick={() => {
+                  setShowSubmissionSuccess(false);
+                  navigate({ to: '/' });
+                }}
+                className="px-6 py-3 text-sm font-semibold bg-teal text-white rounded-xl hover:bg-teal/90 transition-all shadow-teal flex items-center gap-2"
+              >
+                Back to Dashboard
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Save error */}
+      {saveError && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-800">
+          <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-600" />
+          <p className="text-sm font-medium">{saveError}</p>
+        </div>
+      )}
+
       {/* Low confidence banner */}
       {isLowConfidence && !isSubmitted && (
         <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900">
@@ -313,7 +519,7 @@ function AnalysisPage() {
             </p>
           </div>
           <span className="flex-shrink-0 px-3 py-1 rounded-lg bg-amber-200 text-amber-900 text-sm font-bold">
-            {displayConfidence(request.confidence)}%
+            {displayConfidence(effectiveRequest.confidence)}%
           </span>
         </div>
       )}
@@ -342,7 +548,9 @@ function AnalysisPage() {
               {isSubmitted && (
                 <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-success/10 text-success text-xs font-bold">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  Submitted
+                  {request.status === 'waiting_for_insurance'
+                    ? 'Waiting for insurance response'
+                    : 'Submitted'}
                 </span>
               )}
               {isEditing && (
@@ -386,18 +594,18 @@ function AnalysisPage() {
                   Edit
                 </button>
                 <button 
-                  onClick={handleDownloadPdf}
+                  onClick={handleGeneratePdf}
                   className="px-4 py-2.5 text-sm border rounded-xl hover:bg-secondary transition-colors flex items-center gap-2 font-medium click-effect"
                 >
-                  <Printer className="w-4 h-4" />
-                  Print/PDF
+                  <FileText className="w-4 h-4" />
+                  Generate PDF
                 </button>
                 <button
                   onClick={handleSubmit}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || showSubmissionOverlay}
                   className="px-5 py-2.5 text-sm font-semibold bg-teal text-white rounded-xl hover:bg-teal/90 disabled:opacity-70 transition-all shadow-teal flex items-center gap-2 min-w-[160px] justify-center click-effect-primary"
                 >
-                  {isSubmitting ? (
+                  {(isSubmitting || showSubmissionOverlay) ? (
                     <>
                       <LoadingSpinner size="sm" className="border-white border-t-transparent" />
                       <span>Submitting...</span>
@@ -416,11 +624,11 @@ function AnalysisPage() {
 
         {isSubmitted && (
           <button 
-            onClick={handleDownloadPdf}
+            onClick={handleGeneratePdf}
             className="px-4 py-2.5 text-sm border rounded-xl hover:bg-secondary transition-colors flex items-center gap-2 font-medium click-effect"
           >
-            <Download className="w-4 h-4" />
-            Download PDF
+            <FileText className="w-4 h-4" />
+            Generate PDF
           </button>
         )}
       </div>
@@ -581,16 +789,16 @@ function AnalysisPage() {
               )}
             </h2>
             <div className="flex justify-center py-4">
-              <ProgressRing value={request.confidence} />
+              <ProgressRing value={effectiveRequest.confidence} />
             </div>
             <p className={cn(
               'text-center text-sm font-medium mt-4 p-3 rounded-lg',
-              displayConfidence(request.confidence) >= 80 ? 'bg-success/10 text-success' : 
-              displayConfidence(request.confidence) >= 60 ? 'bg-warning/10 text-warning' : 
+              displayConfidence(effectiveRequest.confidence) >= 80 ? 'bg-success/10 text-success' : 
+              displayConfidence(effectiveRequest.confidence) >= 60 ? 'bg-warning/10 text-warning' : 
               'bg-destructive/10 text-destructive'
             )}>
-              {displayConfidence(request.confidence) >= 80 ? 'High confidence — ready for submission' : 
-               displayConfidence(request.confidence) >= 60 ? 'Medium confidence — review recommended' : 
+              {displayConfidence(effectiveRequest.confidence) >= 80 ? 'High confidence — ready for submission' : 
+               displayConfidence(effectiveRequest.confidence) >= 60 ? 'Medium confidence — review recommended' : 
                'Low confidence — manual review required'}
             </p>
           </div>
@@ -609,13 +817,15 @@ function AnalysisPage() {
             <p className="text-xs text-muted-foreground mb-4">{request.payer} — {request.procedureName}</p>
             
             <div className="space-y-2">
-              {(displayData.criteria || []).map((c: { met: boolean | null; label: string }, i: number) => (
+              {(displayData.criteria || []).map((c: { met: boolean | null; label: string; reason?: string | null }, i: number) => (
                 <CriteriaItem 
                   key={i} 
                   met={c.met} 
-                  label={c.label} 
+                  label={c.label}
+                  reason={c.reason}
                   isEditing={isEditing}
                   onToggle={() => handleToggleCriteria(i)}
+                  onClick={() => c.reason ? setSelectedCriterion({ met: c.met, label: c.label, reason: c.reason }) : undefined}
                 />
               ))}
             </div>
@@ -624,6 +834,32 @@ function AnalysisPage() {
                 Click criteria to toggle status
               </p>
             )}
+            {!isEditing && (
+              <p className="text-xs text-muted-foreground mt-3 text-center">
+                Click a criterion to see why it was or wasn&apos;t met
+              </p>
+            )}
+
+            {/* Re-analyze button — shown when there are unmet criteria and not editing */}
+            {!isEditing && !isSubmitted && hasUnmetCriteria && (
+              <button
+                onClick={handleReanalyze}
+                disabled={isReanalyzing}
+                className="w-full mt-4 px-4 py-3 text-sm font-semibold border-2 border-dashed border-teal/40 text-teal rounded-xl hover:bg-teal/5 hover:border-teal/60 disabled:opacity-70 transition-all flex items-center justify-center gap-2"
+              >
+                {isReanalyzing ? (
+                  <>
+                    <LoadingSpinner size="sm" />
+                    <span>Re-analyzing criteria...</span>
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-4 h-4" />
+                    Re-analyze Criteria
+                  </>
+                )}
+              </button>
+            )}
           </div>
 
           {/* Actions */}
@@ -631,10 +867,10 @@ function AnalysisPage() {
             <div className="space-y-3">
               <button
                 onClick={handleSubmit}
-                disabled={isSubmitting}
+                disabled={isSubmitting || showSubmissionOverlay}
                 className="w-full px-5 py-3.5 text-sm font-semibold bg-teal text-white rounded-xl hover:bg-teal/90 disabled:opacity-70 transition-all shadow-teal flex items-center justify-center gap-2 click-effect-primary"
               >
-                {isSubmitting ? (
+                {(isSubmitting || showSubmissionOverlay) ? (
                   <>
                     <LoadingSpinner size="sm" className="border-white border-t-transparent" />
                     <span>Submitting to athenahealth...</span>
@@ -647,11 +883,11 @@ function AnalysisPage() {
                 )}
               </button>
               <button 
-                onClick={handleDownloadPdf}
+                onClick={handleGeneratePdf}
                 className="w-full px-5 py-3 text-sm font-medium border rounded-xl hover:bg-secondary transition-colors text-foreground flex items-center justify-center gap-2 click-effect"
               >
-                <Printer className="w-4 h-4" />
-                Preview & Print PDF
+                <FileText className="w-4 h-4" />
+                Generate PDF
               </button>
             </div>
           )}
@@ -663,14 +899,16 @@ function AnalysisPage() {
               </div>
               <p className="font-bold text-success text-lg">Successfully Submitted</p>
               <p className="text-sm text-muted-foreground mt-2">
-                PA request has been submitted to athenahealth and attached to the patient chart.
+                {request.status === 'waiting_for_insurance'
+                  ? 'Your PA request has been submitted. Waiting for insurance response.'
+                  : 'PA request has been submitted to athenahealth and attached to the patient chart.'}
               </p>
               <div className="flex flex-col gap-2 mt-4">
                 <button
-                  onClick={handleDownloadPdf}
+                  onClick={handleGeneratePdf}
                   className="px-4 py-2 text-sm font-medium text-teal hover:bg-teal/10 rounded-lg transition-colors click-effect"
                 >
-                  Download PDF Copy
+                  Generate PDF
                 </button>
                 <Link
                   to="/"
@@ -684,6 +922,22 @@ function AnalysisPage() {
           )}
         </div>
       </div>
+
+      {/* PDF Viewer Modal */}
+      <PdfViewerModal
+        isOpen={showPdfModal}
+        onClose={() => setShowPdfModal(false)}
+        request={request}
+      />
+
+      {/* Criteria Reason Dialog */}
+      <CriteriaReasonDialog
+        isOpen={!!selectedCriterion}
+        onClose={() => setSelectedCriterion(null)}
+        met={selectedCriterion?.met ?? null}
+        label={selectedCriterion?.label ?? ''}
+        reason={selectedCriterion?.reason ?? ''}
+      />
     </div>
   );
 }

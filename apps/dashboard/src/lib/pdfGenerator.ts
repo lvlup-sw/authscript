@@ -1,5 +1,14 @@
 // PDF Generator for Prior Authorization Forms
-import { PARequest } from './mockData';
+import type { PARequest } from '@/api/graphqlService';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
+
+const PDF_CONTAINER_ID = 'authscript-pdf-temp';
+
+function escapeHtml(s: string): string {
+  const map: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+  return String(s).replace(/[&<>"']/g, (c) => map[c] ?? c);
+}
 
 // Generate PDF content as HTML for printing
 export function generatePAPdf(request: PARequest): string {
@@ -8,12 +17,13 @@ export function generatePAPdf(request: PARequest): string {
     day: 'numeric',
     year: 'numeric',
   });
+  const e = (v: string | undefined | null, fallback = '') => escapeHtml(v ?? fallback);
 
   return `
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Prior Authorization Request - ${request.id}</title>
+  <title>Prior Authorization Request - ${e(request.id)}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
@@ -196,16 +206,16 @@ export function generatePAPdf(request: PARequest): string {
 <body>
   <div class="header">
     <div class="logo">
-      <div class="logo-icon">AS</div>
+      <div class="logo-icon">${e((request.payer || 'PA').slice(0, 2).toUpperCase())}</div>
       <div>
-        <div class="logo-text">AuthScript</div>
+        <div class="logo-text">${e(request.payer, 'Prior Authorization')}</div>
         <div class="logo-subtitle">Prior Authorization Request</div>
       </div>
     </div>
     <div class="doc-info">
-      <strong>${request.id}</strong><br>
-      Generated: ${today}<br>
-      Status: ${request.status.toUpperCase()}
+      <strong>${e(request.id)}</strong><br>
+      Generated: ${e(today)}<br>
+      Status: ${e(request.status?.toUpperCase())}
     </div>
   </div>
 
@@ -216,27 +226,27 @@ export function generatePAPdf(request: PARequest): string {
     <div class="grid">
       <div class="field">
         <div class="field-label">Patient Name</div>
-        <div class="field-value">${request.patient.name}</div>
+        <div class="field-value">${e(request.patient?.name)}</div>
       </div>
       <div class="field">
         <div class="field-label">Date of Birth</div>
-        <div class="field-value">${request.patient.dob}</div>
+        <div class="field-value">${e(request.patient?.dob)}</div>
       </div>
       <div class="field">
         <div class="field-label">Medical Record Number (MRN)</div>
-        <div class="field-value">${request.patient.mrn}</div>
+        <div class="field-value">${e(request.patient?.mrn)}</div>
       </div>
       <div class="field">
         <div class="field-label">Member ID</div>
-        <div class="field-value">${request.patient.memberId}</div>
+        <div class="field-value">${e(request.patient?.memberId)}</div>
       </div>
       <div class="field">
         <div class="field-label">Address</div>
-        <div class="field-value">${request.patient.address}</div>
+        <div class="field-value">${e(request.patient?.address)}</div>
       </div>
       <div class="field">
         <div class="field-label">Phone</div>
-        <div class="field-value">${request.patient.phone}</div>
+        <div class="field-value">${e(request.patient?.phone)}</div>
       </div>
     </div>
   </div>
@@ -246,11 +256,11 @@ export function generatePAPdf(request: PARequest): string {
     <div class="grid">
       <div class="field">
         <div class="field-label">Insurance Payer</div>
-        <div class="field-value">${request.payer}</div>
+        <div class="field-value">${e(request.payer)}</div>
       </div>
       <div class="field">
         <div class="field-label">Member ID</div>
-        <div class="field-value">${request.patient.memberId}</div>
+        <div class="field-value">${e(request.patient?.memberId)}</div>
       </div>
     </div>
   </div>
@@ -260,27 +270,27 @@ export function generatePAPdf(request: PARequest): string {
     <div class="grid">
       <div class="field">
         <div class="field-label">Procedure/Service Code</div>
-        <div class="field-value">${request.procedureCode}</div>
+        <div class="field-value">${e(request.procedureCode)}</div>
       </div>
       <div class="field">
         <div class="field-label">Procedure Description</div>
-        <div class="field-value">${request.procedureName}</div>
+        <div class="field-value">${e(request.procedureName)}</div>
       </div>
       <div class="field">
         <div class="field-label">Diagnosis Code (ICD-10)</div>
-        <div class="field-value">${request.diagnosisCode}</div>
+        <div class="field-value">${e(request.diagnosisCode)}</div>
       </div>
       <div class="field">
         <div class="field-label">Diagnosis Description</div>
-        <div class="field-value">${request.diagnosis}</div>
+        <div class="field-value">${e(request.diagnosis)}</div>
       </div>
       <div class="field">
         <div class="field-label">Requested Service Date</div>
-        <div class="field-value">${request.serviceDate}</div>
+        <div class="field-value">${e(request.serviceDate)}</div>
       </div>
       <div class="field">
         <div class="field-label">Place of Service</div>
-        <div class="field-value">${request.placeOfService}</div>
+        <div class="field-value">${e(request.placeOfService)}</div>
       </div>
     </div>
   </div>
@@ -290,11 +300,11 @@ export function generatePAPdf(request: PARequest): string {
     <div class="grid">
       <div class="field">
         <div class="field-label">Provider Name</div>
-        <div class="field-value">${request.provider}</div>
+        <div class="field-value">${e(request.provider)}</div>
       </div>
       <div class="field">
         <div class="field-label">NPI Number</div>
-        <div class="field-value">${request.providerNpi}</div>
+        <div class="field-value">${e(request.providerNpi)}</div>
       </div>
     </div>
   </div>
@@ -302,7 +312,7 @@ export function generatePAPdf(request: PARequest): string {
   <div class="section">
     <div class="section-title">Clinical Summary / Medical Necessity</div>
     <div class="clinical-summary">
-      ${request.clinicalSummary}
+      ${e(request.clinicalSummary)}
     </div>
   </div>
 
@@ -314,12 +324,12 @@ export function generatePAPdf(request: PARequest): string {
       </span>
     </div>
     <ul class="criteria-list">
-      ${request.criteria.map(c => `
+      ${(request.criteria ?? []).map(c => `
         <li class="criteria-item">
           <span class="criteria-status ${c.met === true ? 'criteria-met' : c.met === false ? 'criteria-not-met' : 'criteria-pending'}">
             ${c.met === true ? '✓' : c.met === false ? '✗' : '?'}
           </span>
-          <span>${c.label}</span>
+          <span>${e(c.label)}</span>
         </li>
       `).join('')}
     </ul>
@@ -342,41 +352,96 @@ export function generatePAPdf(request: PARequest): string {
 
   <div class="footer">
     <p>This prior authorization request was generated by AuthScript - AI-Powered Prior Authorization for athenahealth</p>
-    <p>Document ID: ${request.id} | Generated: ${new Date().toISOString()}</p>
+    <p>Document ID: ${e(request.id)} | Generated: ${e(new Date().toISOString())}</p>
   </div>
 </body>
 </html>
   `;
 }
 
-// Open PDF in new window for printing
-export function openPAPdf(request: PARequest) {
+/**
+ * Generates a PDF from the PA request and returns the blob.
+ */
+export async function generatePAPdfBlob(request: PARequest): Promise<Blob> {
   const html = generatePAPdf(request);
-  const printWindow = window.open('', '_blank');
-  
-  if (printWindow) {
-    printWindow.document.write(html);
-    printWindow.document.close();
-    
-    // Wait for content to load then trigger print
-    printWindow.onload = () => {
-      setTimeout(() => {
-        printWindow.print();
-      }, 250);
-    };
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const styles = doc.head.innerHTML.replace(/\bbody\b/g, `#${PDF_CONTAINER_ID}`);
+  const bodyContent = doc.body.innerHTML;
+
+  const container = document.createElement('div');
+  container.id = PDF_CONTAINER_ID;
+  Object.assign(container.style, {
+    position: 'fixed',
+    left: '-9999px',
+    top: '0',
+    width: '210mm',
+    minHeight: '297mm',
+    background: 'white',
+    overflow: 'visible',
+  });
+  container.innerHTML = `<style>${styles}</style>${bodyContent}`;
+  document.body.appendChild(container);
+
+  try {
+    await new Promise((r) => setTimeout(r, 100));
+
+    const canvas = await html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+    });
+
+    const pdf = new jsPDF({ format: 'a4', unit: 'mm' });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imgWidth = pageWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    const imgData = canvas.toDataURL('image/png');
+
+    let heightLeft = imgHeight;
+    let position = 0;
+    let page = 0;
+
+    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+
+    while (heightLeft > 0) {
+      page++;
+      pdf.addPage();
+      position = -pageHeight * page;
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+
+    return pdf.output('blob');
+  } finally {
+    container.remove();
   }
 }
 
-// Download as PDF (using print to PDF)
-export function downloadPAPdf(request: PARequest) {
-  const html = generatePAPdf(request);
-  const printWindow = window.open('', '_blank');
-  
-  if (printWindow) {
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.onload = () => {
-      printWindow.print();
-    };
-  }
+/**
+ * Generates PDF and opens it in a new tab for viewing.
+ * The browser's PDF viewer provides a print option.
+ * @returns Promise that rejects on generation error (callers can await and catch).
+ */
+export async function openPAPdf(request: PARequest): Promise<void> {
+  const blob = await generatePAPdfBlob(request);
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank', 'noopener,noreferrer');
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+/**
+ * Generates PDF and triggers download.
+ * @returns Promise that rejects on generation error (callers can await and catch).
+ */
+export async function downloadPAPdf(request: PARequest): Promise<void> {
+  const blob = await generatePAPdfBlob(request);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Prior-Auth-${request.id}.pdf`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
 }

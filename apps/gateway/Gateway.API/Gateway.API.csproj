@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -41,6 +41,9 @@
     <!-- OpenAPI -->
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.11.0" />
+
+    <!-- GraphQL -->
+    <PackageReference Include="HotChocolate.AspNetCore" Version="15.1.0" />
   </ItemGroup>
 
 </Project>

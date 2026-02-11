@@ -30,7 +30,7 @@ public sealed class FhirHttpClient : IFhirHttpClient
     }
 
     /// <inheritdoc />
-    public async Task<Result<JsonElement>> ReadAsync(
+    public async Task<Gateway.API.Contracts.Result<JsonElement>> ReadAsync(
         string resourceType,
         string id,
         CancellationToken ct = default)
@@ -50,7 +50,7 @@ public sealed class FhirHttpClient : IFhirHttpClient
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
-            return Result<JsonElement>.Success(json);
+            return Gateway.API.Contracts.Result<JsonElement>.Success(json);
         }
         catch (HttpRequestException ex)
         {
@@ -65,7 +65,7 @@ public sealed class FhirHttpClient : IFhirHttpClient
     }
 
     /// <inheritdoc />
-    public async Task<Result<JsonElement>> SearchAsync(
+    public async Task<Gateway.API.Contracts.Result<JsonElement>> SearchAsync(
         string resourceType,
         string query,
         CancellationToken ct = default)
@@ -85,7 +85,7 @@ public sealed class FhirHttpClient : IFhirHttpClient
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
-            return Result<JsonElement>.Success(json);
+            return Gateway.API.Contracts.Result<JsonElement>.Success(json);
         }
         catch (HttpRequestException ex)
         {
@@ -100,7 +100,7 @@ public sealed class FhirHttpClient : IFhirHttpClient
     }
 
     /// <inheritdoc />
-    public async Task<Result<JsonElement>> CreateAsync(
+    public async Task<Gateway.API.Contracts.Result<JsonElement>> CreateAsync(
         string resourceType,
         string resourceJson,
         CancellationToken ct = default)
@@ -127,7 +127,7 @@ public sealed class FhirHttpClient : IFhirHttpClient
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
-            return Result<JsonElement>.Success(json);
+            return Gateway.API.Contracts.Result<JsonElement>.Success(json);
         }
         catch (HttpRequestException ex)
         {
@@ -142,7 +142,7 @@ public sealed class FhirHttpClient : IFhirHttpClient
     }
 
     /// <inheritdoc />
-    public async Task<Result<byte[]>> ReadBinaryAsync(
+    public async Task<Gateway.API.Contracts.Result<byte[]>> ReadBinaryAsync(
         string id,
         CancellationToken ct = default)
     {
@@ -161,7 +161,7 @@ public sealed class FhirHttpClient : IFhirHttpClient
             response.EnsureSuccessStatusCode();
 
             var bytes = await response.Content.ReadAsByteArrayAsync(ct);
-            return Result<byte[]>.Success(bytes);
+            return Gateway.API.Contracts.Result<byte[]>.Success(bytes);
         }
         catch (HttpRequestException ex)
         {
