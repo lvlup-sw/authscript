@@ -96,6 +96,21 @@ public class MockDataServiceTests
     }
 
     [Test]
+    public async Task DenyPA_WaitingForInsurance_StoresDenialReason()
+    {
+        // Arrange
+        var service = new MockDataService();
+
+        // Act — PA-004 is bootstrapped with status "waiting_for_insurance"
+        var result = service.DenyPA("PA-004", "Insufficient documentation");
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Status).IsEqualTo("denied");
+        await Assert.That(result!.DenialReason).IsEqualTo("Insufficient documentation");
+    }
+
+    [Test]
     public async Task DenyPA_WrongStatus_ReturnsNull()
     {
         // Arrange
