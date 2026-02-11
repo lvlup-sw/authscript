@@ -283,16 +283,18 @@ public sealed class MockDataService : IDataService
 
     public async Task<PARequestModel?> ProcessPARequestAsync(string id, CancellationToken ct = default)
     {
-        PARequestModel? updated = null;
         lock (_lock)
         {
             var idx = _paRequests.FindIndex(r => r.Id == id);
             if (idx < 0) return null;
 
+            var existing = _paRequests[idx];
+            _paRequests[idx] = existing with { Status = "processing", UpdatedAt = DateTime.UtcNow.ToString("O") };
         }
 
         await Task.Delay(2000, ct);
 
+        PARequestModel? updated;
         lock (_lock)
         {
             var idx = _paRequests.FindIndex(r => r.Id == id);
@@ -375,7 +377,7 @@ public sealed class MockDataService : IDataService
             var existing = _paRequests[index];
             if (existing.Status != "waiting_for_insurance") return null;
 
-            var updated = existing with { Status = "denied", UpdatedAt = DateTime.UtcNow.ToString("O") };
+            var updated = existing with { Status = "denied", DenialReason = reason, UpdatedAt = DateTime.UtcNow.ToString("O") };
             _paRequests[index] = updated;
             return updated;
         }
