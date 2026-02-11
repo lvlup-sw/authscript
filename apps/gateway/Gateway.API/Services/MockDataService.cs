@@ -11,7 +11,7 @@ namespace Gateway.API.Services;
 /// In-memory mock data service for patients, procedures, medications, payers, providers,
 /// diagnoses, and PA requests. Used by GraphQL resolvers.
 /// </summary>
-public sealed class MockDataService
+public sealed class MockDataService : IDataService
 {
     private readonly List<PARequestModel> _paRequests = [];
     private readonly object _lock = new();
