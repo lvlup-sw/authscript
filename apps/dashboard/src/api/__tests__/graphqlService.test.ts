@@ -15,7 +15,6 @@ import {
   useApprovePARequest,
   useDenyPARequest,
   useConnectionStatus,
-  QUERY_KEYS,
 } from '../graphqlService';
 
 const mockRequest = vi.mocked(graphqlClient.request);
