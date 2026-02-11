@@ -29,7 +29,7 @@ public sealed class Mutation
 
     public PARequestModel? UpdatePARequest(UpdatePARequestInput input, [Service] MockDataService mockData)
     {
-        var criteria = input.Criteria?.Select(c => new CriterionModel { Met = c.Met, Label = c.Label }).ToList();
+        var criteria = input.Criteria?.Select(c => new CriterionModel { Met = c.Met, Label = c.Label, Reason = c.Reason }).ToList();
         return mockData.UpdatePARequest(
             input.Id,
             input.Diagnosis,

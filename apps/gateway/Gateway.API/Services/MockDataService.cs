@@ -29,21 +29,63 @@ public sealed class MockDataService
     {
         var provider = Providers[0];
         var now = DateTime.UtcNow;
-        // Pending Review (ready) - readyAt = createdAt + 2 min
+        // All requests created between 5 and 10 minutes ago
+        // Pending Review (ready)
         var r1 = CreatePAFromProcedure(BootstrapPatients[0], Procedures[0], Diagnoses[0], provider, "ready", 85, now.AddMinutes(-5), readyAt: now.AddMinutes(-3)) with { Id = "PA-001" };
-        var r2 = CreatePAFromProcedure(BootstrapPatients[1], Procedures[3], Diagnoses[2], provider, "ready", 92, now.AddMinutes(-12), readyAt: now.AddMinutes(-10)) with { Id = "PA-002" };
-        var r3 = CreatePAFromProcedure(BootstrapPatients[2], Procedures[1], Diagnoses[5], provider, "ready", 58, now.AddMinutes(-45), readyAt: now.AddMinutes(-43)) with { Id = "PA-003" };
-        // Waiting for Insurance - SHORTEST: 1 min to ready + 30s review = ~90s total
-        var r4 = CreatePAFromProcedure(BootstrapPatients[1], Procedures[4], Diagnoses[4], provider, "waiting_for_insurance", 88, now.AddHours(-2), readyAt: now.AddHours(-2).AddMinutes(1), submittedAt: now.AddHours(-2).AddMinutes(1).AddSeconds(30), reviewTimeSeconds: 30) with { Id = "PA-004" };
-        // History - MEDIUM: 2 min to ready + 2 min review = ~4 min total
-        var r5 = CreatePAFromProcedure(BootstrapPatients[2], Procedures[5], Diagnoses[6], provider, "approved", 94, now.AddHours(-24), readyAt: now.AddHours(-24).AddMinutes(2), submittedAt: now.AddHours(-24).AddMinutes(4), reviewTimeSeconds: 120) with { Id = "PA-005" };
-        // History - LONGEST: 3 min to ready + 15 min review = ~18 min total
-        var r6 = CreatePAFromProcedure(BootstrapPatients[0], Procedures[1], Diagnoses[0], provider, "denied", 72, now.AddHours(-48), readyAt: now.AddHours(-48).AddMinutes(3), submittedAt: now.AddHours(-48).AddMinutes(18), reviewTimeSeconds: 900) with { Id = "PA-006" };
+        var r2 = CreatePAFromProcedure(BootstrapPatients[1], Procedures[3], Diagnoses[2], provider, "ready", 92, now.AddMinutes(-7), readyAt: now.AddMinutes(-5)) with { Id = "PA-002" };
+        var r3 = CreatePAFromProcedure(BootstrapPatients[2], Procedures[1], Diagnoses[5], provider, "ready", 58, now.AddMinutes(-9), readyAt: now.AddMinutes(-7)) with
+        {
+            Id = "PA-003",
+            Criteria = [
+                new CriterionModel { Met = true,  Label = "Neurological symptoms documented", Reason = "Patient reports recurring migraines with aura, photophobia, and intermittent dizziness over the past 6 weeks. Neurological examination findings are documented in the clinical notes." },
+                new CriterionModel { Met = false, Label = "Initial imaging (CT) performed", Reason = "No prior CT scan or other initial imaging study was found in the patient's records. Most payers require a CT scan before approving an MRI Brain with contrast. This criterion must be satisfied before the request can be approved." },
+                new CriterionModel { Met = false, Label = "Clinical indication for contrast study", Reason = "The clinical notes do not provide sufficient justification for why a contrast study is needed over a non-contrast MRI. The documented symptoms (migraine) typically do not require contrast unless there is suspicion of a vascular or neoplastic etiology, which is not documented." },
+                new CriterionModel { Met = null,  Label = "Valid ICD-10 diagnosis code", Reason = "Diagnosis code G43.909 (Migraine, Unspecified) is a valid ICD-10 code; however, a more specific migraine subtype code may be required by some payers for MRI Brain with contrast authorization." },
+            ],
+        };
+        // Waiting for Insurance
+        var r4 = CreatePAFromProcedure(BootstrapPatients[1], Procedures[4], Diagnoses[4], provider, "waiting_for_insurance", 88, now.AddMinutes(-8), readyAt: now.AddMinutes(-7), submittedAt: now.AddMinutes(-6).AddSeconds(-30), reviewTimeSeconds: 30) with { Id = "PA-004" };
+        // History - approved
+        var r5 = CreatePAFromProcedure(BootstrapPatients[2], Procedures[5], Diagnoses[6], provider, "approved", 94, now.AddMinutes(-10), readyAt: now.AddMinutes(-8), submittedAt: now.AddMinutes(-6), reviewTimeSeconds: 120) with { Id = "PA-005" };
+        // History - denied
+        var r6 = CreatePAFromProcedure(BootstrapPatients[0], Procedures[1], Diagnoses[0], provider, "denied", 72, now.AddMinutes(-10), readyAt: now.AddMinutes(-8), submittedAt: now.AddMinutes(-5), reviewTimeSeconds: 180) with
+        {
+            Id = "PA-006",
+            Criteria = [
+                new CriterionModel { Met = true,  Label = "Neurological symptoms documented", Reason = "Clinical notes document chronic headaches with associated visual disturbances and dizziness. Neurological exam reveals mild cognitive changes consistent with the reported symptoms." },
+                new CriterionModel { Met = true,  Label = "Initial imaging (CT) performed", Reason = "CT scan of the head was performed on 12/01/2025. Results were unremarkable, with no acute findings. The inconclusive CT supports the need for further evaluation with MRI." },
+                new CriterionModel { Met = false, Label = "Clinical indication for contrast study", Reason = "The clinical documentation does not adequately justify the use of contrast. The primary diagnosis of low back pain (M54.5) does not typically warrant an MRI Brain with contrast. The payer requires a clear clinical indication such as suspected tumor or infection." },
+                new CriterionModel { Met = null,  Label = "Valid ICD-10 diagnosis code", Reason = "Diagnosis code M54.5 (Low Back Pain) is valid but may not be the most appropriate code for an MRI Brain study. The payer may question the clinical alignment between a lumbar diagnosis and a brain imaging request." },
+            ],
+        };
+
+        // Generate additional approved requests so overall success rate ≈ 97%
+        // 1 denied (PA-006) + 32 approved = 32/33 ≈ 97%
+        var approvedRequests = new List<PARequestModel>();
+        var allProviders = Providers;
+        for (var i = 0; i < 31; i++)
+        {
+            var pat = BootstrapPatients[i % BootstrapPatients.Length];
+            var proc = Procedures[i % Procedures.Count];
+            var diag = Diagnoses[i % Diagnoses.Count];
+            var prov = allProviders[i % allProviders.Count];
+            var minutesAgo = 5 + (i % 6);                      // 5–10 min ago
+            var created = now.AddMinutes(-minutesAgo);
+            var ready = created.AddMinutes(1);
+            var submitted = ready.AddMinutes(1);
+            var review = 30 + (i * 5 % 120);                   // 30–150 s
+            var conf = 85 + (i % 14);                           // 85–98
+            var id = $"PA-{(7 + i):D3}";
+            approvedRequests.Add(
+                CreatePAFromProcedure(pat, proc, diag, prov, "approved", conf, created, readyAt: ready, submittedAt: submitted, reviewTimeSeconds: review) with { Id = id }
+            );
+        }
 
         lock (_lock)
         {
             _paRequests.AddRange([r1, r2, r3, r4, r5, r6]);
-            _paRequestCounter = 7;
+            _paRequests.AddRange(approvedRequests);
+            _paRequestCounter = 7 + approvedRequests.Count;
         }
     }
 
@@ -102,10 +144,34 @@ public sealed class MockDataService
 
     private static readonly Dictionary<string, CriterionModel[]> PolicyCriteria = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["72148"] = [new CriterionModel { Met = true, Label = "6+ weeks of conservative therapy documented" }, new CriterionModel { Met = true, Label = "Documentation of treatment failure or inadequate response" }, new CriterionModel { Met = null, Label = "Red flag neurological symptoms present (optional bypass)" }, new CriterionModel { Met = true, Label = "Valid ICD-10 diagnosis code" }],
-        ["70553"] = [new CriterionModel { Met = true, Label = "Neurological symptoms documented" }, new CriterionModel { Met = true, Label = "Initial imaging (CT) performed" }, new CriterionModel { Met = true, Label = "Clinical indication for contrast study" }, new CriterionModel { Met = true, Label = "Valid ICD-10 diagnosis code" }],
-        ["27447"] = [new CriterionModel { Met = true, Label = "Failed conservative treatment (6+ months)" }, new CriterionModel { Met = true, Label = "Radiographic evidence of severe arthritis" }, new CriterionModel { Met = true, Label = "Significant functional limitation documented" }, new CriterionModel { Met = null, Label = "BMI within acceptable range" }, new CriterionModel { Met = true, Label = "No active infections" }],
-        ["default"] = [new CriterionModel { Met = true, Label = "Medical necessity documented" }, new CriterionModel { Met = true, Label = "Valid diagnosis code" }, new CriterionModel { Met = null, Label = "Prior authorization requirements met" }],
+        ["72148"] =
+        [
+            new CriterionModel { Met = true,  Label = "6+ weeks of conservative therapy documented", Reason = "Clinical notes indicate patient has undergone 8 weeks of physical therapy (6 sessions) and NSAID therapy (Naproxen 500mg BID) starting on 11/15/2025, meeting the minimum 6-week conservative therapy requirement." },
+            new CriterionModel { Met = true,  Label = "Documentation of treatment failure or inadequate response", Reason = "Provider notes document persistent pain rated 7/10 despite completing conservative therapy. Physical therapy discharge summary confirms limited functional improvement with continued radiculopathy symptoms." },
+            new CriterionModel { Met = null,  Label = "Red flag neurological symptoms present (optional bypass)", Reason = "Patient denies bowel/bladder dysfunction and saddle anesthesia. No progressive motor weakness documented. This criterion is optional and does not affect approval when other criteria are met." },
+            new CriterionModel { Met = true,  Label = "Valid ICD-10 diagnosis code", Reason = "Diagnosis code M54.5 (Low Back Pain) is a valid and accepted ICD-10 code for this procedure. The code matches the clinical presentation documented in the chart." },
+        ],
+        ["70553"] =
+        [
+            new CriterionModel { Met = true,  Label = "Neurological symptoms documented", Reason = "Clinical notes document persistent headaches with visual disturbances, dizziness, and cognitive changes over the past 3 months. Neurological exam findings support the need for advanced imaging." },
+            new CriterionModel { Met = true,  Label = "Initial imaging (CT) performed", Reason = "CT scan of the head was performed on 12/20/2025 and was inconclusive. Report notes no acute intracranial hemorrhage but could not rule out demyelinating disease or subtle structural abnormalities." },
+            new CriterionModel { Met = true,  Label = "Clinical indication for contrast study", Reason = "Given the inconclusive CT findings and ongoing neurological symptoms, contrast study is clinically indicated to evaluate for possible demyelinating disease, tumor, or vascular malformation." },
+            new CriterionModel { Met = true,  Label = "Valid ICD-10 diagnosis code", Reason = "Diagnosis code G43.909 (Migraine, Unspecified) is a valid ICD-10 code. The documented symptom profile is consistent with this diagnosis and supports the need for MRI Brain with contrast." },
+        ],
+        ["27447"] =
+        [
+            new CriterionModel { Met = true,  Label = "Failed conservative treatment (6+ months)", Reason = "Patient has documented 9 months of conservative management including physical therapy (12 sessions), NSAIDs, corticosteroid injections (2 rounds), and viscosupplementation — all without adequate pain relief or functional improvement." },
+            new CriterionModel { Met = true,  Label = "Radiographic evidence of severe arthritis", Reason = "X-rays from 01/05/2026 show Kellgren-Lawrence Grade IV osteoarthritis with bone-on-bone contact in the medial compartment, osteophyte formation, and subchondral sclerosis." },
+            new CriterionModel { Met = true,  Label = "Significant functional limitation documented", Reason = "Patient reports inability to walk more than one block, difficulty with stairs, and disrupted sleep due to knee pain. WOMAC functional score is 62/96, indicating severe limitation." },
+            new CriterionModel { Met = null,  Label = "BMI within acceptable range", Reason = "Patient's current BMI is 34.2, which is above the recommended threshold of 40 for most payers but may still be flagged by some plans. Further review may be needed depending on payer-specific guidelines." },
+            new CriterionModel { Met = true,  Label = "No active infections", Reason = "Recent lab work (CBC, ESR, CRP) from 01/10/2026 shows no signs of active infection. Surgical clearance has been obtained from the patient's primary care provider." },
+        ],
+        ["default"] =
+        [
+            new CriterionModel { Met = true,  Label = "Medical necessity documented", Reason = "Clinical documentation supports the medical necessity of the requested procedure. The provider has outlined the clinical rationale and expected benefits." },
+            new CriterionModel { Met = true,  Label = "Valid diagnosis code", Reason = "The submitted ICD-10 diagnosis code is valid and corresponds to the patient's documented condition." },
+            new CriterionModel { Met = null,  Label = "Prior authorization requirements met", Reason = "Unable to fully verify all payer-specific prior authorization requirements. Some documentation may still be pending or require additional review by the payer." },
+        ],
     };
 
     private static readonly Dictionary<string, string> ClinicalTemplates = new(StringComparer.OrdinalIgnoreCase)

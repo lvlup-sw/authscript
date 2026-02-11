@@ -24,6 +24,7 @@ const CRITERION_FRAGMENT = gql`
   fragment CriterionFields on CriterionModel {
     met
     label
+    reason
   }
 `;
 
@@ -225,6 +226,7 @@ export interface Medication {
 export interface Criterion {
   met: boolean | null;
   label: string;
+  reason?: string | null;
 }
 
 export interface PARequest {
@@ -407,12 +409,12 @@ export function useUpdatePARequest() {
       serviceDate?: string;
       placeOfService?: string;
       clinicalSummary?: string;
-      criteria?: { met: boolean | null; label: string }[];
+      criteria?: { met: boolean | null; label: string; reason?: string | null }[];
     }) => {
       const data = await graphqlClient.request<{ updatePARequest: PARequest | null }>(UPDATE_PA_REQUEST, {
         input: {
           ...input,
-          criteria: input.criteria?.map((c) => ({ met: c.met, label: c.label })),
+          criteria: input.criteria?.map((c) => ({ met: c.met, label: c.label, reason: c.reason })),
         },
       });
       return data.updatePARequest;

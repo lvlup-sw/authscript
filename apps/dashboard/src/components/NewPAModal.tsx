@@ -14,6 +14,8 @@ import {
   Brain,
   Shield,
   FileCheck,
+  CheckCircle2,
+  Send,
 } from 'lucide-react';
 import { ATHENA_TEST_PATIENTS, type Patient } from '@/lib/patients';
 import {
@@ -32,7 +34,7 @@ interface NewPAModalProps {
   onClose: () => void;
 }
 
-type Step = 'patient' | 'service' | 'diagnosis' | 'processing';
+type Step = 'patient' | 'service' | 'diagnosis' | 'confirm' | 'processing' | 'success';
 
 const PROCESSING_STEPS = [
   { icon: FileText, label: 'Reading clinical notes...' },
@@ -48,10 +50,11 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [serviceType, setServiceType] = useState<'procedure' | 'medication'>('procedure');
   const [selectedService, setSelectedService] = useState<Procedure | Medication | null>(null);
-  const [, setSelectedDiagnosis] = useState<{ code: string; name: string } | null>(null);
+  const [selectedDiagnosis, setSelectedDiagnosis] = useState<{ code: string; name: string } | null>(null);
   const [processingStep, setProcessingStep] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [processingError, setProcessingError] = useState<string | null>(null);
+  const [createdRequestId, setCreatedRequestId] = useState<string | null>(null);
 
   const patients = ATHENA_TEST_PATIENTS;
   const { data: procedures = [] } = useProcedures(isOpen);
@@ -60,12 +63,13 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
   const createMutation = useCreatePARequest();
   const processMutation = useProcessPARequest();
 
-  // Animate processing steps
+  // Animate processing steps — allow counter to reach PROCESSING_STEPS.length
+  // so the final step visually transitions to "complete" (checkmark).
   useEffect(() => {
     if (step === 'processing') {
       const interval = setInterval(() => {
         setProcessingStep(prev => {
-          if (prev < PROCESSING_STEPS.length - 1) {
+          if (prev < PROCESSING_STEPS.length) {
             return prev + 1;
           }
           return prev;
@@ -87,6 +91,7 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
     setSelectedDiagnosis(null);
     setIsTransitioning(false);
     setProcessingError(null);
+    setCreatedRequestId(null);
     onClose();
   };
 
@@ -110,44 +115,63 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
     transitionToStep('diagnosis');
   };
 
-  const handleDiagnosisSelect = async (diagnosis: { code: string; name: string }) => {
+  const handleDiagnosisSelect = (diagnosis: { code: string; name: string }) => {
     setSelectedDiagnosis(diagnosis);
+    setProcessingError(null);
+    transitionToStep('confirm');
+  };
+
+  const handleConfirmRequest = async () => {
     setProcessingError(null);
     transitionToStep('processing', 500);
 
+    // Minimum animation time: let all 4 steps show + a brief pause after the last
+    // step transitions to "complete". Each step takes 800ms; one extra tick to mark
+    // the last step done, plus a 600ms hold so the user sees all checkmarks.
+    const ANIMATION_MIN_MS = PROCESSING_STEPS.length * 800 + 800 + 600;
+    const animationPromise = new Promise<void>(r => setTimeout(r, ANIMATION_MIN_MS));
+
     try {
-      const newRequest = await createMutation.mutateAsync({
-        patient: {
-          id: selectedPatient!.id,
-          patientId: selectedPatient!.patientId,
-          fhirId: selectedPatient!.fhirId,
-          name: selectedPatient!.name,
-          mrn: selectedPatient!.mrn,
-          dob: selectedPatient!.dob,
-          memberId: selectedPatient!.memberId,
-          payer: selectedPatient!.payer,
-          address: selectedPatient!.address,
-          phone: selectedPatient!.phone,
-        },
-        procedureCode: selectedService!.code,
-        diagnosisCode: diagnosis.code,
-        diagnosisName: diagnosis.name,
-      });
-      if (!newRequest) {
-        transitionToStep('diagnosis');
-        setProcessingError('Failed to create PA request. Please try again.');
-        return;
-      }
+      const apiPromise = (async () => {
+        const newRequest = await createMutation.mutateAsync({
+          patient: {
+            id: selectedPatient!.id,
+            patientId: selectedPatient!.patientId,
+            fhirId: selectedPatient!.fhirId,
+            name: selectedPatient!.name,
+            mrn: selectedPatient!.mrn,
+            dob: selectedPatient!.dob,
+            memberId: selectedPatient!.memberId,
+            payer: selectedPatient!.payer,
+            address: selectedPatient!.address,
+            phone: selectedPatient!.phone,
+          },
+          procedureCode: selectedService!.code,
+          diagnosisCode: selectedDiagnosis!.code,
+          diagnosisName: selectedDiagnosis!.name,
+        });
+        if (!newRequest) {
+          throw new Error('Failed to create PA request. Please try again.');
+        }
+        await processMutation.mutateAsync(newRequest.id);
+        return newRequest.id;
+      })();
 
-      await processMutation.mutateAsync(newRequest.id);
-
-      resetAndClose();
-      navigate({ to: '/analysis/$transactionId', params: { transactionId: newRequest.id } });
+      const [requestId] = await Promise.all([apiPromise, animationPromise]);
+      setCreatedRequestId(requestId);
+      setStep('success');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Something went wrong';
       setProcessingError(message);
-      transitionToStep('diagnosis');
+      transitionToStep('confirm');
     }
+  };
+
+  const handleGoToReview = () => {
+    if (!createdRequestId) return;
+    const id = createdRequestId;
+    resetAndClose();
+    navigate({ to: '/analysis/$transactionId', params: { transactionId: id } });
   };
 
   const filteredPatients = patients.filter(p =>
@@ -191,7 +215,9 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
               {step === 'patient' && 'Select a patient'}
               {step === 'service' && 'Select procedure or medication'}
               {step === 'diagnosis' && 'Select diagnosis'}
+              {step === 'confirm' && 'Review and submit'}
               {step === 'processing' && 'Processing...'}
+              {step === 'success' && 'Request created'}
             </p>
           </div>
           <button 
@@ -204,36 +230,34 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
 
         {/* Progress Steps */}
         <div className="flex items-center gap-2 px-5 py-3 bg-gray-50 border-b border-gray-200">
-          {['patient', 'service', 'diagnosis'].map((s, i) => (
-            <div key={s} className="flex items-center gap-2">
-              <div className={cn(
-                'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold',
-                step === s && 'bg-teal text-white',
-                (step === 'service' && s === 'patient') || 
-                (step === 'diagnosis' && (s === 'patient' || s === 'service')) ||
-                (step === 'processing')
-                  ? 'bg-teal text-white'
-                  : step !== s && 'bg-gray-200 text-gray-500'
-              )}>
-                {(step === 'service' && s === 'patient') || 
-                 (step === 'diagnosis' && (s === 'patient' || s === 'service')) ||
-                 (step === 'processing')
-                  ? <Check className="w-3 h-3" />
-                  : i + 1}
+          {(['patient', 'service', 'diagnosis'] as const).map((s, i) => {
+            const stepOrder = ['patient', 'service', 'diagnosis', 'confirm', 'processing', 'success'] as const;
+            const currentIdx = stepOrder.indexOf(step);
+            const thisIdx = stepOrder.indexOf(s);
+            const isCompleted = currentIdx > thisIdx;
+            const isCurrent = step === s;
+            return (
+              <div key={s} className="flex items-center gap-2">
+                <div className={cn(
+                  'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold',
+                  (isCurrent || isCompleted) ? 'bg-teal text-white' : 'bg-gray-200 text-gray-500'
+                )}>
+                  {isCompleted ? <Check className="w-3 h-3" /> : i + 1}
+                </div>
+                <span className={cn(
+                  'text-sm capitalize',
+                  isCurrent ? 'text-teal font-medium' : 'text-gray-500'
+                )}>
+                  {s}
+                </span>
+                {i < 2 && <ChevronRight className="w-4 h-4 text-gray-400" />}
               </div>
-              <span className={cn(
-                'text-sm capitalize',
-                step === s ? 'text-teal font-medium' : 'text-gray-500'
-              )}>
-                {s}
-              </span>
-              {i < 2 && <ChevronRight className="w-4 h-4 text-gray-400" />}
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Content */}
-        <div className="p-5 overflow-y-auto max-h-[50vh] bg-white relative">
+        <div className="p-5 overflow-y-auto max-h-[65vh] bg-white relative">
           {/* Step Transition Loading Overlay */}
           {isTransitioning && (
             <div className="absolute inset-0 bg-white/90 backdrop-blur-sm z-10 flex flex-col items-center justify-center">
@@ -318,7 +342,7 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
                 <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-teal rounded-full transition-all duration-500 ease-out"
-                    style={{ width: `${((processingStep + 1) / PROCESSING_STEPS.length) * 100}%` }}
+                    style={{ width: `${Math.min(((processingStep + 1) / PROCESSING_STEPS.length) * 100, 100)}%` }}
                   />
                 </div>
               </div>
@@ -510,10 +534,82 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
               </div>
             </>
           )}
+
+          {/* Confirm Step */}
+          {step === 'confirm' && !isTransitioning && (
+            <div className="space-y-4">
+              {processingError && (
+                <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm">
+                  {processingError}
+                </div>
+              )}
+
+              <p className="text-sm text-gray-500 mb-2">Please review the details below and click <strong>Request PA</strong> to submit.</p>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-teal/5 border border-teal/20">
+                  <div className="w-8 h-8 rounded-lg bg-teal flex items-center justify-center">
+                    <User className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{selectedPatient?.name}</p>
+                    <p className="text-xs text-gray-500">MRN: {selectedPatient?.mrn} &bull; {selectedPatient?.payer}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-200">
+                  <div className="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center">
+                    <FileText className="w-4 h-4 text-gray-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{selectedService?.name}</p>
+                    <p className="text-xs text-gray-500">Code: {selectedService?.code}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-200">
+                  <div className="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center font-mono text-xs text-gray-500">
+                    {selectedDiagnosis?.code.slice(0, 3)}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{selectedDiagnosis?.name}</p>
+                    <p className="text-xs text-gray-500">ICD-10: {selectedDiagnosis?.code}</p>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={handleConfirmRequest}
+                disabled={createMutation.isPending || processMutation.isPending}
+                className="w-full mt-2 px-5 py-3 text-sm font-semibold bg-teal text-white rounded-xl hover:bg-teal/90 disabled:opacity-70 transition-all shadow-teal flex items-center justify-center gap-2 click-effect-primary"
+              >
+                <Send className="w-4 h-4" />
+                Request PA
+              </button>
+            </div>
+          )}
+
+          {/* Success State */}
+          {step === 'success' && !isTransitioning && (
+            <div className="flex flex-col items-center justify-center py-8">
+              <div className="w-20 h-20 rounded-2xl bg-emerald-100 flex items-center justify-center mb-6">
+                <CheckCircle2 className="w-10 h-10 text-emerald-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">PA Request Created</h3>
+              <p className="text-gray-500 text-center max-w-sm mb-6">
+                Your prior authorization form has been successfully generated and is ready for review.
+              </p>
+              <button
+                onClick={handleGoToReview}
+                className="px-6 py-3 text-sm font-semibold bg-teal text-white rounded-xl hover:bg-teal/90 transition-all shadow-teal flex items-center gap-2 click-effect-primary"
+              >
+                Review PA Request
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
-        {step !== 'processing' && (
+        {step !== 'processing' && step !== 'success' && (
           <div className="flex items-center justify-between p-5 border-t border-gray-200 bg-gray-50">
             <button
               onClick={() => {
@@ -521,6 +617,10 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
                 if (step === 'diagnosis') {
                   setProcessingError(null);
                   transitionToStep('service', 300);
+                }
+                if (step === 'confirm') {
+                  setProcessingError(null);
+                  transitionToStep('diagnosis', 300);
                 }
               }}
               className={cn(
@@ -537,6 +637,7 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
               {!isTransitioning && step === 'patient' && `${filteredPatients.length} patients`}
               {!isTransitioning && step === 'service' && `${filteredServices.length} ${serviceType}s`}
               {!isTransitioning && step === 'diagnosis' && `${filteredDiagnoses.length} diagnoses`}
+              {!isTransitioning && step === 'confirm' && 'Ready to submit'}
               {isTransitioning && 'Loading...'}
             </p>
           </div>

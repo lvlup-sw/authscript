@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 const PHASE_DURATIONS = {
   locating: 2800,
   found: 2200,
+  complete: 1000,
 } as const;
 
 const SUBMISSION_STEPS = [
@@ -21,7 +22,7 @@ const SUBMISSION_STEPS = [
   { icon: CheckCircle2, label: 'Found submission', isDynamic: true },
 ] as const;
 
-export type SubmissionPhase = 'locating' | 'found';
+export type SubmissionPhase = 'locating' | 'found' | 'complete';
 
 export interface SubmissionProgressOverlayProps {
   /** Submission method name to display when found (e.g. "BCBS ePA Portal") */
@@ -35,7 +36,8 @@ export function SubmissionProgressOverlay({
   onComplete,
 }: SubmissionProgressOverlayProps) {
   const [phase, setPhase] = useState<SubmissionPhase>('locating');
-  const processingStep = phase === 'locating' ? 0 : 1;
+  // In 'complete' phase, processingStep = 2 so both steps show as done (checkmark).
+  const processingStep = phase === 'locating' ? 0 : phase === 'found' ? 1 : 2;
   const onCompleteRef = useRef(onComplete);
   useEffect(() => {
     onCompleteRef.current = onComplete;
@@ -46,14 +48,20 @@ export function SubmissionProgressOverlay({
       setPhase('found');
     }, PHASE_DURATIONS.locating);
 
-    const totalDuration = PHASE_DURATIONS.locating + PHASE_DURATIONS.found;
     const t2 = setTimeout(() => {
+      setPhase('complete');
+    }, PHASE_DURATIONS.locating + PHASE_DURATIONS.found);
+
+    const totalDuration =
+      PHASE_DURATIONS.locating + PHASE_DURATIONS.found + PHASE_DURATIONS.complete;
+    const t3 = setTimeout(() => {
       onCompleteRef.current?.();
     }, totalDuration);
 
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
+      clearTimeout(t3);
     };
   }, []);
 
@@ -79,7 +87,9 @@ export function SubmissionProgressOverlay({
           <p className="text-gray-500 text-center max-w-sm mb-6">
             {phase === 'locating'
               ? 'Checking payer requirements and available channels...'
-              : 'Submitting your PA request...'}
+              : phase === 'found'
+                ? 'Submitting your PA request...'
+                : 'Submission complete'}
           </p>
 
           {/* Processing Steps - matches NewPAModal step list */}
@@ -139,7 +149,7 @@ export function SubmissionProgressOverlay({
               <div
                 className="h-full bg-teal rounded-full transition-all duration-500 ease-out"
                 style={{
-                  width: `${((processingStep + 1) / SUBMISSION_STEPS.length) * 100}%`,
+                  width: `${Math.min(((processingStep + 1) / SUBMISSION_STEPS.length) * 100, 100)}%`,
                 }}
               />
             </div>

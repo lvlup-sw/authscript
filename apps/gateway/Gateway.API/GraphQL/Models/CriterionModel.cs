@@ -7,4 +7,6 @@ public sealed record CriterionModel
 {
     public bool? Met { get; init; }
     public required string Label { get; init; }
+    /// <summary>AI-generated explanation of why this criterion was or was not met.</summary>
+    public string? Reason { get; init; }
 }

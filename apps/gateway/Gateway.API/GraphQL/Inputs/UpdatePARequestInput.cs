@@ -10,4 +10,4 @@ public sealed record UpdatePARequestInput(
     IReadOnlyList<CriterionInput>? Criteria
 );
 
-public sealed record CriterionInput(bool? Met, string Label);
+public sealed record CriterionInput(bool? Met, string Label, string? Reason = null);
