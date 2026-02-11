@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { cn } from '@/lib/utils';
 import { 
@@ -13,17 +13,16 @@ import {
   User,
   Building2,
   Shield,
-  Download,
   Edit2,
   Send,
   ChevronRight,
   Stethoscope,
   Save,
-  Printer,
 } from 'lucide-react';
-import { getPARequest, updatePARequest, submitPARequest, type PARequest } from '@/lib/store';
-import { openPAPdf } from '@/lib/pdfGenerator';
+import { usePARequest, useUpdatePARequest, useSubmitPARequest, useAddReviewTime, type PARequest } from '@/api/graphqlService';
 import { LoadingSpinner, Skeleton } from '@/components/LoadingSpinner';
+import { SubmissionProgressOverlay, getSubmissionNameForPayer } from '@/components/SubmissionProgressOverlay';
+import { PdfViewerModal } from '@/components/PdfViewerModal';
 
 export const Route = createFileRoute('/analysis/$transactionId')({
   component: AnalysisPage,
@@ -157,36 +156,43 @@ function CriteriaItem({
 
 function AnalysisPage() {
   const { transactionId } = Route.useParams();
-  const [request, setRequest] = useState<PARequest | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [editedData, setEditedData] = useState<Partial<PARequest>>({});
+  const [showSubmissionOverlay, setShowSubmissionOverlay] = useState(false);
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const enteredAtRef = useRef<number>(Date.now());
+  const submittedRef = useRef(false);
 
-  // Load request data
+  const { data: request, isLoading } = usePARequest(transactionId);
+  const updateMutation = useUpdatePARequest();
+  const submitMutation = useSubmitPARequest();
+  const addReviewTimeMutation = useAddReviewTime();
+  const isSubmitting = submitMutation.isPending;
+
+  // On unmount (navigate away): add review time if user did not submit
   useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      // Simulate loading delay for demo
-      await new Promise(r => setTimeout(r, 600));
-      
-      const data = getPARequest(transactionId);
-      if (data) {
-        setRequest(data);
-        setEditedData({
-          diagnosis: data.diagnosis,
-          diagnosisCode: data.diagnosisCode,
-          serviceDate: data.serviceDate,
-          placeOfService: data.placeOfService,
-          clinicalSummary: data.clinicalSummary,
-          criteria: data.criteria,
-        });
+    const id = transactionId;
+    return () => {
+      if (submittedRef.current) return;
+      const elapsed = Math.floor((Date.now() - enteredAtRef.current) / 1000);
+      if (elapsed > 0) {
+        addReviewTimeMutation.mutate({ id, seconds: elapsed });
       }
-      setIsLoading(false);
     };
-    
-    loadData();
-  }, [transactionId]);
+  }, [transactionId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (request) {
+      setEditedData({
+        diagnosis: request.diagnosis,
+        diagnosisCode: request.diagnosisCode,
+        serviceDate: request.serviceDate,
+        placeOfService: request.placeOfService,
+        clinicalSummary: request.clinicalSummary,
+        criteria: request.criteria,
+      });
+    }
+  }, [request]);
 
   // Loading state
   if (isLoading) {
@@ -248,12 +254,31 @@ function AnalysisPage() {
     );
   }
 
-  const isSubmitted = request.status === 'submitted' || request.status === 'approved';
+  const isSubmitted =
+    request.status === 'approved' ||
+    request.status === 'denied' ||
+    request.status === 'waiting_for_insurance';
 
-  const handleSaveEdits = () => {
-    const updated = updatePARequest(transactionId, editedData);
+  const handleSubmit = async () => {
+    setShowSubmissionOverlay(true);
+  };
+
+  const handleSubmissionAnimationComplete = async () => {
+    try {
+      submittedRef.current = true;
+      const reviewSeconds = Math.floor((Date.now() - enteredAtRef.current) / 1000);
+      await submitMutation.mutateAsync({ id: transactionId, addReviewTimeSeconds: reviewSeconds });
+    } finally {
+      setShowSubmissionOverlay(false);
+    }
+  };
+
+  const handleSaveEdits = async () => {
+    const updated = await updateMutation.mutateAsync({
+      id: transactionId,
+      ...editedData,
+    });
     if (updated) {
-      setRequest(updated);
       setIsEditing(false);
     }
   };
@@ -270,18 +295,8 @@ function AnalysisPage() {
     setIsEditing(false);
   };
 
-  const handleSubmit = async () => {
-    setIsSubmitting(true);
-    await new Promise(r => setTimeout(r, 1500));
-    const updated = submitPARequest(transactionId);
-    if (updated) {
-      setRequest(updated);
-    }
-    setIsSubmitting(false);
-  };
-
-  const handleDownloadPdf = () => {
-    openPAPdf(request);
+  const handleGeneratePdf = () => {
+    setShowPdfModal(true);
   };
 
   const handleToggleCriteria = (index: number) => {
@@ -300,6 +315,14 @@ function AnalysisPage() {
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">
+      {/* Submission progress overlay */}
+      {showSubmissionOverlay && (
+        <SubmissionProgressOverlay
+          submissionName={getSubmissionNameForPayer(request.payer)}
+          onComplete={handleSubmissionAnimationComplete}
+        />
+      )}
+
       {/* Low confidence banner */}
       {isLowConfidence && !isSubmitted && (
         <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900">
@@ -342,7 +365,9 @@ function AnalysisPage() {
               {isSubmitted && (
                 <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-success/10 text-success text-xs font-bold">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  Submitted
+                  {request.status === 'waiting_for_insurance'
+                    ? 'Waiting for insurance response'
+                    : 'Submitted'}
                 </span>
               )}
               {isEditing && (
@@ -386,18 +411,18 @@ function AnalysisPage() {
                   Edit
                 </button>
                 <button 
-                  onClick={handleDownloadPdf}
+                  onClick={handleGeneratePdf}
                   className="px-4 py-2.5 text-sm border rounded-xl hover:bg-secondary transition-colors flex items-center gap-2 font-medium click-effect"
                 >
-                  <Printer className="w-4 h-4" />
-                  Print/PDF
+                  <FileText className="w-4 h-4" />
+                  Generate PDF
                 </button>
                 <button
                   onClick={handleSubmit}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || showSubmissionOverlay}
                   className="px-5 py-2.5 text-sm font-semibold bg-teal text-white rounded-xl hover:bg-teal/90 disabled:opacity-70 transition-all shadow-teal flex items-center gap-2 min-w-[160px] justify-center click-effect-primary"
                 >
-                  {isSubmitting ? (
+                  {(isSubmitting || showSubmissionOverlay) ? (
                     <>
                       <LoadingSpinner size="sm" className="border-white border-t-transparent" />
                       <span>Submitting...</span>
@@ -416,11 +441,11 @@ function AnalysisPage() {
 
         {isSubmitted && (
           <button 
-            onClick={handleDownloadPdf}
+            onClick={handleGeneratePdf}
             className="px-4 py-2.5 text-sm border rounded-xl hover:bg-secondary transition-colors flex items-center gap-2 font-medium click-effect"
           >
-            <Download className="w-4 h-4" />
-            Download PDF
+            <FileText className="w-4 h-4" />
+            Generate PDF
           </button>
         )}
       </div>
@@ -631,10 +656,10 @@ function AnalysisPage() {
             <div className="space-y-3">
               <button
                 onClick={handleSubmit}
-                disabled={isSubmitting}
+                disabled={isSubmitting || showSubmissionOverlay}
                 className="w-full px-5 py-3.5 text-sm font-semibold bg-teal text-white rounded-xl hover:bg-teal/90 disabled:opacity-70 transition-all shadow-teal flex items-center justify-center gap-2 click-effect-primary"
               >
-                {isSubmitting ? (
+                {(isSubmitting || showSubmissionOverlay) ? (
                   <>
                     <LoadingSpinner size="sm" className="border-white border-t-transparent" />
                     <span>Submitting to athenahealth...</span>
@@ -647,11 +672,11 @@ function AnalysisPage() {
                 )}
               </button>
               <button 
-                onClick={handleDownloadPdf}
+                onClick={handleGeneratePdf}
                 className="w-full px-5 py-3 text-sm font-medium border rounded-xl hover:bg-secondary transition-colors text-foreground flex items-center justify-center gap-2 click-effect"
               >
-                <Printer className="w-4 h-4" />
-                Preview & Print PDF
+                <FileText className="w-4 h-4" />
+                Generate PDF
               </button>
             </div>
           )}
@@ -663,14 +688,16 @@ function AnalysisPage() {
               </div>
               <p className="font-bold text-success text-lg">Successfully Submitted</p>
               <p className="text-sm text-muted-foreground mt-2">
-                PA request has been submitted to athenahealth and attached to the patient chart.
+                {request.status === 'waiting_for_insurance'
+                  ? 'Your PA request has been submitted. Waiting for insurance response.'
+                  : 'PA request has been submitted to athenahealth and attached to the patient chart.'}
               </p>
               <div className="flex flex-col gap-2 mt-4">
                 <button
-                  onClick={handleDownloadPdf}
+                  onClick={handleGeneratePdf}
                   className="px-4 py-2 text-sm font-medium text-teal hover:bg-teal/10 rounded-lg transition-colors click-effect"
                 >
-                  Download PDF Copy
+                  Generate PDF
                 </button>
                 <Link
                   to="/"
@@ -684,6 +711,13 @@ function AnalysisPage() {
           )}
         </div>
       </div>
+
+      {/* PDF Viewer Modal */}
+      <PdfViewerModal
+        isOpen={showPdfModal}
+        onClose={() => setShowPdfModal(false)}
+        request={request}
+      />
     </div>
   );
 }

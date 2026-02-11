@@ -96,6 +96,24 @@ sequenceDiagram
     G->>A: 16. Finalize DocumentReference
 ```
 
+## Dashboard API (GraphQL)
+
+The dashboard communicates with the Gateway via **GraphQL** at `/api/graphql`. This replaces the previous REST + localStorage mock approach.
+
+| Operation | GraphQL | Purpose |
+|-----------|---------|---------|
+| List PA requests | `query { paRequests { ... } }` | Dashboard queue |
+| Get PA request | `query { paRequest(id: "...") { ... } }` | Analysis detail page |
+| Get stats | `query { paStats { ... } }` | Stats cards |
+| Get activity | `query { activity { ... } }` | Recent activity feed |
+| Reference data | `query { patients, procedures, medications, diagnoses }` | New PA modal |
+| Create PA | `mutation { createPARequest(input: {...}) { ... } }` | New PA flow |
+| Process PA | `mutation { processPARequest(id: "...") { ... } }` | Simulate AI processing |
+| Update PA | `mutation { updatePARequest(input: {...}) { ... } }` | Edit form data |
+| Submit PA | `mutation { submitPARequest(id: "...") { ... } }` | Mark as submitted |
+
+Mock data (patients, procedures, medications, payers, providers, diagnoses, PA requests) is stored in the backend `MockDataService` and served via GraphQL. The REST `/api/analysis` endpoints remain for the SMART app / transaction-based flow.
+
 ## Project Structure
 
 ```
@@ -106,6 +124,7 @@ authscript/
 │   │   │   ├── Contracts/        # Interface definitions
 │   │   │   │   └── Fhir/         # FHIR abstraction layer
 │   │   │   ├── Endpoints/        # Minimal API endpoints
+│   │   │   ├── GraphQL/         # GraphQL schema, queries, mutations
 │   │   │   ├── Models/           # DTOs and domain models
 │   │   │   └── Services/         # Implementation classes
 │   │   │       └── Fhir/         # athenahealth FHIR client
@@ -114,6 +133,7 @@ authscript/
 │   │   └── src/
 │   └── dashboard/                # React 19 - PA queue + review UI
 │       └── src/
+│           ├── api/              # GraphQL client, authscriptService (REST)
 │           ├── components/       # UI components
 │           │   ├── WorkflowProgress.tsx
 │           │   ├── PARequestCard.tsx

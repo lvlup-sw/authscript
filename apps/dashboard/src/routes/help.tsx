@@ -157,7 +157,7 @@ function ReviewSubmitPAContent() {
       <div>
         <h2 className="text-lg font-bold text-foreground mb-2">Review & submit PA</h2>
         <p className="text-sm text-muted-foreground">
-          On the analysis page you can review the AI-generated prior auth, edit fields and criteria, then submit or download a PDF.
+          On the analysis page you can review the AI-generated prior auth, edit fields and criteria, then submit or generate a PDF.
         </p>
       </div>
 
@@ -185,9 +185,9 @@ function ReviewSubmitPAContent() {
 
         <Step
           number={4}
-          title="Print or download PDF"
+          title="Generate PDF"
         >
-          <p>Use <strong>Print</strong> or <strong>Download PDF</strong> to open the PA form in a new window for printing or saving. You can do this before or after submitting.</p>
+          <p>Use <strong>Generate PDF</strong> to create and open the PA form in a new tab. From there you can print or save it. You can do this before or after submitting.</p>
         </Step>
 
         <Step

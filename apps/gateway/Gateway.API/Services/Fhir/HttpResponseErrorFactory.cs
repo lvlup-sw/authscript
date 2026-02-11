@@ -17,19 +17,19 @@ public static class HttpResponseErrorFactory
     /// <param name="resourceType">The FHIR resource type being read.</param>
     /// <param name="id">The resource identifier.</param>
     /// <returns>A failure Result if the response indicates an error; null if the response is successful.</returns>
-    public static Result<T>? ValidateReadResponse<T>(
+    public static Gateway.API.Contracts.Result<T>? ValidateReadResponse<T>(
         HttpResponseMessage response,
         string resourceType,
         string id)
     {
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
-            return Result<T>.Failure(FhirError.NotFound(resourceType, id));
+            return Gateway.API.Contracts.Result<T>.Failure(FhirError.NotFound(resourceType, id));
         }
 
         if (response.StatusCode == HttpStatusCode.Unauthorized)
         {
-            return Result<T>.Failure(FhirError.Unauthorized());
+            return Gateway.API.Contracts.Result<T>.Failure(FhirError.Unauthorized());
         }
 
         return null;
@@ -42,19 +42,19 @@ public static class HttpResponseErrorFactory
     /// <param name="response">The HTTP response to validate.</param>
     /// <param name="resourceType">The FHIR resource type being searched.</param>
     /// <returns>A failure Result if the response indicates an error; null if the response is successful.</returns>
-    public static Result<T>? ValidateSearchResponse<T>(
+    public static Gateway.API.Contracts.Result<T>? ValidateSearchResponse<T>(
         HttpResponseMessage response,
         string resourceType)
     {
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
-            return Result<T>.Failure(
+            return Gateway.API.Contracts.Result<T>.Failure(
                 FhirError.InvalidResponse($"FHIR {resourceType} search endpoint not found"));
         }
 
         if (response.StatusCode == HttpStatusCode.Unauthorized)
         {
-            return Result<T>.Failure(FhirError.Unauthorized());
+            return Gateway.API.Contracts.Result<T>.Failure(FhirError.Unauthorized());
         }
 
         return null;
@@ -67,18 +67,18 @@ public static class HttpResponseErrorFactory
     /// <param name="response">The HTTP response to validate.</param>
     /// <param name="validationErrorContent">The error content for validation failures (UnprocessableEntity).</param>
     /// <returns>A failure Result if the response indicates an error; null if the response is successful.</returns>
-    public static Result<T>? ValidateCreateResponse<T>(
+    public static Gateway.API.Contracts.Result<T>? ValidateCreateResponse<T>(
         HttpResponseMessage response,
         string? validationErrorContent = null)
     {
         if (response.StatusCode == HttpStatusCode.Unauthorized)
         {
-            return Result<T>.Failure(FhirError.Unauthorized());
+            return Gateway.API.Contracts.Result<T>.Failure(FhirError.Unauthorized());
         }
 
         if (response.StatusCode == HttpStatusCode.UnprocessableEntity)
         {
-            return Result<T>.Failure(FhirError.Validation(validationErrorContent ?? "Validation failed"));
+            return Gateway.API.Contracts.Result<T>.Failure(FhirError.Validation(validationErrorContent ?? "Validation failed"));
         }
 
         return null;
@@ -90,9 +90,9 @@ public static class HttpResponseErrorFactory
     /// <typeparam name="T">The expected result type.</typeparam>
     /// <param name="exception">The HTTP request exception.</param>
     /// <returns>A failure Result with network error details.</returns>
-    public static Result<T> NetworkError<T>(HttpRequestException exception)
+    public static Gateway.API.Contracts.Result<T> NetworkError<T>(HttpRequestException exception)
     {
-        return Result<T>.Failure(FhirError.Network(exception.Message, exception));
+        return Gateway.API.Contracts.Result<T>.Failure(FhirError.Network(exception.Message, exception));
     }
 
     /// <summary>
@@ -101,9 +101,9 @@ public static class HttpResponseErrorFactory
     /// <typeparam name="T">The expected result type.</typeparam>
     /// <param name="exception">The JSON exception.</param>
     /// <returns>A failure Result with validation error details.</returns>
-    public static Result<T> JsonError<T>(System.Text.Json.JsonException exception)
+    public static Gateway.API.Contracts.Result<T> JsonError<T>(System.Text.Json.JsonException exception)
     {
-        return Result<T>.Failure(FhirError.Validation($"Invalid JSON response: {exception.Message}"));
+        return Gateway.API.Contracts.Result<T>.Failure(FhirError.Validation($"Invalid JSON response: {exception.Message}"));
     }
 
     /// <summary>
@@ -113,9 +113,9 @@ public static class HttpResponseErrorFactory
     /// <param name="resourceType">The FHIR resource type.</param>
     /// <param name="id">The resource identifier (optional).</param>
     /// <returns>A failure Result with deserialization error details.</returns>
-    public static Result<T> DeserializationError<T>(string resourceType, string? id = null)
+    public static Gateway.API.Contracts.Result<T> DeserializationError<T>(string resourceType, string? id = null)
     {
         var resource = id is not null ? $"{resourceType}/{id}" : resourceType;
-        return Result<T>.Failure(FhirError.Validation($"Failed to deserialize {resource}"));
+        return Gateway.API.Contracts.Result<T>.Failure(FhirError.Validation($"Failed to deserialize {resource}"));
     }
 }

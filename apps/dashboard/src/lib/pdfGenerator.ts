@@ -1,5 +1,9 @@
 // PDF Generator for Prior Authorization Forms
-import { PARequest } from './mockData';
+import type { PARequest } from '@/api/graphqlService';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
+
+const PDF_CONTAINER_ID = 'authscript-pdf-temp';
 
 // Generate PDF content as HTML for printing
 export function generatePAPdf(request: PARequest): string {
@@ -349,34 +353,91 @@ export function generatePAPdf(request: PARequest): string {
   `;
 }
 
-// Open PDF in new window for printing
-export function openPAPdf(request: PARequest) {
+/**
+ * Generates a PDF from the PA request and returns the blob.
+ */
+export async function generatePAPdfBlob(request: PARequest): Promise<Blob> {
   const html = generatePAPdf(request);
-  const printWindow = window.open('', '_blank');
-  
-  if (printWindow) {
-    printWindow.document.write(html);
-    printWindow.document.close();
-    
-    // Wait for content to load then trigger print
-    printWindow.onload = () => {
-      setTimeout(() => {
-        printWindow.print();
-      }, 250);
-    };
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const styles = doc.head.innerHTML.replace(/\bbody\b/g, `#${PDF_CONTAINER_ID}`);
+  const bodyContent = doc.body.innerHTML;
+
+  const container = document.createElement('div');
+  container.id = PDF_CONTAINER_ID;
+  Object.assign(container.style, {
+    position: 'fixed',
+    left: '-9999px',
+    top: '0',
+    width: '210mm',
+    minHeight: '297mm',
+    background: 'white',
+    overflow: 'visible',
+  });
+  container.innerHTML = `<style>${styles}</style>${bodyContent}`;
+  document.body.appendChild(container);
+
+  try {
+    await new Promise((r) => setTimeout(r, 100));
+
+    const canvas = await html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+    });
+
+    const pdf = new jsPDF({ format: 'a4', unit: 'mm' });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imgWidth = pageWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    const imgData = canvas.toDataURL('image/png');
+
+    let heightLeft = imgHeight;
+    let position = 0;
+    let page = 0;
+
+    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+
+    while (heightLeft > 0) {
+      page++;
+      pdf.addPage();
+      position = -pageHeight * page;
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+
+    return pdf.output('blob');
+  } finally {
+    container.remove();
   }
 }
 
-// Download as PDF (using print to PDF)
+/**
+ * Generates PDF and opens it in a new tab for viewing.
+ * The browser's PDF viewer provides a print option.
+ */
+export function openPAPdf(request: PARequest) {
+  void (async () => {
+    const blob = await generatePAPdfBlob(request);
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank', 'noopener,noreferrer');
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  })();
+}
+
+/**
+ * Generates PDF and triggers download.
+ */
 export function downloadPAPdf(request: PARequest) {
-  const html = generatePAPdf(request);
-  const printWindow = window.open('', '_blank');
-  
-  if (printWindow) {
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.onload = () => {
-      printWindow.print();
-    };
-  }
+  void (async () => {
+    const blob = await generatePAPdfBlob(request);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Prior-Auth-${request.id}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  })();
 }

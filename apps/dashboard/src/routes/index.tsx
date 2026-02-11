@@ -3,7 +3,6 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 import { cn } from '@/lib/utils';
 import {
   CheckCircle2,
-  Clock,
   AlertTriangle,
   Sparkles,
   FileText,
@@ -20,9 +19,10 @@ import {
   Building2,
   Check,
   Plus,
+  Timer,
+  Hourglass,
 } from 'lucide-react';
-import { getPARequests, getPAStats, type PARequest } from '@/lib/store';
-import { generateMockActivity, type ActivityItem } from '@/lib/mockData';
+import { usePARequests, usePAStats, useActivity, type PARequest, type ActivityItem } from '@/api/graphqlService';
 import { NewPAModal } from '@/components/NewPAModal';
 import { Skeleton, SkeletonRow, SkeletonStats } from '@/components/LoadingSpinner';
 
@@ -122,6 +122,213 @@ function WorkflowPipeline() {
 // Low confidence threshold: same as "Needs Attention" (ready + confidence < 70)
 const LOW_CONFIDENCE_THRESHOLD = 70;
 
+// Time range presets for analytics
+type TimeRangePreset = 'day' | 'week' | 'month' | 'year' | 'custom';
+
+function getTimeRangeBounds(preset: TimeRangePreset, customStart?: Date, customEnd?: Date): { start: Date; end: Date } {
+  const now = new Date();
+  const end = preset === 'custom' && customEnd ? customEnd : now;
+  const start = (() => {
+    if (preset === 'custom' && customStart) return customStart;
+    const d = new Date(end);
+    if (preset === 'day') d.setDate(d.getDate() - 1);
+    else if (preset === 'week') d.setDate(d.getDate() - 7);
+    else if (preset === 'month') d.setMonth(d.getMonth() - 1);
+    else if (preset === 'year') d.setFullYear(d.getFullYear() - 1);
+    return d;
+  })();
+  return { start, end };
+}
+
+function formatDuration(ms: number): string {
+  if (ms < 60000) return `${Math.round(ms / 1000)}s`;
+  const mins = Math.floor(ms / 60000);
+  const secs = Math.round((ms % 60000) / 1000);
+  return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+}
+
+// Analytics view
+function AnalyticsView({
+  requests,
+  timeRange,
+  onTimeRangeChange,
+  customStart,
+  customEnd,
+  onCustomRangeChange,
+}: {
+  requests: PARequest[];
+  timeRange: TimeRangePreset;
+  onTimeRangeChange: (preset: TimeRangePreset) => void;
+  customStart?: Date;
+  customEnd?: Date;
+  onCustomRangeChange?: (start: Date, end: Date) => void;
+}) {
+  const { start, end } = getTimeRangeBounds(timeRange, customStart, customEnd);
+
+  const submittedRequests = requests.filter(
+    r =>
+      (r.status === 'waiting_for_insurance' || r.status === 'approved' || r.status === 'denied') &&
+      new Date(r.updatedAt) >= start &&
+      new Date(r.updatedAt) <= end
+  );
+
+  const processingTimes = submittedRequests.map(r => {
+    const created = new Date(r.createdAt).getTime();
+    const ready = r.readyAt ? new Date(r.readyAt).getTime() : new Date(r.updatedAt).getTime();
+    const timeToReadyMs = ready - created;
+    const reviewMs = (r.reviewTimeSeconds ?? 0) * 1000;
+    const totalMs = timeToReadyMs + reviewMs;
+    return { request: r, ms: totalMs };
+  });
+
+  const totalProcessed = submittedRequests.length;
+  const avgProcessingMs =
+    processingTimes.length > 0
+      ? processingTimes.reduce((sum, t) => sum + t.ms, 0) / processingTimes.length
+      : 0;
+  const avgConfidence =
+    submittedRequests.length > 0
+      ? submittedRequests.reduce((sum, r) => sum + r.confidence, 0) / submittedRequests.length
+      : 0;
+  const approvedCount = submittedRequests.filter(r => r.status === 'approved').length;
+  const deniedCount = submittedRequests.filter(r => r.status === 'denied').length;
+  const withOutcome = approvedCount + deniedCount;
+  const successRate = withOutcome > 0 ? (approvedCount / withOutcome) * 100 : 0;
+
+  const longest = processingTimes.length > 0 ? processingTimes.reduce((a, b) => (a.ms >= b.ms ? a : b)) : null;
+  const shortest = processingTimes.length > 0 ? processingTimes.reduce((a, b) => (a.ms <= b.ms ? a : b)) : null;
+
+  return (
+    <div className="space-y-6">
+      {/* Time range selector */}
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-sm font-medium text-muted-foreground">Time range:</span>
+        {(['day', 'week', 'month', 'year'] as const).map(preset => (
+          <button
+            key={preset}
+            onClick={() => onTimeRangeChange(preset)}
+            className={cn(
+              'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors click-effect',
+              timeRange === preset
+                ? 'bg-teal text-white'
+                : 'bg-secondary text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
+            )}
+          >
+            {preset.charAt(0).toUpperCase() + preset.slice(1)}
+          </button>
+        ))}
+        <button
+          onClick={() => onTimeRangeChange('custom')}
+          className={cn(
+            'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors click-effect',
+            timeRange === 'custom'
+              ? 'bg-teal text-white'
+              : 'bg-secondary text-muted-foreground hover:bg-secondary/80 hover:text-foreground'
+          )}
+        >
+          Custom
+        </button>
+        {timeRange === 'custom' && (
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={customStart?.toISOString().slice(0, 10) ?? ''}
+              onChange={e => {
+                const d = new Date(e.target.value);
+                onCustomRangeChange?.(d, customEnd ?? new Date());
+              }}
+              className="px-2 py-1.5 rounded-lg border text-sm"
+            />
+            <span className="text-muted-foreground">–</span>
+            <input
+              type="date"
+              value={customEnd?.toISOString().slice(0, 10) ?? ''}
+              onChange={e => {
+                const d = new Date(e.target.value);
+                onCustomRangeChange?.(customStart ?? new Date(), d);
+              }}
+              className="px-2 py-1.5 rounded-lg border text-sm"
+            />
+          </div>
+        )}
+        <span className="text-xs text-muted-foreground ml-2">
+          {start.toLocaleDateString()} – {end.toLocaleDateString()}
+        </span>
+      </div>
+
+      {/* Metrics grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="rounded-2xl p-5 bg-card border shadow-soft">
+          <p className="text-2xl font-bold text-foreground">{totalProcessed}</p>
+          <p className="text-sm text-muted-foreground mt-1">Total Processed</p>
+        </div>
+        <div className="rounded-2xl p-5 bg-card border shadow-soft">
+          <p className="text-2xl font-bold text-foreground">{formatDuration(avgProcessingMs)}</p>
+          <p className="text-sm text-muted-foreground mt-1">Avg. Processing Time</p>
+        </div>
+        <div className="rounded-2xl p-5 bg-card border shadow-soft">
+          <p className="text-2xl font-bold text-teal">{Math.round(avgConfidence)}%</p>
+          <p className="text-sm text-muted-foreground mt-1">AI Confidence Avg</p>
+        </div>
+        <div className="rounded-2xl p-5 bg-card border shadow-soft">
+          <p className="text-2xl font-bold text-success">{withOutcome > 0 ? `${Math.round(successRate)}%` : '—'}</p>
+          <p className="text-sm text-muted-foreground mt-1">Success Rate</p>
+        </div>
+      </div>
+
+      {/* Longest / Shortest */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="rounded-2xl p-5 bg-card border shadow-soft">
+          <div className="flex items-center gap-2 mb-3">
+            <Timer className="w-5 h-5 text-warning" />
+            <h3 className="font-bold text-foreground">Longest Time to Submit</h3>
+          </div>
+          {longest ? (
+            <div>
+              <p className="text-xl font-bold text-foreground">{formatDuration(longest.ms)}</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {longest.request.patient.name} • {longest.request.procedureCode}
+              </p>
+              <Link
+                to="/analysis/$transactionId"
+                params={{ transactionId: longest.request.id }}
+                className="text-xs text-teal hover:underline mt-2 inline-block"
+              >
+                View details <ChevronRight className="w-3 h-3 inline" />
+              </Link>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No submitted requests in range</p>
+          )}
+        </div>
+        <div className="rounded-2xl p-5 bg-card border shadow-soft">
+          <div className="flex items-center gap-2 mb-3">
+            <Zap className="w-5 h-5 text-success" />
+            <h3 className="font-bold text-foreground">Shortest Time to Submit</h3>
+          </div>
+          {shortest ? (
+            <div>
+              <p className="text-xl font-bold text-foreground">{formatDuration(shortest.ms)}</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {shortest.request.patient.name} • {shortest.request.procedureCode}
+              </p>
+              <Link
+                to="/analysis/$transactionId"
+                params={{ transactionId: shortest.request.id }}
+                className="text-xs text-teal hover:underline mt-2 inline-block"
+              >
+                View details <ChevronRight className="w-3 h-3 inline" />
+              </Link>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No submitted requests in range</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Request Row
 function RequestRow({ request, index = 0, now }: { request: PARequest; index?: number; now: number }) {
   const isReady = request.status === 'ready';
@@ -187,7 +394,15 @@ function RequestRow({ request, index = 0, now }: { request: PARequest; index?: n
           'px-3 py-1.5 rounded-lg text-xs font-semibold',
           isReady ? 'bg-teal/10 text-teal' : 'bg-secondary text-muted-foreground'
         )}>
-          {request.status === 'ready' ? 'Ready' : request.status === 'processing' ? 'Processing' : request.status}
+          {request.status === 'ready'
+            ? 'Ready'
+            : request.status === 'waiting_for_insurance'
+                ? 'Waiting for insurance'
+                : request.status === 'approved'
+                  ? 'Approved'
+                  : request.status === 'denied'
+                    ? 'Denied'
+                    : request.status}
         </span>
       </div>
       
@@ -214,7 +429,6 @@ function ActivityItemComponent({ item }: { item: ActivityItem }) {
   const colors = {
     success: 'bg-success/10 text-success border-success/20',
     ready: 'bg-teal/10 text-teal border-teal/20',
-    processing: 'bg-warning/10 text-warning border-warning/20',
     info: 'bg-muted text-muted-foreground border-border',
   };
   
@@ -233,41 +447,23 @@ function ActivityItemComponent({ item }: { item: ActivityItem }) {
 function DashboardPage() {
   const [activeTab, setActiveTab] = useState('pending');
   const [isNewPAModalOpen, setIsNewPAModalOpen] = useState(false);
-  const [requests, setRequests] = useState<PARequest[]>([]);
-  const [stats, setStats] = useState({ ready: 0, processing: 0, submitted: 0, attention: 0, total: 0 });
-  const [activity, setActivity] = useState<ActivityItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [now, setNow] = useState(() => Date.now());
+  const [analyticsTimeRange, setAnalyticsTimeRange] = useState<TimeRangePreset>('week');
+  const [analyticsCustomStart, setAnalyticsCustomStart] = useState<Date>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d;
+  });
+  const [analyticsCustomEnd, setAnalyticsCustomEnd] = useState<Date>(() => new Date());
+
+  const { data: requests = [], isLoading, isError, error } = usePARequests();
+  const { data: stats = { ready: 0, submitted: 0, waitingForInsurance: 0, attention: 0, total: 0 } } = usePAStats();
+  const { data: activity = [] } = useActivity();
 
   // Update "now" every minute for relative time display (avoids impure Date.now() during render)
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 60000);
     return () => clearInterval(id);
-  }, []);
-
-  // Load data with initial loading state
-  useEffect(() => {
-    const loadData = async (initial = false) => {
-      if (initial) {
-        // Simulate initial load delay for demo
-        await new Promise(r => setTimeout(r, 800));
-      }
-      
-      const paRequests = getPARequests();
-      setRequests(paRequests);
-      setStats(getPAStats());
-      setActivity(generateMockActivity(paRequests));
-      
-      if (initial) {
-        setIsLoading(false);
-      }
-    };
-
-    loadData(true);
-    
-    // Refresh every 5 seconds
-    const interval = setInterval(() => loadData(false), 5000);
-    return () => clearInterval(interval);
   }, []);
 
   const currentDate = new Date().toLocaleDateString('en-US', { 
@@ -279,20 +475,34 @@ function DashboardPage() {
 
   const tabs = [
     { id: 'pending', label: 'Pending Review', icon: ClipboardCheck, count: stats.ready },
-    { id: 'processing', label: 'Processing', icon: Zap, count: stats.processing },
+    { id: 'waiting', label: 'Waiting for Insurance', icon: Hourglass, count: stats.waitingForInsurance },
     { id: 'history', label: 'History', icon: FileText },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   ];
 
   const filteredRequests = requests.filter(r => {
     if (activeTab === 'pending') return r.status === 'ready';
-    if (activeTab === 'processing') return r.status === 'processing';
-    if (activeTab === 'history') return r.status === 'submitted' || r.status === 'approved' || r.status === 'denied';
+    if (activeTab === 'waiting') return r.status === 'waiting_for_insurance';
+    if (activeTab === 'history') return r.status === 'approved' || r.status === 'denied';
     return true;
   });
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">
+      {/* GraphQL connection error */}
+      {isError && (
+        <div className="rounded-2xl p-4 bg-destructive/10 border border-destructive/30 text-destructive">
+          <p className="font-semibold">Cannot connect to backend</p>
+          <p className="text-sm mt-1 opacity-90">
+            {error instanceof Error ? error.message : 'GraphQL request failed'}
+          </p>
+          <p className="text-xs mt-2 opacity-75">
+            Ensure the Gateway is running. Set <code className="bg-black/10 px-1 rounded">VITE_GATEWAY_URL</code> to your
+            Gateway URL (default: <code className="bg-black/10 px-1 rounded">http://localhost:5000</code>).
+          </p>
+        </div>
+      )}
+
       {/* Welcome Header Banner */}
       <div className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 rounded-2xl p-6 text-white relative overflow-hidden">
         {/* Background decoration */}
@@ -349,18 +559,13 @@ function DashboardPage() {
       {isLoading ? (
         <SkeletonStats />
       ) : (
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <StatCard 
             label="Ready for Review" 
             value={stats.ready} 
             change={stats.ready > 0 ? `${stats.ready} pending` : undefined}
             positive 
             icon={CheckCircle2}
-          />
-          <StatCard 
-            label="Processing" 
-            value={stats.processing}
-            icon={Clock}
           />
           <StatCard 
             label="Completed Today" 
@@ -386,10 +591,6 @@ function DashboardPage() {
             <p className="text-sm text-muted-foreground">Real-time view of PA requests being processed</p>
           </div>
           <div className="flex items-center gap-4 text-sm">
-            <span className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-teal/10 text-teal font-medium">
-              <Activity className="w-4 h-4" />
-              {stats.processing} in progress
-            </span>
             <span className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 text-success font-medium">
               <CheckCircle2 className="w-4 h-4" />
               {stats.submitted} completed today
@@ -433,53 +634,72 @@ function DashboardPage() {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-3 gap-6">
-        {/* Pending Requests */}
-        <div className="col-span-2 bg-card rounded-2xl border shadow-soft">
-          <div className="p-5 border-b flex items-center justify-between">
-            <div>
+      <div className={cn('grid gap-6', activeTab === 'analytics' ? 'grid-cols-1' : 'grid-cols-3')}>
+        {/* Requests list or Analytics */}
+        <div className={activeTab === 'analytics' ? 'w-full' : 'col-span-2'}>
+          <div className="bg-card rounded-2xl border shadow-soft">
+            <div className="p-5 border-b flex items-center justify-between">
+              <div>
               <h2 className="text-lg font-bold text-foreground">
                 {activeTab === 'pending' && 'Pending Requests'}
-                {activeTab === 'processing' && 'Processing'}
-                {activeTab === 'history' && 'History'}
-                {activeTab === 'analytics' && 'Analytics'}
-              </h2>
-              <p className="text-sm text-muted-foreground">{filteredRequests.length} requests</p>
-            </div>
-            <button
-              onClick={() => setIsNewPAModalOpen(true)}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-teal hover:bg-teal/10 rounded-lg transition-colors click-effect"
-            >
-              <Plus className="w-4 h-4" />
-              New Request
-            </button>
-          </div>
-          <div className="p-4 space-y-3">
-            {isLoading ? (
-              <>
-                <SkeletonRow />
-                <SkeletonRow />
-                <SkeletonRow />
-              </>
-            ) : filteredRequests.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">No requests found</p>
+                {activeTab === 'waiting' && 'Waiting for Insurance'}
+                  {activeTab === 'history' && 'History'}
+                  {activeTab === 'analytics' && 'Analytics'}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {activeTab === 'analytics' ? 'Performance metrics by time range' : `${filteredRequests.length} requests`}
+                </p>
+              </div>
+              {activeTab !== 'analytics' && (
                 <button
                   onClick={() => setIsNewPAModalOpen(true)}
-                  className="mt-4 px-4 py-2 text-sm font-medium text-teal hover:bg-teal/10 rounded-lg transition-colors click-effect"
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-teal hover:bg-teal/10 rounded-lg transition-colors click-effect"
                 >
-                  Create New PA Request
+                  <Plus className="w-4 h-4" />
+                  New Request
                 </button>
-              </div>
-            ) : (
-              filteredRequests.map((request, index) => (
-                <RequestRow key={request.id} request={request} index={index} now={now} />
-              ))
-            )}
+              )}
+            </div>
+            <div className="p-4 space-y-3">
+              {activeTab === 'analytics' ? (
+                <AnalyticsView
+                  requests={requests}
+                  timeRange={analyticsTimeRange}
+                  onTimeRangeChange={setAnalyticsTimeRange}
+                  customStart={analyticsTimeRange === 'custom' ? analyticsCustomStart : undefined}
+                  customEnd={analyticsTimeRange === 'custom' ? analyticsCustomEnd : undefined}
+                  onCustomRangeChange={(start, end) => {
+                    setAnalyticsCustomStart(start);
+                    setAnalyticsCustomEnd(end);
+                  }}
+                />
+              ) : isLoading ? (
+                <>
+                  <SkeletonRow />
+                  <SkeletonRow />
+                  <SkeletonRow />
+                </>
+              ) : filteredRequests.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">No requests found</p>
+                  <button
+                    onClick={() => setIsNewPAModalOpen(true)}
+                    className="mt-4 px-4 py-2 text-sm font-medium text-teal hover:bg-teal/10 rounded-lg transition-colors click-effect"
+                  >
+                    Create New PA Request
+                  </button>
+                </div>
+              ) : (
+                filteredRequests.map((request, index) => (
+                  <RequestRow key={request.id} request={request} index={index} now={now} />
+                ))
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Right Column */}
+        {/* Right Column - hide when analytics */}
+        {activeTab !== 'analytics' && (
         <div className="space-y-6">
           {/* Recent Activity */}
           <div className="bg-card rounded-2xl border shadow-soft">
@@ -540,6 +760,7 @@ function DashboardPage() {
             </div>
           </div>
         </div>
+        )}
       </div>
 
       {/* Footer Status */}

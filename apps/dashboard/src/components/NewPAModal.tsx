@@ -15,16 +15,16 @@ import {
   Shield,
   FileCheck,
 } from 'lucide-react';
+import { ATHENA_TEST_PATIENTS, type Patient } from '@/lib/patients';
 import {
-  PATIENTS,
-  PROCEDURES,
-  MEDICATIONS,
-  DIAGNOSES,
-  Patient,
-  Procedure,
-  Medication,
-} from '@/lib/mockData';
-import { createPARequest, processPARequest } from '@/lib/store';
+  useProcedures,
+  useMedications,
+  useDiagnoses,
+  useCreatePARequest,
+  useProcessPARequest,
+  type Procedure,
+  type Medication,
+} from '@/api/graphqlService';
 import { LoadingSpinner } from './LoadingSpinner';
 
 interface NewPAModalProps {
@@ -51,6 +51,13 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
   const [, setSelectedDiagnosis] = useState<{ code: string; name: string } | null>(null);
   const [processingStep, setProcessingStep] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
+
+  const patients = ATHENA_TEST_PATIENTS;
+  const { data: procedures = [] } = useProcedures(isOpen);
+  const { data: medications = [] } = useMedications(isOpen);
+  const { data: diagnoses = [] } = useDiagnoses(isOpen);
+  const createMutation = useCreatePARequest();
+  const processMutation = useProcessPARequest();
 
   // Animate processing steps
   useEffect(() => {
@@ -104,38 +111,48 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
   const handleDiagnosisSelect = async (diagnosis: { code: string; name: string }) => {
     setSelectedDiagnosis(diagnosis);
     transitionToStep('processing', 500);
-    
-    // Create the PA request
-    const newRequest = createPARequest(
-      selectedPatient!,
-      selectedService!,
-      diagnosis
-    );
-    
-    // Process with AI (simulated)
-    await processPARequest(newRequest.id);
-    
-    // Navigate to the review page
+
+    const newRequest = await createMutation.mutateAsync({
+      patient: {
+        id: selectedPatient!.id,
+        patientId: selectedPatient!.patientId,
+        fhirId: selectedPatient!.fhirId,
+        name: selectedPatient!.name,
+        mrn: selectedPatient!.mrn,
+        dob: selectedPatient!.dob,
+        memberId: selectedPatient!.memberId,
+        payer: selectedPatient!.payer,
+        address: selectedPatient!.address,
+        phone: selectedPatient!.phone,
+      },
+      procedureCode: selectedService!.code,
+      diagnosisCode: diagnosis.code,
+      diagnosisName: diagnosis.name,
+    });
+    if (!newRequest) return;
+
+    await processMutation.mutateAsync(newRequest.id);
+
     resetAndClose();
     navigate({ to: '/analysis/$transactionId', params: { transactionId: newRequest.id } });
   };
 
-  const filteredPatients = PATIENTS.filter(p =>
+  const filteredPatients = patients.filter(p =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.mrn.includes(searchQuery)
   );
 
   const filteredServices = serviceType === 'procedure'
-    ? PROCEDURES.filter(p => 
+    ? procedures.filter(p =>
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.code.includes(searchQuery)
       )
-    : MEDICATIONS.filter(m =>
+    : medications.filter(m =>
         m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         m.code.includes(searchQuery)
       );
 
-  const filteredDiagnoses = DIAGNOSES.filter(d =>
+  const filteredDiagnoses = diagnoses.filter(d =>
     d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     d.code.toLowerCase().includes(searchQuery.toLowerCase())
   );

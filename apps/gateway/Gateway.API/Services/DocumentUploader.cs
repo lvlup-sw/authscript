@@ -32,7 +32,7 @@ public sealed class DocumentUploader : IDocumentUploader
     }
 
     /// <inheritdoc />
-    public async Task<Result<string>> UploadDocumentAsync(
+    public async Task<Gateway.API.Contracts.Result<string>> UploadDocumentAsync(
         byte[] pdfBytes,
         string patientId,
         string? encounterId,
@@ -52,7 +52,7 @@ public sealed class DocumentUploader : IDocumentUploader
             _logger.LogError(
                 "Failed to upload document: {Error}",
                 result.Error?.Message);
-            return Result<string>.Failure(result.Error!);
+            return Gateway.API.Contracts.Result<string>.Failure(result.Error!);
         }
 
         var responseJson = result.Value!;
@@ -69,7 +69,7 @@ public sealed class DocumentUploader : IDocumentUploader
 
         _logger.LogInformation("Document uploaded successfully. DocumentId={DocumentId}", documentId);
 
-        return Result<string>.Success(documentId);
+        return Gateway.API.Contracts.Result<string>.Success(documentId);
     }
 
     private object BuildDocumentReference(byte[] pdfBytes, string patientId, string? encounterId)

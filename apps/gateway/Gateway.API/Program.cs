@@ -6,6 +6,8 @@
 using Gateway.API;
 using Gateway.API.Data;
 using Gateway.API.Endpoints;
+using Gateway.API.GraphQL.Mutations;
+using Gateway.API.GraphQL.Queries;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
@@ -31,6 +33,12 @@ builder.Services
     .AddFhirClients()         // Uses IOptions<AthenaOptions> for base URL
     .AddIntelligenceClient()
     .AddNotificationServices();
+
+// GraphQL
+builder.Services
+    .AddGraphQLServer()
+    .AddQueryType<Query>()
+    .AddMutationType<Mutation>();
 
 var app = builder.Build();
 
@@ -60,5 +68,8 @@ app.MapSseEndpoints();
 app.MapSubmitEndpoints();
 app.MapWorkItemEndpoints();
 app.MapPatientEndpoints();
+
+// GraphQL (mirrors REST API capabilities for dashboard)
+app.MapGraphQL("/api/graphql");
 
 app.Run();
