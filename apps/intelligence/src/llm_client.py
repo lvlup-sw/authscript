@@ -5,6 +5,7 @@ Providers use singleton pattern with pooled HTTP clients.
 """
 
 import logging
+import threading
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
@@ -152,26 +153,31 @@ _PROVIDERS: dict[str, type[LLMProvider]] = {
     "openai": OpenAIProvider,
 }
 
-# Singleton cached provider
+# Singleton cached provider with thread-safe double-checked locking
 _cached_provider: LLMProvider | None = None
+_provider_lock = threading.Lock()
 
 
 def _get_provider() -> LLMProvider | None:
-    """Get the configured LLM provider instance (singleton)."""
+    """Get the configured LLM provider instance (thread-safe singleton)."""
     global _cached_provider
 
     if _cached_provider is not None:
         return _cached_provider
 
-    if not settings.llm_configured:
-        return None
+    with _provider_lock:
+        if _cached_provider is not None:
+            return _cached_provider
 
-    provider_class = _PROVIDERS.get(settings.llm_provider)
-    if not provider_class:
-        return None
+        if not settings.llm_configured:
+            return None
 
-    _cached_provider = provider_class()
-    return _cached_provider
+        provider_class = _PROVIDERS.get(settings.llm_provider)
+        if not provider_class:
+            return None
+
+        _cached_provider = provider_class()
+        return _cached_provider
 
 
 async def chat_completion(

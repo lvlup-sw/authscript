@@ -202,3 +202,22 @@ async def test_extract_evidence_respects_semaphore_limit():
 
     assert len(results) == 6
     assert max_concurrent <= 2, f"Expected max 2 concurrent, got {max_concurrent}"
+
+
+# --- M1: Semaphore singleton tests ---
+
+
+def test_get_llm_semaphore_returns_singleton():
+    """Semaphore should be the same instance across calls."""
+    import src.reasoning.evidence_extractor as mod
+    from src.reasoning.evidence_extractor import _get_llm_semaphore
+
+    # Reset the cached semaphore
+    mod._llm_semaphore = None
+
+    sem1 = _get_llm_semaphore()
+    sem2 = _get_llm_semaphore()
+    assert sem1 is sem2, "Semaphore should be a singleton"
+
+    # Cleanup
+    mod._llm_semaphore = None
