@@ -143,3 +143,45 @@ async def test_chat_completion_returns_none_on_api_error():
 
     # Cleanup
     llm_mod._cached_provider = None
+
+
+# --- H2: Thread-safe provider singleton ---
+
+
+def test_get_provider_thread_safe():
+    """Concurrent calls to _get_provider return the same instance."""
+    import threading
+
+    import src.llm_client as llm_mod
+
+    # Reset cached provider
+    llm_mod._cached_provider = None
+
+    results: list[int] = []
+    barrier = threading.Barrier(3)
+
+    def get_provider_thread():
+        barrier.wait()  # Ensure all threads start simultaneously
+        provider = llm_mod._get_provider()
+        results.append(id(provider))
+
+    with patch.object(llm_mod, "settings") as mock_settings:
+        mock_settings.llm_configured = True
+        mock_settings.llm_provider = "openai"
+        mock_settings.openai_api_key = "test-key"
+        mock_settings.openai_org_id = ""
+        mock_settings.openai_model = "gpt-4.1"
+        mock_settings.llm_timeout = 30.0
+        mock_settings.llm_max_retries = 2
+
+        threads = [threading.Thread(target=get_provider_thread) for _ in range(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+    # All threads should get the same instance
+    assert len(set(results)) == 1, f"Expected 1 unique provider, got {len(set(results))}"
+
+    # Cleanup
+    llm_mod._cached_provider = None

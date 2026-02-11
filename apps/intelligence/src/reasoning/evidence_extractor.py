@@ -113,9 +113,15 @@ Documents:
 """
 
 
+_llm_semaphore: asyncio.Semaphore | None = None
+
+
 def _get_llm_semaphore() -> asyncio.Semaphore:
-    """Get a semaphore for bounding concurrent LLM calls."""
-    return asyncio.Semaphore(settings.llm_max_concurrent)
+    """Get a semaphore for bounding concurrent LLM calls (lazy singleton)."""
+    global _llm_semaphore
+    if _llm_semaphore is None:
+        _llm_semaphore = asyncio.Semaphore(settings.llm_max_concurrent)
+    return _llm_semaphore
 
 
 async def _bounded_evaluate(
