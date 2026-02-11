@@ -461,3 +461,65 @@ export function useAddReviewTime() {
     },
   });
 }
+
+// --- Approve/Deny Mutations ---
+
+const APPROVE_PA_REQUEST = gql`
+  mutation ApprovePARequest($id: String!) {
+    approvePARequest(id: $id) {
+      ...PARequestFields
+    }
+  }
+  ${PA_REQUEST_FRAGMENT}
+`;
+
+const DENY_PA_REQUEST = gql`
+  mutation DenyPARequest($id: String!, $reason: String!) {
+    denyPARequest(id: $id, reason: $reason) {
+      ...PARequestFields
+    }
+  }
+  ${PA_REQUEST_FRAGMENT}
+`;
+
+export function useApprovePARequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      graphqlClient.request(APPROVE_PA_REQUEST, { id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.paRequests });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.paStats });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.activity });
+    },
+  });
+}
+
+export function useDenyPARequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      graphqlClient.request(DENY_PA_REQUEST, { id, reason }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.paRequests });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.paStats });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.activity });
+    },
+  });
+}
+
+// --- Connection Status ---
+
+export function useConnectionStatus(): { connected: boolean; error?: string } {
+  const { isError, error } = useQuery({
+    queryKey: [QUERY_KEYS.paStats, 'connection-check'],
+    queryFn: () => graphqlClient.request<{ paStats: PAStats }>(GET_PA_STATS),
+    refetchInterval: 10000,
+    retry: 1,
+  });
+
+  return {
+    connected: !isError,
+    error: isError ? (error instanceof Error ? error.message : 'Connection failed') : undefined,
+  };
+}
