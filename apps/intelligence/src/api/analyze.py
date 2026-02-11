@@ -3,6 +3,7 @@
 Uses LLM-powered reasoning to extract evidence and generate PA form responses.
 """
 
+import asyncio
 from typing import Any
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
@@ -96,16 +97,16 @@ async def analyze_with_documents(
     # Parse clinical data into structured format
     bundle = ClinicalBundle.from_dict(patient_id, clinical_data_dict)
 
-    # Parse PDF documents and add to bundle
-    document_texts = []
-    for document in documents:
-        pdf_bytes = await document.read()
+    # Read all document bytes, then parse PDFs in parallel
+    pdf_bytes_list = [await doc.read() for doc in documents]
+
+    async def _safe_parse(pdf_bytes: bytes) -> str:
         try:
-            text = await parse_pdf(pdf_bytes)
-            document_texts.append(text)
+            return await parse_pdf(pdf_bytes)
         except Exception as e:
-            # Log error but continue processing
-            document_texts.append(f"[PDF parsing error: {e}]")
+            return f"[PDF parsing error: {e}]"
+
+    document_texts = list(await asyncio.gather(*[_safe_parse(b) for b in pdf_bytes_list]))
 
     bundle.document_texts = document_texts
 

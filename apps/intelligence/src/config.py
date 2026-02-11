@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     openai_org_id: str = ""  # Optional: Organization ID for usage tracking
     openai_model: str = "gpt-4.1"
 
+    # LLM Performance
+    llm_max_concurrent: int = 4  # Max concurrent LLM calls (semaphore limit)
+    llm_timeout: float = 30.0  # HTTP timeout for LLM requests (seconds)
+    llm_max_retries: int = 2  # Max retries for transient LLM errors
+
     # Database
     database_url: str = ""
 
