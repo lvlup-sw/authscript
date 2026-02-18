@@ -100,13 +100,7 @@ async def analyze_with_documents(
     # Read all document bytes, then parse PDFs in parallel
     pdf_bytes_list = [await doc.read() for doc in documents]
 
-    async def _safe_parse(pdf_bytes: bytes) -> str:
-        try:
-            return await parse_pdf(pdf_bytes)
-        except Exception as e:
-            return f"[PDF parsing error: {e}]"
-
-    document_texts = list(await asyncio.gather(*[_safe_parse(b) for b in pdf_bytes_list]))
+    document_texts = list(await asyncio.gather(*[parse_pdf(b) for b in pdf_bytes_list]))
 
     bundle.document_texts = document_texts
 

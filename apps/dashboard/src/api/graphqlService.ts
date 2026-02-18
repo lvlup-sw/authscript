@@ -489,8 +489,9 @@ export function useApprovePARequest() {
   return useMutation({
     mutationFn: (id: string) =>
       graphqlClient.request(APPROVE_PA_REQUEST, { id }),
-    onSuccess: () => {
+    onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.paRequests });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.paRequest(id) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.paStats });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.activity });
     },
@@ -502,8 +503,9 @@ export function useDenyPARequest() {
   return useMutation({
     mutationFn: ({ id, reason }: { id: string; reason: string }) =>
       graphqlClient.request(DENY_PA_REQUEST, { id, reason }),
-    onSuccess: () => {
+    onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.paRequests });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.paRequest(id) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.paStats });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.activity });
     },
