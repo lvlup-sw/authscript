@@ -1,5 +1,5 @@
 // =============================================================================
-// <copyright file="GatewayAlbaBootstrap.cs" company="Levelup Software">
+// <copyright file="ProcessPARequestAlbaBootstrap.cs" company="Levelup Software">
 // Copyright (c) Levelup Software. All rights reserved.
 // </copyright>
 // =============================================================================
@@ -15,15 +15,17 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using NSubstitute;
+using StackExchange.Redis;
 using TUnit.Core.Interfaces;
 
 namespace Gateway.API.Tests.Integration;
 
 /// <summary>
-/// Alba bootstrap for Gateway integration tests.
-/// Uses TUnit's IAsyncInitializer for async initialization.
+/// Alba bootstrap for ProcessPARequest integration tests.
+/// Provides mocked FHIR aggregator and Intelligence client to exercise the full
+/// GraphQL mutation through the ASP.NET pipeline.
 /// </summary>
-public sealed class GatewayAlbaBootstrap : IAsyncInitializer, IAsyncDisposable
+public sealed class ProcessPARequestAlbaBootstrap : IAsyncInitializer, IAsyncDisposable
 {
     /// <summary>
     /// Test API key for integration tests.
@@ -40,37 +42,27 @@ public sealed class GatewayAlbaBootstrap : IAsyncInitializer, IAsyncDisposable
     {
         Host = await AlbaHost.For<Program>(config =>
         {
-            // Add test configuration to satisfy required options
             config.ConfigureAppConfiguration((context, configBuilder) =>
             {
                 configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    // API key configuration
                     ["ApiKey:ValidApiKeys:0"] = TestApiKey,
-                    // Athena configuration (required by AthenaOptions.IsValid())
                     ["Athena:ClientId"] = "test-client-id",
                     ["Athena:ClientSecret"] = "test-client-secret",
                     ["Athena:FhirBaseUrl"] = "https://api.test.athenahealth.com/fhir/r4",
                     ["Athena:TokenEndpoint"] = "https://api.test.athenahealth.com/oauth2/v1/token",
                     ["Athena:PollingIntervalSeconds"] = "30",
-                    // Intelligence configuration
                     ["Intelligence:BaseUrl"] = "http://localhost:8000",
                     ["Intelligence:TimeoutSeconds"] = "30",
-                    // Clinical query configuration
                     ["ClinicalQuery:ObservationLookbackMonths"] = "12",
                     ["ClinicalQuery:ProcedureLookbackMonths"] = "24",
-                    // Fake connection string for Aspire PostgreSQL component validation
-                    // (we override the DbContext with in-memory provider in ConfigureServices)
                     ["ConnectionStrings:authscript"] = "Host=localhost;Database=test;Username=test;Password=test"
                 });
             });
 
             config.ConfigureServices(services =>
             {
-                // Replace Aspire's DbContext registration with EF Core in-memory provider
-                // Remove all EF Core-related registrations that Aspire created
-                // Note: We need to remove ALL registrations related to the DbContext to avoid
-                // the Aspire component's factory being invoked during migration
+                // Replace Aspire's DbContext with in-memory provider
                 var dbContextDescriptors = services.Where(d =>
                     d.ServiceType == typeof(GatewayDbContext) ||
                     d.ServiceType == typeof(DbContextOptions<GatewayDbContext>) ||
@@ -85,16 +77,12 @@ public sealed class GatewayAlbaBootstrap : IAsyncInitializer, IAsyncDisposable
                 services.RemoveAll(typeof(Microsoft.EntityFrameworkCore.Internal.IDbContextPool<GatewayDbContext>));
                 services.RemoveAll(typeof(Microsoft.EntityFrameworkCore.Internal.IScopedDbContextLease<GatewayDbContext>));
 
-                // Use a fixed database name to ensure data persists across scopes within the same test
                 var databaseName = $"GatewayTest_{Guid.NewGuid()}";
                 services.AddDbContext<GatewayDbContext>(options =>
                     options.UseInMemoryDatabase(databaseName));
 
-                // Remove AthenaPollingService to avoid scoped dependency validation issue
-                // The singleton background service cannot consume scoped IPatientRegistry
+                // Remove AthenaPollingService
                 services.RemoveAll<AthenaPollingService>();
-
-                // Also remove the IHostedService registration for AthenaPollingService
                 var hostedServiceDescriptor = services.FirstOrDefault(d =>
                     d.ServiceType == typeof(IHostedService) &&
                     d.ImplementationFactory?.Method.ReturnType == typeof(AthenaPollingService));
@@ -103,7 +91,7 @@ public sealed class GatewayAlbaBootstrap : IAsyncInitializer, IAsyncDisposable
                     services.Remove(hostedServiceDescriptor);
                 }
 
-                // Replace IFhirTokenProvider with mock returning test token
+                // Mock IFhirTokenProvider
                 var mockTokenProvider = Substitute.For<IFhirTokenProvider>();
                 mockTokenProvider
                     .GetTokenAsync(Arg.Any<CancellationToken>())
@@ -111,50 +99,29 @@ public sealed class GatewayAlbaBootstrap : IAsyncInitializer, IAsyncDisposable
                 services.RemoveAll<IFhirTokenProvider>();
                 services.AddSingleton(mockTokenProvider);
 
-                // Replace IFhirClient with mock to avoid real FHIR calls
+                // Mock IFhirClient
                 services.RemoveAll<IFhirClient>();
                 services.AddSingleton(Substitute.For<IFhirClient>());
 
-                // Replace IFhirDataAggregator with mock returning empty clinical bundle
+                // Mock IFhirDataAggregator with clinical data for patient "60178" (Donna Sandbox)
                 var mockAggregator = Substitute.For<IFhirDataAggregator>();
                 mockAggregator
                     .AggregateClinicalDataAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-                    .Returns(Task.FromResult(CreateEmptyClinicalBundle()));
+                    .Returns(Task.FromResult(CreateTestClinicalBundle()));
                 services.RemoveAll<IFhirDataAggregator>();
                 services.AddSingleton(mockAggregator);
 
-                // Replace IntelligenceClient with mock returning test PA form data
+                // Mock IIntelligenceClient with realistic PA form data
                 var mockIntelligenceClient = Substitute.For<IIntelligenceClient>();
                 mockIntelligenceClient
                     .AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-                    .Returns(callInfo => Task.FromResult(new PAFormData
-                    {
-                        PatientName = "Test Patient",
-                        PatientDob = "1990-01-01",
-                        MemberId = "MEM-TEST",
-                        DiagnosisCodes = ["M54.5"],
-                        ProcedureCode = callInfo.ArgAt<string>(1),
-                        ClinicalSummary = "Test clinical summary",
-                        SupportingEvidence =
-                        [
-                            new EvidenceItem
-                            {
-                                CriterionId = "diagnosis_present",
-                                Status = "MET",
-                                Evidence = "Test evidence",
-                                Source = "Test",
-                                Confidence = 0.95
-                            }
-                        ],
-                        Recommendation = "APPROVE",
-                        ConfidenceScore = 0.95,
-                        FieldMappings = new Dictionary<string, string>
-                        {
-                            ["PatientName"] = "Test Patient"
-                        }
-                    }));
+                    .Returns(Task.FromResult(CreateTestPAFormData()));
                 services.RemoveAll<IIntelligenceClient>();
                 services.AddSingleton(mockIntelligenceClient);
+
+                // Remove Redis (not available in tests)
+                services.RemoveAll<IConnectionMultiplexer>();
+                services.AddSingleton<IConnectionMultiplexer?>(sp => null);
             });
         }).ConfigureAwait(false);
     }
@@ -168,23 +135,99 @@ public sealed class GatewayAlbaBootstrap : IAsyncInitializer, IAsyncDisposable
         }
     }
 
-    private static ClinicalBundle CreateEmptyClinicalBundle()
+    private static ClinicalBundle CreateTestClinicalBundle()
     {
         return new ClinicalBundle
         {
-            PatientId = "test-patient",
+            PatientId = "60178",
             Patient = new PatientInfo
             {
-                Id = "test-patient",
-                GivenName = "Test",
-                FamilyName = "Patient",
-                BirthDate = new DateOnly(1990, 1, 1),
-                Gender = "male"
+                Id = "60178",
+                GivenName = "Donna",
+                FamilyName = "Sandbox",
+                BirthDate = new DateOnly(1968, 3, 15),
+                Gender = "female",
+                MemberId = "ATH60178"
             },
-            Conditions = [],
-            Observations = [],
-            Procedures = [],
-            Documents = []
+            Conditions =
+            [
+                new ConditionInfo
+                {
+                    Id = "cond-001",
+                    Code = "M54.5",
+                    Display = "Low back pain",
+                    ClinicalStatus = "active",
+                    OnsetDate = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(-6))
+                }
+            ],
+            Observations =
+            [
+                new ObservationInfo
+                {
+                    Id = "obs-001",
+                    Code = "72166-2",
+                    Display = "Smoking status",
+                    Value = "Never smoker"
+                }
+            ],
+            Procedures =
+            [
+                new ProcedureInfo
+                {
+                    Id = "proc-001",
+                    Code = "97110",
+                    Display = "Therapeutic exercises",
+                    PerformedDate = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(-2))
+                }
+            ],
+            Documents = [],
+            ServiceRequests = []
         };
     }
+
+    private static PAFormData CreateTestPAFormData() => new()
+    {
+        PatientName = "Donna Sandbox",
+        PatientDob = "1968-03-15",
+        MemberId = "ATH60178",
+        DiagnosisCodes = ["M54.5"],
+        ProcedureCode = "72148",
+        ClinicalSummary = "Patient presents with chronic low back pain. Conservative therapy including 8 weeks of physical therapy and NSAID therapy has been attempted without adequate relief. MRI lumbar spine is medically indicated.",
+        SupportingEvidence =
+        [
+            new EvidenceItem
+            {
+                CriterionId = "conservative_therapy",
+                Status = "MET",
+                Evidence = "8 weeks of physical therapy and NSAID therapy documented",
+                Source = "Clinical Notes",
+                Confidence = 0.95
+            },
+            new EvidenceItem
+            {
+                CriterionId = "failed_treatment",
+                Status = "MET",
+                Evidence = "Persistent pain rated 7/10 despite conservative therapy",
+                Source = "Progress Notes",
+                Confidence = 0.90
+            },
+            new EvidenceItem
+            {
+                CriterionId = "diagnosis_present",
+                Status = "MET",
+                Evidence = "Valid ICD-10 code M54.5 (Low Back Pain) documented",
+                Source = "Problem List",
+                Confidence = 0.99
+            }
+        ],
+        Recommendation = "APPROVE",
+        ConfidenceScore = 0.92,
+        FieldMappings = new Dictionary<string, string>
+        {
+            ["PatientName"] = "Donna Sandbox",
+            ["PatientDOB"] = "1968-03-15",
+            ["MemberID"] = "ATH60178",
+            ["ProcedureCode"] = "72148"
+        }
+    };
 }
