@@ -32,6 +32,7 @@ const PA_REQUEST_FRAGMENT = gql`
   fragment PARequestFields on PARequestModel {
     id
     patientId
+    fhirPatientId
     patient {
       ...PatientFields
     }
@@ -232,6 +233,7 @@ export interface Criterion {
 export interface PARequest {
   id: string;
   patientId: string;
+  fhirPatientId?: string | null;
   patient: Patient;
   procedureCode: string;
   procedureName: string;

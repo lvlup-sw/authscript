@@ -7,6 +7,7 @@ public sealed record PARequestModel
 {
     public required string Id { get; init; }
     public required string PatientId { get; init; }
+    public string? FhirPatientId { get; init; }
     public required PatientModel Patient { get; init; }
     public required string ProcedureCode { get; init; }
     public required string ProcedureName { get; init; }

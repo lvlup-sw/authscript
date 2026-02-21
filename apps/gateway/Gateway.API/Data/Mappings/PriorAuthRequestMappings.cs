@@ -37,6 +37,7 @@ public static class PriorAuthRequestMappings
         {
             Id = entity.Id,
             PatientId = entity.PatientId,
+            FhirPatientId = entity.FhirPatientId,
             Patient = new PatientModel
             {
                 Id = entity.PatientId,
