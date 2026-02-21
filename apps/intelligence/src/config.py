@@ -1,5 +1,6 @@
 """Application configuration using pydantic-settings."""
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -41,6 +42,17 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_org_id: str = ""  # Optional: Organization ID for usage tracking
     openai_model: str = "gpt-4.1"
+
+    # LLM Performance
+    llm_max_concurrent: int = Field(
+        default=4, ge=1, description="Max concurrent LLM calls (semaphore limit)"
+    )
+    llm_timeout: float = Field(
+        default=30.0, gt=0, description="HTTP timeout for LLM requests (seconds)"
+    )
+    llm_max_retries: int = Field(
+        default=2, ge=0, description="Max retries for transient LLM errors"
+    )
 
     # Database
     database_url: str = ""

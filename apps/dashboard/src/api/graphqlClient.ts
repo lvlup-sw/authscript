@@ -7,7 +7,9 @@
 import { GraphQLClient } from 'graphql-request';
 import { getApiConfig } from '../config/secrets';
 
-const GRAPHQL_ENDPOINT = `${getApiConfig().gatewayUrl}/api/graphql`;
+const GRAPHQL_ENDPOINT = import.meta.env.DEV
+  ? `${window.location.origin}/api/graphql`
+  : `${getApiConfig().gatewayUrl}/api/graphql`;
 
 export const graphqlClient = new GraphQLClient(GRAPHQL_ENDPOINT, {
   credentials: 'include',

@@ -86,7 +86,12 @@ var gateway = builder
     .WithEnvironment("Demo__EnableCaching", "true");
 
 // ---------------------------------------------------------------------------
-// Dashboard: Run separately with `npm run dev:dashboard` from repo root
+// Dashboard (Vite + React)
 // ---------------------------------------------------------------------------
+var dashboard = builder
+    .AddViteApp("dashboard", "../../apps/dashboard")
+    .WaitFor(gateway)
+    .WithEnvironment("VITE_GATEWAY_URL", gateway.GetEndpoint("gateway-api"))
+    .WithEnvironment("VITE_INTELLIGENCE_URL", intelligence.GetEndpoint("intelligence-api"));
 
 builder.Build().Run();

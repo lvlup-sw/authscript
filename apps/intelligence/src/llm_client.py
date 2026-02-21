@@ -1,12 +1,21 @@
 """LLM client abstraction supporting multiple providers.
 
 Uses strategy pattern for provider selection (OCP compliant).
+Providers use singleton pattern with pooled HTTP clients.
 """
 
+import logging
+import threading
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Any
+
+import httpx
+from openai import APIError, APITimeoutError, RateLimitError
 
 from src.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -30,15 +39,18 @@ class LLMProvider(ABC):
 class GitHubModelsProvider(LLMProvider):
     """GitHub Models via OpenAI-compatible API."""
 
-    async def complete(self, request: CompletionRequest) -> str:
+    def __init__(self) -> None:
         from openai import AsyncOpenAI
 
-        client = AsyncOpenAI(
+        self._client = AsyncOpenAI(
             api_key=settings.github_token,
             base_url="https://models.inference.ai.azure.com",
+            timeout=httpx.Timeout(settings.llm_timeout, connect=5.0),
+            max_retries=settings.llm_max_retries,
         )
 
-        response = await client.chat.completions.create(
+    async def complete(self, request: CompletionRequest) -> str:
+        response = await self._client.chat.completions.create(
             model=settings.github_model,
             messages=[
                 {"role": "system", "content": request.system_prompt},
@@ -54,16 +66,19 @@ class GitHubModelsProvider(LLMProvider):
 class AzureOpenAIProvider(LLMProvider):
     """Azure OpenAI Service."""
 
-    async def complete(self, request: CompletionRequest) -> str:
+    def __init__(self) -> None:
         from openai import AsyncAzureOpenAI
 
-        client = AsyncAzureOpenAI(
+        self._client = AsyncAzureOpenAI(
             api_key=settings.azure_openai_api_key,
             azure_endpoint=settings.azure_openai_endpoint,
             api_version=settings.azure_openai_api_version,
+            timeout=httpx.Timeout(settings.llm_timeout, connect=5.0),
+            max_retries=settings.llm_max_retries,
         )
 
-        response = await client.chat.completions.create(
+    async def complete(self, request: CompletionRequest) -> str:
+        response = await self._client.chat.completions.create(
             model=settings.azure_openai_deployment,
             messages=[
                 {"role": "system", "content": request.system_prompt},
@@ -79,13 +94,17 @@ class AzureOpenAIProvider(LLMProvider):
 class GeminiProvider(LLMProvider):
     """Google Gemini API."""
 
-    async def complete(self, request: CompletionRequest) -> str:
+    def __init__(self) -> None:
         import google.generativeai as genai
 
         genai.configure(api_key=settings.google_api_key)  # type: ignore[attr-defined]
+        self._model_name = settings.gemini_model
+
+    async def complete(self, request: CompletionRequest) -> str:
+        import google.generativeai as genai
 
         model = genai.GenerativeModel(  # type: ignore[attr-defined]
-            model_name=settings.gemini_model,
+            model_name=self._model_name,
             system_instruction=request.system_prompt,
             generation_config=genai.GenerationConfig(  # type: ignore[attr-defined]
                 temperature=request.temperature,
@@ -100,18 +119,21 @@ class GeminiProvider(LLMProvider):
 class OpenAIProvider(LLMProvider):
     """OpenAI API (fallback)."""
 
-    async def complete(self, request: CompletionRequest) -> str:
+    def __init__(self) -> None:
         from openai import AsyncOpenAI
 
+        kwargs: dict[str, Any] = {
+            "api_key": settings.openai_api_key,
+            "timeout": httpx.Timeout(settings.llm_timeout, connect=5.0),
+            "max_retries": settings.llm_max_retries,
+        }
         if settings.openai_org_id:
-            client = AsyncOpenAI(
-                api_key=settings.openai_api_key,
-                organization=settings.openai_org_id,
-            )
-        else:
-            client = AsyncOpenAI(api_key=settings.openai_api_key)
+            kwargs["organization"] = settings.openai_org_id
 
-        response = await client.chat.completions.create(
+        self._client = AsyncOpenAI(**kwargs)
+
+    async def complete(self, request: CompletionRequest) -> str:
+        response = await self._client.chat.completions.create(
             model=settings.openai_model,
             messages=[
                 {"role": "system", "content": request.system_prompt},
@@ -132,17 +154,31 @@ _PROVIDERS: dict[str, type[LLMProvider]] = {
     "openai": OpenAIProvider,
 }
 
+# Singleton cached provider with thread-safe double-checked locking
+_cached_provider: LLMProvider | None = None
+_provider_lock = threading.Lock()
+
 
 def _get_provider() -> LLMProvider | None:
-    """Get the configured LLM provider instance."""
-    if not settings.llm_configured:
-        return None
+    """Get the configured LLM provider instance (thread-safe singleton)."""
+    global _cached_provider
 
-    provider_class = _PROVIDERS.get(settings.llm_provider)
-    if not provider_class:
-        return None
+    if _cached_provider is not None:
+        return _cached_provider
 
-    return provider_class()
+    with _provider_lock:
+        if _cached_provider is not None:
+            return _cached_provider
+
+        if not settings.llm_configured:
+            return None
+
+        provider_class = _PROVIDERS.get(settings.llm_provider)
+        if not provider_class:
+            return None
+
+        _cached_provider = provider_class()
+        return _cached_provider
 
 
 async def chat_completion(
@@ -168,6 +204,15 @@ async def chat_completion(
             max_tokens=max_tokens,
         )
         return await provider.complete(request)
-    except Exception:
-        # Log error in production; return None to trigger fallback behavior
+    except APITimeoutError:
+        logger.warning("LLM request timed out")
+        return None
+    except RateLimitError:
+        logger.error("LLM rate limit exceeded — propagating to caller")
+        raise
+    except APIError as e:
+        logger.error("LLM API error (status=%s): %s", getattr(e, "status_code", "?"), e)
+        return None
+    except Exception as e:
+        logger.error("Unexpected LLM error: %s", e)
         return None

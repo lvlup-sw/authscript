@@ -1,19 +1,21 @@
 """PDF parsing utilities using PyMuPDF4LLM.
 
 Extracts text from clinical documents in markdown format optimized for LLM processing.
+Uses thread pool executor to avoid blocking the event loop.
 """
 
+import asyncio
 import os
 import tempfile
 
 
-async def parse_pdf(pdf_bytes: bytes) -> str:
+def _extract_sync(pdf_bytes: bytes) -> str:
     """
-    Parse PDF document and extract text as markdown.
+    Synchronous PDF extraction that handles temp file lifecycle.
 
-    Uses PyMuPDF4LLM for LLM-optimized extraction with table preservation.
+    Creates a temporary file, extracts markdown, and cleans up.
+    Designed to run in a thread pool via run_in_executor.
     """
-    # PyMuPDF4LLM requires a file path
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
         f.write(pdf_bytes)
         temp_path = f.name
@@ -22,6 +24,17 @@ async def parse_pdf(pdf_bytes: bytes) -> str:
         return _extract_markdown(temp_path)
     finally:
         os.unlink(temp_path)
+
+
+async def parse_pdf(pdf_bytes: bytes) -> str:
+    """
+    Parse PDF document and extract text as markdown.
+
+    Uses PyMuPDF4LLM for LLM-optimized extraction with table preservation.
+    Runs synchronous extraction in a thread pool to avoid blocking the event loop.
+    """
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _extract_sync, pdf_bytes)
 
 
 def _extract_markdown(pdf_path: str) -> str:
