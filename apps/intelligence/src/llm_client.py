@@ -121,7 +121,7 @@ class OpenAIProvider(LLMProvider):
     def __init__(self) -> None:
         from openai import AsyncOpenAI
 
-        kwargs: dict = {
+        kwargs: dict[str, object] = {
             "api_key": settings.openai_api_key,
             "timeout": httpx.Timeout(settings.llm_timeout, connect=5.0),
             "max_retries": settings.llm_max_retries,

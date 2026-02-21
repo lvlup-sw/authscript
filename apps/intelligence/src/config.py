@@ -45,10 +45,14 @@ class Settings(BaseSettings):
 
     # LLM Performance
     llm_max_concurrent: int = Field(
-        4, ge=1, description="Max concurrent LLM calls (semaphore limit)"
+        default=4, ge=1, description="Max concurrent LLM calls (semaphore limit)"
     )
-    llm_timeout: float = Field(30.0, gt=0, description="HTTP timeout for LLM requests (seconds)")
-    llm_max_retries: int = Field(2, ge=0, description="Max retries for transient LLM errors")
+    llm_timeout: float = Field(
+        default=30.0, gt=0, description="HTTP timeout for LLM requests (seconds)"
+    )
+    llm_max_retries: int = Field(
+        default=2, ge=0, description="Max retries for transient LLM errors"
+    )
 
     # Database
     database_url: str = ""
