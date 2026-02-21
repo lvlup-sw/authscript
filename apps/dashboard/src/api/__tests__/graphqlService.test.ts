@@ -69,7 +69,7 @@ describe('useDenyPARequest', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(mockRequest).toHaveBeenCalledOnce();
-    const callArgs = mockRequest.mock.calls[0];
+    const callArgs = mockRequest.mock.calls[0] as unknown[];
     expect(callArgs[0]).toContain('denyPARequest');
     expect(callArgs[1]).toEqual({ id: 'PA-001', reason: 'Missing documentation' });
   });

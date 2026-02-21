@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from src.models.clinical_bundle import ClinicalBundle, Condition, PatientInfo
-from src.reasoning.evidence_extractor import evaluate_criterion, extract_evidence
 from src.models.pa_form import EvidenceItem
+from src.reasoning.evidence_extractor import evaluate_criterion, extract_evidence
 
 
 @pytest.fixture
@@ -81,7 +81,10 @@ async def test_evaluate_criterion_returns_met_evidence_item():
     criterion = {"id": "crit-1", "description": "Patient has documented symptoms", "required": True}
     clinical_summary = "Patient presents with chronic lower back pain for 8 weeks."
 
-    mock_llm = AsyncMock(return_value="Based on the clinical data, this criterion is MET. The patient has documented symptoms of chronic lower back pain.")
+    mock_llm = AsyncMock(
+        return_value="Based on the clinical data, this criterion is MET."
+        " The patient has documented symptoms of chronic lower back pain."
+    )
     with patch("src.reasoning.evidence_extractor.chat_completion", mock_llm):
         result = await evaluate_criterion(criterion, clinical_summary)
 
@@ -97,7 +100,10 @@ async def test_evaluate_criterion_parses_not_met():
     criterion = {"id": "crit-2", "description": "Conservative therapy completed", "required": True}
     clinical_summary = "Patient has not attempted physical therapy."
 
-    mock_llm = AsyncMock(return_value="This criterion is NOT MET. No evidence of conservative therapy.")
+    mock_llm = AsyncMock(
+        return_value="This criterion is NOT MET."
+        " No evidence of conservative therapy."
+    )
     with patch("src.reasoning.evidence_extractor.chat_completion", mock_llm):
         result = await evaluate_criterion(criterion, clinical_summary)
 
@@ -196,7 +202,10 @@ async def test_extract_evidence_respects_semaphore_limit():
     mock_llm = AsyncMock(side_effect=counting_llm)
     with (
         patch("src.reasoning.evidence_extractor.chat_completion", mock_llm),
-        patch("src.reasoning.evidence_extractor._get_llm_semaphore", return_value=asyncio.Semaphore(2)),
+        patch(
+            "src.reasoning.evidence_extractor._get_llm_semaphore",
+            return_value=asyncio.Semaphore(2),
+        ),
     ):
         results = await extract_evidence(bundle, policy)
 
