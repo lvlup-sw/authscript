@@ -1,52 +1,34 @@
-// =============================================================================
-// <copyright file="Query.cs" company="Levelup Software">
-// Copyright (c) Levelup Software. All rights reserved.
-// </copyright>
-// =============================================================================
-
 using Gateway.API.GraphQL.Models;
 using Gateway.API.Services;
 
 namespace Gateway.API.GraphQL.Queries;
 
-/// <summary>
-/// GraphQL query resolvers for PA request data and reference data.
-/// </summary>
 public sealed class Query
 {
-    /// <summary>Gets all available procedures.</summary>
-    public IReadOnlyList<ProcedureModel> GetProcedures([Service] IDataService dataService) =>
-        dataService.Procedures;
+    public IReadOnlyList<ProcedureModel> GetProcedures([Service] MockDataService mockData) =>
+        mockData.Procedures;
 
-    /// <summary>Gets all available medications.</summary>
-    public IReadOnlyList<MedicationModel> GetMedications([Service] IDataService dataService) =>
-        dataService.Medications;
+    public IReadOnlyList<MedicationModel> GetMedications([Service] MockDataService mockData) =>
+        mockData.Medications;
 
-    /// <summary>Gets all available providers.</summary>
-    public IReadOnlyList<ProviderModel> GetProviders([Service] IDataService dataService) =>
-        dataService.Providers;
+    public IReadOnlyList<ProviderModel> GetProviders([Service] MockDataService mockData) =>
+        mockData.Providers;
 
-    /// <summary>Gets all available payers.</summary>
-    public IReadOnlyList<PayerModel> GetPayers([Service] IDataService dataService) =>
-        dataService.Payers;
+    public IReadOnlyList<PayerModel> GetPayers([Service] MockDataService mockData) =>
+        mockData.Payers;
 
-    /// <summary>Gets all available diagnoses.</summary>
-    public IReadOnlyList<DiagnosisModel> GetDiagnoses([Service] IDataService dataService) =>
-        dataService.Diagnoses;
+    public IReadOnlyList<DiagnosisModel> GetDiagnoses([Service] MockDataService mockData) =>
+        mockData.Diagnoses;
 
-    /// <summary>Gets all PA requests.</summary>
-    public IReadOnlyList<PARequestModel> GetPARequests([Service] IDataService dataService) =>
-        dataService.GetPARequests();
+    public IReadOnlyList<PARequestModel> GetPARequests([Service] MockDataService mockData) =>
+        mockData.GetPARequests();
 
-    /// <summary>Gets a single PA request by ID.</summary>
-    public PARequestModel? GetPARequest(string id, [Service] IDataService dataService) =>
-        dataService.GetPARequest(id);
+    public PARequestModel? GetPARequest(string id, [Service] MockDataService mockData) =>
+        mockData.GetPARequest(id);
 
-    /// <summary>Gets aggregated PA statistics.</summary>
-    public PAStatsModel GetPAStats([Service] IDataService dataService) =>
-        dataService.GetPAStats();
+    public PAStatsModel GetPAStats([Service] MockDataService mockData) =>
+        mockData.GetPAStats();
 
-    /// <summary>Gets recent activity items.</summary>
-    public IReadOnlyList<ActivityItemModel> GetActivity([Service] IDataService dataService) =>
-        dataService.GetActivity();
+    public IReadOnlyList<ActivityItemModel> GetActivity([Service] MockDataService mockData) =>
+        mockData.GetActivity();
 }

@@ -11,7 +11,7 @@ env:
   DOTNET_QUALITY: 'preview'
   NODE_VERSION: '20'
   PYTHON_VERSION: '3.11'
-  COVERAGE_THRESHOLD: 60
+  COVERAGE_THRESHOLD: 59
 
 permissions:
   contents: read

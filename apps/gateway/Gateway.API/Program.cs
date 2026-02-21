@@ -8,7 +8,6 @@ using Gateway.API.Data;
 using Gateway.API.Endpoints;
 using Gateway.API.GraphQL.Mutations;
 using Gateway.API.GraphQL.Queries;
-using Gateway.API.Services;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
@@ -34,17 +33,6 @@ builder.Services
     .AddFhirClients()         // Uses IOptions<AthenaOptions> for base URL
     .AddIntelligenceClient()
     .AddNotificationServices();
-
-// Data service (mock by default; set UseMockData=false for live data)
-var useMockData = builder.Configuration.GetValue<bool>("UseMockData", true);
-if (useMockData)
-{
-    builder.Services.AddSingleton<IDataService, MockDataService>();
-}
-else
-{
-    builder.Services.AddSingleton<IDataService, LiveDataService>();
-}
 
 // GraphQL
 builder.Services

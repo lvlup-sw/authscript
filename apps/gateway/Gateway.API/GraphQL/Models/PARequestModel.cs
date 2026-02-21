@@ -26,8 +26,6 @@ public sealed record PARequestModel
     public string? ReadyAt { get; init; }
     /// <summary>When user submitted the PA.</summary>
     public string? SubmittedAt { get; init; }
-    /// <summary>Reason for denial, if denied.</summary>
-    public string? DenialReason { get; init; }
     /// <summary>Total seconds user spent on the review page before submitting.</summary>
     public int ReviewTimeSeconds { get; init; }
     public required IReadOnlyList<CriterionModel> Criteria { get; init; }

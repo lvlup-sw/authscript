@@ -11,7 +11,7 @@ namespace Gateway.API.Services;
 /// In-memory mock data service for patients, procedures, medications, payers, providers,
 /// diagnoses, and PA requests. Used by GraphQL resolvers.
 /// </summary>
-public sealed class MockDataService : IDataService
+public sealed class MockDataService
 {
     private readonly List<PARequestModel> _paRequests = [];
     private readonly object _lock = new();
@@ -283,18 +283,16 @@ public sealed class MockDataService : IDataService
 
     public async Task<PARequestModel?> ProcessPARequestAsync(string id, CancellationToken ct = default)
     {
+        PARequestModel? updated = null;
         lock (_lock)
         {
             var idx = _paRequests.FindIndex(r => r.Id == id);
             if (idx < 0) return null;
 
-            var existing = _paRequests[idx];
-            _paRequests[idx] = existing with { Status = "processing", UpdatedAt = DateTime.UtcNow.ToString("O") };
         }
 
         await Task.Delay(2000, ct);
 
-        PARequestModel? updated;
         lock (_lock)
         {
             var idx = _paRequests.FindIndex(r => r.Id == id);
@@ -346,40 +344,6 @@ public sealed class MockDataService : IDataService
         {
             var removed = _paRequests.RemoveAll(r => r.Id == id);
             return removed > 0;
-        }
-    }
-
-    /// <inheritdoc />
-    public PARequestModel? ApprovePA(string id)
-    {
-        lock (_lock)
-        {
-            var index = _paRequests.FindIndex(p => p.Id == id);
-            if (index < 0) return null;
-
-            var existing = _paRequests[index];
-            if (existing.Status != "waiting_for_insurance") return null;
-
-            var updated = existing with { Status = "approved", UpdatedAt = DateTime.UtcNow.ToString("O") };
-            _paRequests[index] = updated;
-            return updated;
-        }
-    }
-
-    /// <inheritdoc />
-    public PARequestModel? DenyPA(string id, string reason)
-    {
-        lock (_lock)
-        {
-            var index = _paRequests.FindIndex(p => p.Id == id);
-            if (index < 0) return null;
-
-            var existing = _paRequests[index];
-            if (existing.Status != "waiting_for_insurance") return null;
-
-            var updated = existing with { Status = "denied", DenialReason = reason, UpdatedAt = DateTime.UtcNow.ToString("O") };
-            _paRequests[index] = updated;
-            return updated;
         }
     }
 

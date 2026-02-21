@@ -6,7 +6,6 @@
 
 import { GraphQLClient } from 'graphql-request';
 import { getApiConfig } from '../config/secrets';
-import { getAuthToken } from './auth';
 
 const GRAPHQL_ENDPOINT = import.meta.env.DEV
   ? `${window.location.origin}/api/graphql`
@@ -15,9 +14,16 @@ const GRAPHQL_ENDPOINT = import.meta.env.DEV
 export const graphqlClient = new GraphQLClient(GRAPHQL_ENDPOINT, {
   credentials: 'include',
   headers: (): HeadersInit => {
-    const token = getAuthToken();
+    const token = sessionStorage.getItem('authscript_session');
     if (token) {
-      return { Authorization: `Bearer ${token}` };
+      try {
+        const parsed = JSON.parse(token) as { access_token?: string };
+        if (parsed.access_token) {
+          return { Authorization: `Bearer ${parsed.access_token}` };
+        }
+      } catch {
+        // ignore invalid JSON
+      }
     }
     return {};
   },
