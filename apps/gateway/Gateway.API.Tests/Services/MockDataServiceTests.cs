@@ -365,6 +365,112 @@ public class MockDataServiceTests
         }
     }
 
+    // ── ApplyAnalysisResult ─────────────────────────────────────────────
+
+    [Test]
+    public async Task ApplyAnalysisResult_UpdatesStatus_ToReady()
+    {
+        var svc = CreateService();
+        var existing = svc.GetPARequests().First();
+
+        var result = svc.ApplyAnalysisResult(
+            existing.Id,
+            clinicalSummary: "AI analysis summary",
+            confidence: 85,
+            criteria: [new CriterionModel { Met = true, Label = "test", Reason = "test reason" }]);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Status).IsEqualTo("ready");
+    }
+
+    [Test]
+    public async Task ApplyAnalysisResult_UpdatesConfidence_FromScore()
+    {
+        var svc = CreateService();
+        var existing = svc.GetPARequests().First();
+
+        var result = svc.ApplyAnalysisResult(existing.Id, "summary", 92, []);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Confidence).IsEqualTo(92);
+    }
+
+    [Test]
+    public async Task ApplyAnalysisResult_UpdatesClinicalSummary()
+    {
+        var svc = CreateService();
+        var existing = svc.GetPARequests().First();
+        var summary = "Patient presents with chronic low back pain. AI recommends approval.";
+
+        var result = svc.ApplyAnalysisResult(existing.Id, summary, 85, []);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.ClinicalSummary).IsEqualTo(summary);
+    }
+
+    [Test]
+    public async Task ApplyAnalysisResult_UpdatesCriteria_FromEvidence()
+    {
+        var svc = CreateService();
+        var existing = svc.GetPARequests().First();
+        var criteria = new List<CriterionModel>
+        {
+            new() { Met = true, Label = "conservative_therapy", Reason = "6 weeks PT completed" },
+            new() { Met = false, Label = "imaging_required", Reason = "No prior imaging found" },
+            new() { Met = null, Label = "diagnosis_present", Reason = "Needs verification" },
+        };
+
+        var result = svc.ApplyAnalysisResult(existing.Id, "summary", 75, criteria);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.Criteria.Count).IsEqualTo(3);
+        await Assert.That(result.Criteria[0].Met).IsTrue();
+        await Assert.That(result.Criteria[1].Met).IsFalse();
+        await Assert.That(result.Criteria[2].Met).IsNull();
+    }
+
+    [Test]
+    public async Task ApplyAnalysisResult_SetsReadyAtTimestamp()
+    {
+        var svc = CreateService();
+        var existing = svc.GetPARequests().First();
+        var before = DateTime.UtcNow;
+
+        var result = svc.ApplyAnalysisResult(existing.Id, "summary", 85, []);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.ReadyAt).IsNotNull();
+        var readyAt = DateTimeOffset.Parse(result.ReadyAt!);
+        await Assert.That(readyAt.UtcDateTime).IsGreaterThanOrEqualTo(before);
+    }
+
+    [Test]
+    public async Task ApplyAnalysisResult_NonExistentId_ReturnsNull()
+    {
+        var svc = CreateService();
+
+        var result = svc.ApplyAnalysisResult("NONEXISTENT", "summary", 85, []);
+
+        await Assert.That(result).IsNull();
+    }
+
+    [Test]
+    public async Task ApplyAnalysisResult_UpdatesAreVisibleViaGetPARequest()
+    {
+        var svc = CreateService();
+        var existing = svc.GetPARequests().First();
+
+        svc.ApplyAnalysisResult(existing.Id, "Updated summary", 90, [
+            new CriterionModel { Met = true, Label = "test_criterion", Reason = "test" }
+        ]);
+
+        var fetched = svc.GetPARequest(existing.Id);
+        await Assert.That(fetched).IsNotNull();
+        await Assert.That(fetched!.ClinicalSummary).IsEqualTo("Updated summary");
+        await Assert.That(fetched.Confidence).IsEqualTo(90);
+        await Assert.That(fetched.Status).IsEqualTo("ready");
+    }
+
     // ── Success Rate ────────────────────────────────────────────────────
 
     [Test]

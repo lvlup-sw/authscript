@@ -258,6 +258,33 @@ public sealed class MockDataService
         return req;
     }
 
+    public PARequestModel? ApplyAnalysisResult(
+        string id,
+        string clinicalSummary,
+        int confidence,
+        IReadOnlyList<CriterionModel> criteria)
+    {
+        lock (_lock)
+        {
+            var idx = _paRequests.FindIndex(r => r.Id == id);
+            if (idx < 0) return null;
+
+            var existing = _paRequests[idx];
+            var readyAt = DateTime.UtcNow.ToString("O");
+            var updated = existing with
+            {
+                Status = "ready",
+                Confidence = confidence,
+                ClinicalSummary = clinicalSummary,
+                Criteria = criteria.ToList(),
+                ReadyAt = readyAt,
+                UpdatedAt = readyAt,
+            };
+            _paRequests[idx] = updated;
+            return updated;
+        }
+    }
+
     public PARequestModel? UpdatePARequest(string id, string? diagnosis, string? diagnosisCode, string? serviceDate, string? placeOfService, string? clinicalSummary, IReadOnlyList<CriterionModel>? criteria)
     {
         lock (_lock)
