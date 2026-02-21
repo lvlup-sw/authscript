@@ -1,3 +1,4 @@
+using Gateway.API.Contracts;
 using Gateway.API.GraphQL.Inputs;
 using Gateway.API.GraphQL.Models;
 using Gateway.API.Services;
@@ -40,9 +41,38 @@ public sealed class Mutation
             criteria);
     }
 
-    public async Task<PARequestModel?> ProcessPARequest(string id, [Service] MockDataService mockData, CancellationToken cancellationToken)
+    public async Task<PARequestModel?> ProcessPARequest(
+        string id,
+        [Service] MockDataService mockData,
+        [Service] IFhirDataAggregator fhirAggregator,
+        [Service] IIntelligenceClient intelligenceClient,
+        CancellationToken ct)
     {
-        return await mockData.ProcessPARequestAsync(id, cancellationToken);
+        var paRequest = mockData.GetPARequest(id);
+        if (paRequest is null) return null;
+
+        var clinicalBundle = await fhirAggregator.AggregateClinicalDataAsync(
+            paRequest.PatientId, cancellationToken: ct);
+
+        var formData = await intelligenceClient.AnalyzeAsync(
+            clinicalBundle, paRequest.ProcedureCode, ct);
+
+        var criteria = formData.SupportingEvidence.Select(e => new CriterionModel
+        {
+            Met = e.Status switch
+            {
+                "MET" => true,
+                "NOT_MET" => false,
+                _ => null
+            },
+            Label = e.CriterionId,
+            Reason = e.Evidence
+        }).ToList();
+
+        var confidence = (int)(formData.ConfidenceScore * 100);
+
+        return mockData.ApplyAnalysisResult(id,
+            formData.ClinicalSummary, confidence, criteria);
     }
 
     public PARequestModel? SubmitPARequest(string id, [Service] MockDataService mockData, int addReviewTimeSeconds = 0)
