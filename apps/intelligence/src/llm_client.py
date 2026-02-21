@@ -8,6 +8,7 @@ import logging
 import threading
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Any
 
 import httpx
 from openai import APIError, APITimeoutError, RateLimitError
@@ -121,7 +122,7 @@ class OpenAIProvider(LLMProvider):
     def __init__(self) -> None:
         from openai import AsyncOpenAI
 
-        kwargs: dict[str, object] = {
+        kwargs: dict[str, Any] = {
             "api_key": settings.openai_api_key,
             "timeout": httpx.Timeout(settings.llm_timeout, connect=5.0),
             "max_retries": settings.llm_max_retries,
