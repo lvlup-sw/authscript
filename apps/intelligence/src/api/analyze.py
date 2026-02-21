@@ -13,6 +13,7 @@ from src.models.clinical_bundle import ClinicalBundle
 from src.models.pa_form import PAFormResponse
 from src.parsers.pdf_parser import parse_pdf
 from src.policies.example_policy import EXAMPLE_POLICY
+from src.policies.generic_policy import build_generic_policy
 from src.reasoning.evidence_extractor import extract_evidence
 from src.reasoning.form_generator import generate_form_data
 
@@ -30,6 +31,13 @@ class AnalyzeRequest(BaseModel):
     clinical_data: dict[str, Any]
 
 
+def resolve_policy(procedure_code: str) -> dict[str, Any]:
+    """Return the specific policy for known procedures, or a generic fallback."""
+    if procedure_code in SUPPORTED_PROCEDURE_CODES:
+        return {**EXAMPLE_POLICY, "procedure_codes": [procedure_code]}
+    return build_generic_policy(procedure_code)
+
+
 @router.post("", response_model=PAFormResponse)
 async def analyze(request: AnalyzeRequest) -> PAFormResponse:
     """
@@ -37,13 +45,6 @@ async def analyze(request: AnalyzeRequest) -> PAFormResponse:
 
     Uses LLM to extract evidence from clinical data and generate PA form.
     """
-    # Check if procedure is supported
-    if request.procedure_code not in SUPPORTED_PROCEDURE_CODES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Procedure code {request.procedure_code} not supported",
-        )
-
     # Parse clinical data into structured format
     bundle = ClinicalBundle.from_dict(request.patient_id, request.clinical_data)
 
@@ -55,8 +56,8 @@ async def analyze(request: AnalyzeRequest) -> PAFormResponse:
             detail="patient.birth_date is required",
         )
 
-    # Load policy with requested procedure code
-    policy = {**EXAMPLE_POLICY, "procedure_codes": [request.procedure_code]}
+    # Load specific policy or fall back to generic
+    policy = resolve_policy(request.procedure_code)
 
     # Extract evidence using LLM
     evidence = await extract_evidence(bundle, policy)
@@ -87,13 +88,6 @@ async def analyze_with_documents(
     except json.JSONDecodeError as e:
         raise HTTPException(status_code=400, detail=f"Invalid clinical data JSON: {e}")
 
-    # Check if procedure is supported
-    if procedure_code not in SUPPORTED_PROCEDURE_CODES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Procedure code {procedure_code} not supported",
-        )
-
     # Parse clinical data into structured format
     bundle = ClinicalBundle.from_dict(patient_id, clinical_data_dict)
 
@@ -112,8 +106,8 @@ async def analyze_with_documents(
             detail="patient.birth_date is required",
         )
 
-    # Load policy with requested procedure code
-    policy = {**EXAMPLE_POLICY, "procedure_codes": [procedure_code]}
+    # Load specific policy or fall back to generic
+    policy = resolve_policy(procedure_code)
 
     # Extract evidence using LLM
     evidence = await extract_evidence(bundle, policy)
