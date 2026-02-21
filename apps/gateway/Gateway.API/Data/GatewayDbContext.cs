@@ -34,6 +34,11 @@ public sealed class GatewayDbContext : DbContext
     /// </summary>
     public DbSet<RegisteredPatientEntity> RegisteredPatients => Set<RegisteredPatientEntity>();
 
+    /// <summary>
+    /// Gets the prior authorization requests.
+    /// </summary>
+    public DbSet<PriorAuthRequestEntity> PriorAuthRequests => Set<PriorAuthRequestEntity>();
+
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -41,5 +46,6 @@ public sealed class GatewayDbContext : DbContext
 
         modelBuilder.ApplyConfiguration(new WorkItemConfiguration());
         modelBuilder.ApplyConfiguration(new RegisteredPatientConfiguration());
+        modelBuilder.ApplyConfiguration(new PriorAuthRequestConfiguration());
     }
 }
