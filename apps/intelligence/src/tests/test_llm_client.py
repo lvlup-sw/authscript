@@ -1,7 +1,8 @@
 """Tests for LLM client singleton pooling, timeout, and retry."""
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
 
 
 def test_get_provider_returns_singleton():
@@ -76,8 +77,9 @@ async def test_chat_completion_uses_provider_singleton():
 @pytest.mark.asyncio
 async def test_chat_completion_returns_none_on_timeout():
     """Test that APITimeoutError is caught and returns None."""
-    import src.llm_client as llm_mod
     from openai import APITimeoutError
+
+    import src.llm_client as llm_mod
 
     mock_provider = AsyncMock()
     mock_provider.complete = AsyncMock(side_effect=APITimeoutError(request=MagicMock()))
@@ -96,8 +98,9 @@ async def test_chat_completion_returns_none_on_timeout():
 @pytest.mark.asyncio
 async def test_chat_completion_raises_on_rate_limit():
     """Test that RateLimitError propagates instead of being swallowed."""
-    import src.llm_client as llm_mod
     from openai import RateLimitError
+
+    import src.llm_client as llm_mod
 
     mock_provider = AsyncMock()
     mock_response = MagicMock()
@@ -126,8 +129,9 @@ async def test_chat_completion_raises_on_rate_limit():
 @pytest.mark.asyncio
 async def test_chat_completion_returns_none_on_api_error():
     """Test that APIError is caught, logged, and returns None."""
-    import src.llm_client as llm_mod
     from openai import APIError
+
+    import src.llm_client as llm_mod
 
     mock_provider = AsyncMock()
     mock_provider.complete = AsyncMock(
