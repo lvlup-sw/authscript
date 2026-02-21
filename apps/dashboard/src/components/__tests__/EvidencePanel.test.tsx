@@ -117,4 +117,114 @@ describe('EvidencePanel', () => {
       expect(screen.getByTestId('evidence-skeleton')).toBeInTheDocument();
     });
   });
+
+  describe('Intelligence-shaped evidence', () => {
+    it('EvidencePanel_WithIntelligenceEvidence_DisplaysCriterionIdAsLabel', () => {
+      const intelligenceEvidence: EvidenceItem[] = [
+        {
+          criterionId: 'conservative_therapy',
+          status: 'MET',
+          evidence: 'Patient completed 8 weeks of physical therapy and NSAID treatment',
+          source: 'Clinical Notes - 2026-01-15',
+          confidence: 0.95,
+        },
+        {
+          criterionId: 'medical_necessity',
+          status: 'MET',
+          evidence: 'MRI indicated for evaluation of persistent symptoms',
+          source: 'Order Entry - 2026-01-20',
+          confidence: 0.88,
+        },
+      ];
+      render(<EvidencePanel evidence={intelligenceEvidence} />);
+
+      expect(screen.getByText('Conservative Therapy')).toBeInTheDocument();
+      expect(screen.getByText('Medical Necessity')).toBeInTheDocument();
+    });
+
+    it('EvidencePanel_WithUnclearStatus_ShowsDistinctBadge', () => {
+      const evidence: EvidenceItem[] = [
+        {
+          criterionId: 'diagnosis_present',
+          status: 'UNCLEAR',
+          evidence: 'Diagnosis code needs verification',
+          source: 'System',
+          confidence: 0.5,
+        },
+      ];
+      render(<EvidencePanel evidence={evidence} />);
+
+      const badge = screen.getByText('Unclear');
+      expect(badge).toBeInTheDocument();
+      // UNCLEAR uses warning styling
+      expect(badge.className).toMatch(/bg-warning/);
+      expect(badge.className).toMatch(/text-warning/);
+      // Should NOT use MET (success) or NOT_MET (destructive) styling
+      expect(badge.className).not.toMatch(/bg-success/);
+      expect(badge.className).not.toMatch(/text-success/);
+      expect(badge.className).not.toMatch(/bg-destructive/);
+      expect(badge.className).not.toMatch(/text-destructive/);
+    });
+
+    it('EvidencePanel_WithAllThreeStatuses_ShowsCorrectSummaryBreakdown', () => {
+      const mixedEvidence: EvidenceItem[] = [
+        {
+          criterionId: 'conservative_therapy',
+          status: 'MET',
+          evidence: 'PT completed',
+          source: 'Notes',
+          confidence: 0.95,
+        },
+        {
+          criterionId: 'diagnosis_present',
+          status: 'UNCLEAR',
+          evidence: 'Needs verification',
+          source: 'System',
+          confidence: 0.5,
+        },
+        {
+          criterionId: 'imaging_prior',
+          status: 'NOT_MET',
+          evidence: 'No prior imaging found',
+          source: 'Radiology',
+          confidence: 0.9,
+        },
+      ];
+      render(<EvidencePanel evidence={mixedEvidence} />);
+
+      expect(screen.getByText('3 criteria analyzed')).toBeInTheDocument();
+    });
+
+    it('EvidencePanel_WithLowConfidence_ShowsWarningColor', () => {
+      const evidence: EvidenceItem[] = [
+        {
+          criterionId: 'medical_necessity',
+          status: 'MET',
+          evidence: 'Some evidence found',
+          source: 'Notes',
+          confidence: 0.35,
+        },
+      ];
+      render(<EvidencePanel evidence={evidence} />);
+
+      // 35% confidence should show destructive color (below 0.5 threshold)
+      expect(screen.getByText(/35%/)).toBeInTheDocument();
+    });
+
+    it('EvidencePanel_WithBorderlineConfidence_ShowsCorrectColor', () => {
+      const evidence: EvidenceItem[] = [
+        {
+          criterionId: 'conservative_therapy',
+          status: 'MET',
+          evidence: 'Partial documentation',
+          source: 'Notes',
+          confidence: 0.5,
+        },
+      ];
+      render(<EvidencePanel evidence={evidence} />);
+
+      // 50% is at the boundary — should show warning color
+      expect(screen.getByText(/50%/)).toBeInTheDocument();
+    });
+  });
 });

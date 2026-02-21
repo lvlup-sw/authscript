@@ -14,7 +14,9 @@ import { graphqlClient } from '../graphqlClient';
 import {
   useApprovePARequest,
   useDenyPARequest,
+  useProcessPARequest,
   useConnectionStatus,
+  QUERY_KEYS,
 } from '../graphqlService';
 
 const mockRequest = vi.mocked(graphqlClient.request);
@@ -72,6 +74,65 @@ describe('useDenyPARequest', () => {
     const callArgs = mockRequest.mock.calls[0] as unknown[];
     expect(callArgs[0]).toContain('denyPARequest');
     expect(callArgs[1]).toEqual({ id: 'PA-001', reason: 'Missing documentation' });
+  });
+});
+
+describe('useProcessPARequest', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should call processPARequest mutation with correct id', async () => {
+    mockRequest.mockResolvedValueOnce({
+      processPARequest: { id: 'PA-001', status: 'ready' },
+    });
+
+    const { result } = renderHook(() => useProcessPARequest(), {
+      wrapper: createWrapper(),
+    });
+
+    result.current.mutate('PA-001');
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(mockRequest).toHaveBeenCalledOnce();
+    const callArgs = mockRequest.mock.calls[0];
+    expect(callArgs[0]).toContain('processPARequest');
+    expect(callArgs[1]).toEqual({ id: 'PA-001' });
+  });
+
+  it('useProcessPARequest_InvalidatesCorrectQueries_OnSuccess', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+
+    // Seed the cache with data for each query key we expect to be invalidated
+    queryClient.setQueryData(QUERY_KEYS.paRequests, []);
+    queryClient.setQueryData(QUERY_KEYS.paRequest('PA-002'), { id: 'PA-002' });
+    queryClient.setQueryData(QUERY_KEYS.paStats, { ready: 0 });
+    queryClient.setQueryData(QUERY_KEYS.activity, []);
+
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(QueryClientProvider, { client: queryClient }, children);
+
+    mockRequest.mockResolvedValueOnce({
+      processPARequest: { id: 'PA-002', status: 'ready' },
+    });
+
+    const { result } = renderHook(() => useProcessPARequest(), { wrapper });
+
+    // Spy on invalidateQueries
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+
+    result.current.mutate('PA-002');
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    // Verify all four query keys are invalidated
+    const invalidatedKeys = invalidateSpy.mock.calls.map(call => call[0]?.queryKey);
+    expect(invalidatedKeys).toContainEqual(QUERY_KEYS.paRequests);
+    expect(invalidatedKeys).toContainEqual(QUERY_KEYS.paRequest('PA-002'));
+    expect(invalidatedKeys).toContainEqual(QUERY_KEYS.paStats);
+    expect(invalidatedKeys).toContainEqual(QUERY_KEYS.activity);
   });
 });
 
