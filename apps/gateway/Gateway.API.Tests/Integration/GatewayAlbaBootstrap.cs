@@ -123,7 +123,38 @@ public sealed class GatewayAlbaBootstrap : IAsyncInitializer, IAsyncDisposable
                 services.RemoveAll<IFhirDataAggregator>();
                 services.AddSingleton(mockAggregator);
 
-                // IntelligenceClient is already a stub - no replacement needed
+                // Replace IntelligenceClient with mock returning test PA form data
+                var mockIntelligenceClient = Substitute.For<IIntelligenceClient>();
+                mockIntelligenceClient
+                    .AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                    .Returns(callInfo => Task.FromResult(new PAFormData
+                    {
+                        PatientName = "Test Patient",
+                        PatientDob = "1990-01-01",
+                        MemberId = "MEM-TEST",
+                        DiagnosisCodes = ["M54.5"],
+                        ProcedureCode = callInfo.ArgAt<string>(1),
+                        ClinicalSummary = "Test clinical summary",
+                        SupportingEvidence =
+                        [
+                            new EvidenceItem
+                            {
+                                CriterionId = "diagnosis_present",
+                                Status = "MET",
+                                Evidence = "Test evidence",
+                                Source = "Test",
+                                Confidence = 0.95
+                            }
+                        ],
+                        Recommendation = "APPROVE",
+                        ConfidenceScore = 0.95,
+                        FieldMappings = new Dictionary<string, string>
+                        {
+                            ["PatientName"] = "Test Patient"
+                        }
+                    }));
+                services.RemoveAll<IIntelligenceClient>();
+                services.AddSingleton(mockIntelligenceClient);
             });
         }).ConfigureAwait(false);
     }

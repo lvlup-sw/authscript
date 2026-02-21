@@ -6,9 +6,11 @@
 
 namespace Gateway.API.Tests;
 
+using Gateway.API.Configuration;
 using Gateway.API.Contracts;
 using Gateway.API.Data;
 using Gateway.API.Services;
+using Gateway.API.Services.Decorators;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -79,6 +81,52 @@ public class DependencyExtensionsTests
         await Assert.That(patientRegistry).IsTypeOf<PostgresPatientRegistry>();
     }
 
+    [Test]
+    public async Task AddIntelligenceClient_RegistersHttpClientForIntelligenceClient()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddLogging();
+        var config = CreateTestConfiguration();
+        services.AddSingleton<IConfiguration>(config);
+        services.AddHybridCache();
+        services.AddOptions<CachingSettings>()
+            .BindConfiguration(CachingSettings.SectionName);
+
+        // Act
+        services.AddIntelligenceClient();
+        var provider = services.BuildServiceProvider();
+
+        using var scope = provider.CreateScope();
+        var client = scope.ServiceProvider.GetService<IIntelligenceClient>();
+
+        // Assert
+        await Assert.That(client).IsNotNull();
+    }
+
+    [Test]
+    public async Task AddIntelligenceClient_AppliesCachingDecorator()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddLogging();
+        var config = CreateTestConfiguration();
+        services.AddSingleton<IConfiguration>(config);
+        services.AddHybridCache();
+        services.AddOptions<CachingSettings>()
+            .BindConfiguration(CachingSettings.SectionName);
+
+        // Act
+        services.AddIntelligenceClient();
+        var provider = services.BuildServiceProvider();
+
+        using var scope = provider.CreateScope();
+        var client = scope.ServiceProvider.GetService<IIntelligenceClient>();
+
+        // Assert - Resolved service should be the caching decorator
+        await Assert.That(client).IsTypeOf<CachingIntelligenceClient>();
+    }
+
     private static IConfiguration CreateTestConfiguration()
     {
         var configValues = new Dictionary<string, string?>
@@ -88,7 +136,9 @@ public class DependencyExtensionsTests
             ["Document:MaxSizeMb"] = "10",
             ["Caching:Enabled"] = "false",
             ["Caching:Duration"] = "00:05:00",
-            ["Caching:LocalCacheDuration"] = "00:01:00"
+            ["Caching:LocalCacheDuration"] = "00:01:00",
+            ["Intelligence:BaseUrl"] = "http://localhost:8000",
+            ["Intelligence:TimeoutSeconds"] = "30"
         };
         return new ConfigurationBuilder()
             .AddInMemoryCollection(configValues)
