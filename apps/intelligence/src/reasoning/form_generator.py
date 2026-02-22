@@ -3,27 +3,27 @@
 Calculates recommendations and generates clinical summaries.
 """
 
-from typing import Any, Literal
-
 from src.llm_client import chat_completion
 from src.models.clinical_bundle import ClinicalBundle
 from src.models.pa_form import EvidenceItem, PAFormResponse
+from src.models.policy import PolicyDefinition
+from src.reasoning.confidence_scorer import calculate_confidence
 
 
 async def generate_form_data(
     clinical_bundle: ClinicalBundle,
     evidence: list[EvidenceItem],
-    policy: dict[str, Any],
+    policy: PolicyDefinition,
 ) -> PAFormResponse:
     """
     Generate PA form data from extracted evidence using LLM.
 
-    Calculates recommendation based on evidence and generates clinical summary.
+    Delegates scoring to confidence_scorer and generates clinical summary.
 
     Args:
         clinical_bundle: FHIR clinical data bundle
         evidence: Extracted evidence items
-        policy: Policy definition with field mappings
+        policy: PolicyDefinition with criteria and metadata
 
     Returns:
         Complete PA form response ready for PDF stamping
@@ -43,41 +43,14 @@ async def generate_form_data(
     if not diagnosis_codes:
         diagnosis_codes = ["Unknown"]
 
-    procedure_codes = policy.get("procedure_codes") or ["72148"]
-    procedure_code = procedure_codes[0]
+    procedure_code = policy.procedure_codes[0] if policy.procedure_codes else "72148"
 
-    # Calculate recommendation based on evidence
-    required_criteria = [
-        c for c in policy.get("criteria", []) if c.get("required", False)
-    ]
-    required_criterion_ids = {c.get("id") for c in required_criteria}
-
-    met_required = all(
-        e.status == "MET"
-        for e in evidence
-        if e.criterion_id in required_criterion_ids
-    )
-
-    has_not_met = any(e.status == "NOT_MET" for e in evidence)
-    has_unclear = any(e.status == "UNCLEAR" for e in evidence)
-
-    recommendation: Literal["APPROVE", "NEED_INFO", "MANUAL_REVIEW"]
-    if met_required and not has_not_met and not has_unclear:
-        recommendation = "APPROVE"
-        confidence_score = 0.9
-    elif has_not_met:
-        recommendation = "NEED_INFO"
-        confidence_score = 0.6
-    else:
-        recommendation = "MANUAL_REVIEW"
-        confidence_score = 0.7
+    # Delegate scoring to confidence_scorer
+    score_result = calculate_confidence(evidence, policy)
 
     # Generate clinical summary using LLM
     evidence_summary = "\n".join(
-        [
-            f"- {e.criterion_id}: {e.status} - {e.evidence[:100]}"
-            for e in evidence
-        ]
+        [f"- {e.criterion_id}: {e.status} - {e.evidence[:100]}" for e in evidence]
     )
 
     system_prompt = (
@@ -105,7 +78,6 @@ Generate a professional clinical summary.
         max_tokens=1000,
     ) or "Clinical summary generation pending."
 
-    # Build field mappings
     field_mappings = {
         "PatientName": patient_name,
         "PatientDOB": patient_dob,
@@ -115,12 +87,6 @@ Generate a professional clinical summary.
         "ClinicalJustification": clinical_summary,
     }
 
-    # Add policy-defined field mappings
-    policy_mappings = policy.get("form_field_mappings", {})
-    for key, value in policy_mappings.items():
-        if key in field_mappings:
-            field_mappings[value] = field_mappings[key]
-
     return PAFormResponse(
         patient_name=patient_name,
         patient_dob=patient_dob,
@@ -129,7 +95,9 @@ Generate a professional clinical summary.
         procedure_code=procedure_code,
         clinical_summary=clinical_summary,
         supporting_evidence=evidence,
-        recommendation=recommendation,
-        confidence_score=confidence_score,
+        recommendation=score_result.recommendation,
+        confidence_score=score_result.score,
         field_mappings=field_mappings,
+        policy_id=policy.policy_id,
+        lcd_reference=policy.lcd_reference,
     )

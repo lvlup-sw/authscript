@@ -32,3 +32,7 @@ class PAFormResponse(BaseModel):
     field_mappings: dict[str, str] = Field(
         description="PDF field name to value mappings"
     )
+    policy_id: str | None = Field(default=None, description="Policy identifier")
+    lcd_reference: str | None = Field(
+        default=None, description="LCD article reference"
+    )

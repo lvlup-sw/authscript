@@ -12,14 +12,11 @@ from pydantic import BaseModel
 from src.models.clinical_bundle import ClinicalBundle
 from src.models.pa_form import PAFormResponse
 from src.parsers.pdf_parser import parse_pdf
-from src.policies.example_policy import EXAMPLE_POLICY
+from src.policies.registry import registry
 from src.reasoning.evidence_extractor import extract_evidence
 from src.reasoning.form_generator import generate_form_data
 
 router = APIRouter()
-
-# Supported procedure codes (MRI Lumbar Spine)
-SUPPORTED_PROCEDURE_CODES = {"72148", "72149", "72158"}
 
 
 class AnalyzeRequest(BaseModel):
@@ -36,14 +33,8 @@ async def analyze(request: AnalyzeRequest) -> PAFormResponse:
     Analyze clinical data and generate PA form response.
 
     Uses LLM to extract evidence from clinical data and generate PA form.
+    Resolves policy from registry; unknown CPT codes fall back to generic policy.
     """
-    # Check if procedure is supported
-    if request.procedure_code not in SUPPORTED_PROCEDURE_CODES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Procedure code {request.procedure_code} not supported",
-        )
-
     # Parse clinical data into structured format
     bundle = ClinicalBundle.from_dict(request.patient_id, request.clinical_data)
 
@@ -55,8 +46,8 @@ async def analyze(request: AnalyzeRequest) -> PAFormResponse:
             detail="patient.birth_date is required",
         )
 
-    # Load policy with requested procedure code
-    policy = {**EXAMPLE_POLICY, "procedure_codes": [request.procedure_code]}
+    # Resolve policy from registry (no more 400 rejection for unsupported CPTs)
+    policy = registry.resolve(request.procedure_code)
 
     # Extract evidence using LLM
     evidence = await extract_evidence(bundle, policy)
@@ -87,21 +78,11 @@ async def analyze_with_documents(
     except json.JSONDecodeError as e:
         raise HTTPException(status_code=400, detail=f"Invalid clinical data JSON: {e}")
 
-    # Check if procedure is supported
-    if procedure_code not in SUPPORTED_PROCEDURE_CODES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Procedure code {procedure_code} not supported",
-        )
-
-    # Parse clinical data into structured format
     bundle = ClinicalBundle.from_dict(patient_id, clinical_data_dict)
 
     # Read all document bytes, then parse PDFs in parallel
     pdf_bytes_list = [await doc.read() for doc in documents]
-
     document_texts = list(await asyncio.gather(*[parse_pdf(b) for b in pdf_bytes_list]))
-
     bundle.document_texts = document_texts
 
     # Validate required patient data
@@ -112,8 +93,8 @@ async def analyze_with_documents(
             detail="patient.birth_date is required",
         )
 
-    # Load policy with requested procedure code
-    policy = {**EXAMPLE_POLICY, "procedure_codes": [procedure_code]}
+    # Resolve policy from registry
+    policy = registry.resolve(procedure_code)
 
     # Extract evidence using LLM
     evidence = await extract_evidence(bundle, policy)
@@ -122,30 +103,3 @@ async def analyze_with_documents(
     form_response = await generate_form_data(bundle, evidence, policy)
 
     return form_response
-
-
-def _build_field_mappings(bundle: ClinicalBundle, procedure_code: str) -> dict[str, str]:
-    """Build PDF field mappings from clinical bundle."""
-    patient_name = bundle.patient.name if bundle.patient else "Unknown"
-    patient_dob = (
-        bundle.patient.birth_date.isoformat()
-        if bundle.patient and bundle.patient.birth_date
-        else "Unknown"
-    )
-    member_id = (
-        bundle.patient.member_id
-        if bundle.patient and bundle.patient.member_id
-        else "Unknown"
-    )
-    diagnosis_codes = ", ".join(c.code for c in bundle.conditions) if bundle.conditions else ""
-
-    return {
-        "PatientName": patient_name,
-        "PatientDOB": patient_dob,
-        "MemberID": member_id,
-        "DiagnosisCodes": diagnosis_codes,
-        "ProcedureCode": procedure_code,
-        "ClinicalSummary": "Awaiting production configuration",
-        "ProviderSignature": "",
-        "Date": "",
-    }
