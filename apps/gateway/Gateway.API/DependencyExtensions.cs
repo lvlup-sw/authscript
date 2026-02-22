@@ -132,7 +132,7 @@ public static class DependencyExtensions
         services.AddScoped<IFhirDataAggregator, FhirDataAggregator>();
         services.AddScoped<IPdfFormStamper, PdfFormStamper>();
         services.AddSingleton<IAnalysisResultStore, AnalysisResultStore>();
-        services.AddSingleton<MockDataService>();
+        services.AddSingleton<ReferenceDataService>();
 
         return services;
     }
@@ -150,6 +150,7 @@ public static class DependencyExtensions
     {
         services.AddScoped<IWorkItemStore, PostgresWorkItemStore>();
         services.AddScoped<IPatientRegistry, PostgresPatientRegistry>();
+        services.AddScoped<IPARequestStore, PostgresPARequestStore>();
 
         return services;
     }

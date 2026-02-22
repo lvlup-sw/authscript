@@ -1,3 +1,4 @@
+using Gateway.API.Contracts;
 using Gateway.API.GraphQL.Models;
 using Gateway.API.Services;
 
@@ -5,30 +6,36 @@ namespace Gateway.API.GraphQL.Queries;
 
 public sealed class Query
 {
-    public IReadOnlyList<ProcedureModel> GetProcedures([Service] MockDataService mockData) =>
-        mockData.Procedures;
+    // Reference data (static, from ReferenceDataService)
+    public IReadOnlyList<ProcedureModel> GetProcedures([Service] ReferenceDataService refData) =>
+        refData.Procedures;
 
-    public IReadOnlyList<MedicationModel> GetMedications([Service] MockDataService mockData) =>
-        mockData.Medications;
+    public IReadOnlyList<MedicationModel> GetMedications([Service] ReferenceDataService refData) =>
+        refData.Medications;
 
-    public IReadOnlyList<ProviderModel> GetProviders([Service] MockDataService mockData) =>
-        mockData.Providers;
+    public IReadOnlyList<ProviderModel> GetProviders([Service] ReferenceDataService refData) =>
+        refData.Providers;
 
-    public IReadOnlyList<PayerModel> GetPayers([Service] MockDataService mockData) =>
-        mockData.Payers;
+    public IReadOnlyList<PayerModel> GetPayers([Service] ReferenceDataService refData) =>
+        refData.Payers;
 
-    public IReadOnlyList<DiagnosisModel> GetDiagnoses([Service] MockDataService mockData) =>
-        mockData.Diagnoses;
+    public IReadOnlyList<DiagnosisModel> GetDiagnoses([Service] ReferenceDataService refData) =>
+        refData.Diagnoses;
 
-    public IReadOnlyList<PARequestModel> GetPARequests([Service] MockDataService mockData) =>
-        mockData.GetPARequests();
+    // PA request data (from PostgreSQL via IPARequestStore)
+    public async Task<IReadOnlyList<PARequestModel>> GetPARequests(
+        [Service] IPARequestStore store, CancellationToken ct) =>
+        await store.GetAllAsync(ct);
 
-    public PARequestModel? GetPARequest(string id, [Service] MockDataService mockData) =>
-        mockData.GetPARequest(id);
+    public async Task<PARequestModel?> GetPARequest(
+        string id, [Service] IPARequestStore store, CancellationToken ct) =>
+        await store.GetByIdAsync(id, ct);
 
-    public PAStatsModel GetPAStats([Service] MockDataService mockData) =>
-        mockData.GetPAStats();
+    public async Task<PAStatsModel> GetPAStats(
+        [Service] IPARequestStore store, CancellationToken ct) =>
+        await store.GetStatsAsync(ct);
 
-    public IReadOnlyList<ActivityItemModel> GetActivity([Service] MockDataService mockData) =>
-        mockData.GetActivity();
+    public async Task<IReadOnlyList<ActivityItemModel>> GetActivity(
+        [Service] IPARequestStore store, CancellationToken ct) =>
+        await store.GetActivityAsync(ct);
 }

@@ -7,12 +7,14 @@ public sealed record PARequestModel
 {
     public required string Id { get; init; }
     public required string PatientId { get; init; }
+    public string? FhirPatientId { get; init; }
     public required PatientModel Patient { get; init; }
     public required string ProcedureCode { get; init; }
     public required string ProcedureName { get; init; }
     public required string Diagnosis { get; init; }
     public required string DiagnosisCode { get; init; }
     public required string Payer { get; init; }
+    public string? ProviderId { get; init; }
     public required string Provider { get; init; }
     public required string ProviderNpi { get; init; }
     public required string ServiceDate { get; init; }

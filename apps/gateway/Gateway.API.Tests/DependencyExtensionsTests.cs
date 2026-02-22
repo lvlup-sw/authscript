@@ -79,6 +79,62 @@ public class DependencyExtensionsTests
         await Assert.That(patientRegistry).IsTypeOf<PostgresPatientRegistry>();
     }
 
+    [Test]
+    public async Task AddGatewayPersistence_RegistersIPARequestStore()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddDbContext<GatewayDbContext>(options =>
+            options.UseInMemoryDatabase(Guid.NewGuid().ToString()));
+
+        services.AddGatewayPersistence();
+        var provider = services.BuildServiceProvider();
+
+        // Act
+        using var scope = provider.CreateScope();
+        var store = scope.ServiceProvider.GetService<IPARequestStore>();
+
+        // Assert
+        await Assert.That(store).IsNotNull();
+        await Assert.That(store).IsTypeOf<PostgresPARequestStore>();
+    }
+
+    [Test]
+    public async Task AddGatewayServices_RegistersReferenceDataService()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddLogging();
+        var config = CreateTestConfiguration();
+        services.AddSingleton<IConfiguration>(config);
+
+        // Act
+        services.AddGatewayServices();
+        var provider = services.BuildServiceProvider();
+        var refData = provider.GetService<ReferenceDataService>();
+
+        // Assert
+        await Assert.That(refData).IsNotNull();
+    }
+
+    [Test]
+    public async Task AddGatewayServices_DoesNotRegisterMockDataService()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddLogging();
+        var config = CreateTestConfiguration();
+        services.AddSingleton<IConfiguration>(config);
+
+        // Act
+        services.AddGatewayServices();
+
+        // Assert - no registration with "Mock" in the implementation type name
+        var mockRegistrations = services.Where(d =>
+            d.ImplementationType?.Name.Contains("Mock", StringComparison.OrdinalIgnoreCase) == true);
+        await Assert.That(mockRegistrations.Count()).IsEqualTo(0);
+    }
+
     private static IConfiguration CreateTestConfiguration()
     {
         var configValues = new Dictionary<string, string?>
