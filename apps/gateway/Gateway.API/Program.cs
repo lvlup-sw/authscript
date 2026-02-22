@@ -45,6 +45,9 @@ var app = builder.Build();
 // ---------------------------------------------------------------------------
 // Middleware Pipeline
 // ---------------------------------------------------------------------------
+// Gate all requests (except health checks) until migrations complete
+app.UseMiddleware<MigrationGateMiddleware>();
+
 app.MapOpenApi();
 app.MapScalarApiReference(options =>
 {

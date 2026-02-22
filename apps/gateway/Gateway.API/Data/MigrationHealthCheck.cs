@@ -31,6 +31,13 @@ public class MigrationHealthCheck : IHealthCheck
         s_completedMigrations[contextName] = false;
 
     /// <summary>
+    /// Gets a value indicating whether all registered migrations have completed.
+    /// Returns false if no migrations have been registered.
+    /// </summary>
+    public static bool IsReady =>
+        s_completedMigrations.Count > 0 && s_completedMigrations.Values.All(v => v);
+
+    /// <summary>
     /// Checks if migration is complete for the specified context.
     /// </summary>
     /// <param name="contextName">The name of the DbContext to check.</param>
@@ -56,6 +63,11 @@ public class MigrationHealthCheck : IHealthCheck
             await Task.Delay(interval, cancellationToken).ConfigureAwait(false);
         }
     }
+
+    /// <summary>
+    /// Resets all migration tracking state. For testing only.
+    /// </summary>
+    internal static void Reset() => s_completedMigrations.Clear();
 
     /// <summary>
     /// Checks the health of database migrations.

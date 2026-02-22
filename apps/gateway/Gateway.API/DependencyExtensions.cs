@@ -152,6 +152,9 @@ public static class DependencyExtensions
         services.AddScoped<IPatientRegistry, PostgresPatientRegistry>();
         services.AddScoped<IPARequestStore, PostgresPARequestStore>();
 
+        // Data seeder for demo data in development
+        services.AddScoped<IDataSeeder<GatewayDbContext>, PARequestDataSeeder>();
+
         return services;
     }
 

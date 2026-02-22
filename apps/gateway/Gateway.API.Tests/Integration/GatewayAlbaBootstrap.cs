@@ -90,6 +90,20 @@ public sealed class GatewayAlbaBootstrap : IAsyncInitializer, IAsyncDisposable
                 services.AddDbContext<GatewayDbContext>(options =>
                     options.UseInMemoryDatabase(databaseName));
 
+                // Remove MigrationService (in-memory DB doesn't need migration)
+                var migrationServiceDescriptor = services.FirstOrDefault(d =>
+                    d.ServiceType == typeof(IHostedService) &&
+                    d.ImplementationType?.IsGenericType == true &&
+                    d.ImplementationType.GetGenericTypeDefinition() == typeof(MigrationService<>));
+                if (migrationServiceDescriptor != null)
+                {
+                    services.Remove(migrationServiceDescriptor);
+                }
+
+                // Mark migrations as complete so MigrationGateMiddleware passes requests through
+                MigrationHealthCheck.RegisterExpected(nameof(GatewayDbContext));
+                MigrationHealthCheck.MarkComplete(nameof(GatewayDbContext));
+
                 // Remove AthenaPollingService to avoid scoped dependency validation issue
                 // The singleton background service cannot consume scoped IPatientRegistry
                 services.RemoveAll<AthenaPollingService>();

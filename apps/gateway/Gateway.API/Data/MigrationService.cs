@@ -88,6 +88,11 @@ public sealed class MigrationService<TContext> : BackgroundService
                 await RunMigrationAsync(context, cancellationToken).ConfigureAwait(false);
             }
 
+            if (_options.Value.SeedData && _environment.IsDevelopment())
+            {
+                await RunSeedersAsync(scope.ServiceProvider, context, cancellationToken).ConfigureAwait(false);
+            }
+
             MigrationHealthCheck.MarkComplete(contextName);
             _logger.LogInformation("Migration process completed successfully for {ContextName}.", contextName);
         }
@@ -95,6 +100,18 @@ public sealed class MigrationService<TContext> : BackgroundService
         {
             _logger.LogError(ex.GetBaseException(), "An error occurred during the migration process for {ContextName}.", contextName);
             throw;
+        }
+    }
+
+    private async Task RunSeedersAsync(IServiceProvider scopedProvider, TContext context, CancellationToken cancellationToken)
+    {
+        var seeders = scopedProvider.GetServices<IDataSeeder<TContext>>();
+        foreach (var seeder in seeders)
+        {
+            var seederName = seeder.GetType().Name;
+            _logger.LogInformation("Running data seeder {SeederName} for {ContextName}...", seederName, typeof(TContext).Name);
+            await seeder.SeedAsync(context, cancellationToken).ConfigureAwait(false);
+            _logger.LogInformation("Data seeder {SeederName} completed for {ContextName}.", seederName, typeof(TContext).Name);
         }
     }
 
