@@ -135,6 +135,27 @@ public class DependencyExtensionsTests
         await Assert.That(mockRegistrations.Count()).IsEqualTo(0);
     }
 
+    [Test]
+    public async Task AddGatewayPersistence_RegistersDataSeeder()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddDbContext<GatewayDbContext>(options =>
+            options.UseInMemoryDatabase(Guid.NewGuid().ToString()));
+
+        services.AddGatewayPersistence();
+        var provider = services.BuildServiceProvider();
+
+        // Act
+        using var scope = provider.CreateScope();
+        var seeder = scope.ServiceProvider.GetService<IDataSeeder<GatewayDbContext>>();
+
+        // Assert
+        await Assert.That(seeder).IsNotNull();
+        await Assert.That(seeder).IsTypeOf<PARequestDataSeeder>();
+    }
+
     private static IConfiguration CreateTestConfiguration()
     {
         var configValues = new Dictionary<string, string?>
