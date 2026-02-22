@@ -134,9 +134,26 @@ async def _bounded_evaluate(
         return await evaluate_criterion(criterion, clinical_summary)
 
 
+def _normalize_criteria(policy: Any) -> list[dict[str, Any]]:
+    """Normalize policy criteria to list of dicts.
+
+    Accepts either a dict-based policy or a PolicyDefinition dataclass.
+    """
+    # Import here to avoid circular imports
+    from src.models.policy import PolicyDefinition
+
+    if isinstance(policy, PolicyDefinition):
+        return [
+            {"id": c.id, "description": c.description}
+            for c in policy.criteria
+        ]
+    # dict-based policy
+    return policy.get("criteria", [])
+
+
 async def extract_evidence(
     clinical_bundle: ClinicalBundle,
-    policy: dict[str, Any],
+    policy: Any,
 ) -> list[EvidenceItem]:
     """
     Extract evidence from clinical bundle using LLM to evaluate policy criteria.
@@ -145,12 +162,12 @@ async def extract_evidence(
 
     Args:
         clinical_bundle: FHIR clinical data bundle
-        policy: Policy definition with criteria
+        policy: Policy definition (PolicyDefinition or dict) with criteria
 
     Returns:
         List of evidence items, one per policy criterion
     """
-    criteria = policy.get("criteria", [])
+    criteria = _normalize_criteria(policy)
     if not criteria:
         return []
 

@@ -1,4 +1,4 @@
-"""Tests for form generator stub implementation."""
+"""Tests for form generator implementation."""
 
 from datetime import date
 from unittest.mock import AsyncMock, patch
@@ -7,6 +7,8 @@ import pytest
 
 from src.models.clinical_bundle import ClinicalBundle, Condition, PatientInfo
 from src.models.pa_form import EvidenceItem
+from src.models.policy import PolicyCriterion, PolicyDefinition
+from src.reasoning.confidence_scorer import ScoreResult
 from src.reasoning.form_generator import generate_form_data
 
 
@@ -39,23 +41,32 @@ def sample_evidence() -> list[EvidenceItem]:
 
 
 @pytest.fixture
-def sample_policy() -> dict:
+def sample_policy() -> PolicyDefinition:
     """Create a sample policy."""
-    return {
-        "id": "test-policy",
-        "procedure_codes": ["72148"],
-    }
+    return PolicyDefinition(
+        policy_id="test-policy",
+        policy_name="Test Policy",
+        payer="Test Payer",
+        procedure_codes=["72148"],
+        criteria=[
+            PolicyCriterion(id="crit-1", description="Test criterion", weight=1.0),
+        ],
+    )
 
 
 @pytest.mark.asyncio
 async def test_generate_form_data_returns_approve(
     sample_bundle: ClinicalBundle,
     sample_evidence: list[EvidenceItem],
-    sample_policy: dict,
+    sample_policy: PolicyDefinition,
 ) -> None:
-    """Stub should return APPROVE recommendation."""
+    """Should return APPROVE recommendation via scorer."""
+    mock_scorer = ScoreResult(score=0.9, recommendation="APPROVE")
     mock_llm = AsyncMock(return_value="Patient requires this procedure.")
-    with patch("src.reasoning.form_generator.chat_completion", mock_llm):
+    with (
+        patch("src.reasoning.form_generator.calculate_confidence", return_value=mock_scorer),
+        patch("src.reasoning.form_generator.chat_completion", mock_llm),
+    ):
         result = await generate_form_data(sample_bundle, sample_evidence, sample_policy)
 
     assert result.recommendation == "APPROVE"
@@ -66,10 +77,16 @@ async def test_generate_form_data_returns_approve(
 async def test_generate_form_data_extracts_patient_info(
     sample_bundle: ClinicalBundle,
     sample_evidence: list[EvidenceItem],
-    sample_policy: dict,
+    sample_policy: PolicyDefinition,
 ) -> None:
-    """Stub should extract patient information from bundle."""
-    result = await generate_form_data(sample_bundle, sample_evidence, sample_policy)
+    """Should extract patient information from bundle."""
+    mock_scorer = ScoreResult(score=0.85, recommendation="APPROVE")
+    mock_llm = AsyncMock(return_value="Summary.")
+    with (
+        patch("src.reasoning.form_generator.calculate_confidence", return_value=mock_scorer),
+        patch("src.reasoning.form_generator.chat_completion", mock_llm),
+    ):
+        result = await generate_form_data(sample_bundle, sample_evidence, sample_policy)
 
     assert result.patient_name == "John Doe"
     assert result.patient_dob == "1980-05-15"
@@ -80,10 +97,16 @@ async def test_generate_form_data_extracts_patient_info(
 async def test_generate_form_data_extracts_diagnosis(
     sample_bundle: ClinicalBundle,
     sample_evidence: list[EvidenceItem],
-    sample_policy: dict,
+    sample_policy: PolicyDefinition,
 ) -> None:
-    """Stub should extract diagnosis codes from bundle."""
-    result = await generate_form_data(sample_bundle, sample_evidence, sample_policy)
+    """Should extract diagnosis codes from bundle."""
+    mock_scorer = ScoreResult(score=0.85, recommendation="APPROVE")
+    mock_llm = AsyncMock(return_value="Summary.")
+    with (
+        patch("src.reasoning.form_generator.calculate_confidence", return_value=mock_scorer),
+        patch("src.reasoning.form_generator.chat_completion", mock_llm),
+    ):
+        result = await generate_form_data(sample_bundle, sample_evidence, sample_policy)
 
     assert result.diagnosis_codes == ["M54.5"]
 
@@ -92,22 +115,40 @@ async def test_generate_form_data_extracts_diagnosis(
 async def test_generate_form_data_uses_policy_procedure_code(
     sample_bundle: ClinicalBundle,
     sample_evidence: list[EvidenceItem],
-    sample_policy: dict,
+    sample_policy: PolicyDefinition,
 ) -> None:
-    """Stub should use procedure code from policy."""
-    result = await generate_form_data(sample_bundle, sample_evidence, sample_policy)
+    """Should use procedure code from policy."""
+    mock_scorer = ScoreResult(score=0.85, recommendation="APPROVE")
+    mock_llm = AsyncMock(return_value="Summary.")
+    with (
+        patch("src.reasoning.form_generator.calculate_confidence", return_value=mock_scorer),
+        patch("src.reasoning.form_generator.chat_completion", mock_llm),
+    ):
+        result = await generate_form_data(sample_bundle, sample_evidence, sample_policy)
 
     assert result.procedure_code == "72148"
 
 
 @pytest.mark.asyncio
 async def test_generate_form_data_handles_missing_patient() -> None:
-    """Stub should handle missing patient data gracefully."""
+    """Should handle missing patient data gracefully."""
     bundle = ClinicalBundle(patient_id="test")
     evidence: list[EvidenceItem] = []
-    policy: dict = {"procedure_codes": ["72148"]}
+    policy = PolicyDefinition(
+        policy_id="test-empty",
+        policy_name="Test Empty",
+        payer="Test",
+        procedure_codes=["72148"],
+        criteria=[],
+    )
 
-    result = await generate_form_data(bundle, evidence, policy)
+    mock_scorer = ScoreResult(score=0.5, recommendation="MANUAL_REVIEW")
+    mock_llm = AsyncMock(return_value="Summary.")
+    with (
+        patch("src.reasoning.form_generator.calculate_confidence", return_value=mock_scorer),
+        patch("src.reasoning.form_generator.chat_completion", mock_llm),
+    ):
+        result = await generate_form_data(bundle, evidence, policy)
 
     assert result.patient_name == "Unknown"
     assert result.patient_dob == "Unknown"
@@ -116,11 +157,99 @@ async def test_generate_form_data_handles_missing_patient() -> None:
 
 @pytest.mark.asyncio
 async def test_generate_form_data_handles_empty_procedure_codes() -> None:
-    """Stub should use default procedure code when list is empty."""
+    """Should use default procedure code when list is empty."""
     bundle = ClinicalBundle(patient_id="test")
     evidence: list[EvidenceItem] = []
-    policy: dict = {"procedure_codes": []}
+    policy = PolicyDefinition(
+        policy_id="test-no-codes",
+        policy_name="Test No Codes",
+        payer="Test",
+        procedure_codes=[],
+        criteria=[],
+    )
 
-    result = await generate_form_data(bundle, evidence, policy)
+    mock_scorer = ScoreResult(score=0.5, recommendation="MANUAL_REVIEW")
+    mock_llm = AsyncMock(return_value="Summary.")
+    with (
+        patch("src.reasoning.form_generator.calculate_confidence", return_value=mock_scorer),
+        patch("src.reasoning.form_generator.chat_completion", mock_llm),
+    ):
+        result = await generate_form_data(bundle, evidence, policy)
 
     assert result.procedure_code == "72148"
+
+
+@pytest.mark.asyncio
+async def test_generate_form_data_delegates_to_scorer(
+    sample_bundle: ClinicalBundle,
+    sample_evidence: list[EvidenceItem],
+    sample_policy: PolicyDefinition,
+) -> None:
+    """Mock confidence_scorer, verify it's called."""
+    mock_scorer = ScoreResult(score=0.72, recommendation="MANUAL_REVIEW")
+    mock_llm = AsyncMock(return_value="Summary.")
+    with (
+        patch("src.reasoning.form_generator.calculate_confidence", return_value=mock_scorer) as mock_calc,
+        patch("src.reasoning.form_generator.chat_completion", mock_llm),
+    ):
+        result = await generate_form_data(sample_bundle, sample_evidence, sample_policy)
+    mock_calc.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_generate_form_data_uses_scorer_recommendation(
+    sample_bundle: ClinicalBundle,
+    sample_evidence: list[EvidenceItem],
+    sample_policy: PolicyDefinition,
+) -> None:
+    """Scorer returns MANUAL_REVIEW -> response has MANUAL_REVIEW."""
+    mock_scorer = ScoreResult(score=0.72, recommendation="MANUAL_REVIEW")
+    mock_llm = AsyncMock(return_value="Summary.")
+    with (
+        patch("src.reasoning.form_generator.calculate_confidence", return_value=mock_scorer),
+        patch("src.reasoning.form_generator.chat_completion", mock_llm),
+    ):
+        result = await generate_form_data(sample_bundle, sample_evidence, sample_policy)
+    assert result.recommendation == "MANUAL_REVIEW"
+
+
+@pytest.mark.asyncio
+async def test_generate_form_data_uses_scorer_confidence(
+    sample_bundle: ClinicalBundle,
+    sample_evidence: list[EvidenceItem],
+    sample_policy: PolicyDefinition,
+) -> None:
+    """Scorer returns 0.72 -> response.confidence_score == 0.72."""
+    mock_scorer = ScoreResult(score=0.72, recommendation="MANUAL_REVIEW")
+    mock_llm = AsyncMock(return_value="Summary.")
+    with (
+        patch("src.reasoning.form_generator.calculate_confidence", return_value=mock_scorer),
+        patch("src.reasoning.form_generator.chat_completion", mock_llm),
+    ):
+        result = await generate_form_data(sample_bundle, sample_evidence, sample_policy)
+    assert result.confidence_score == 0.72
+
+
+@pytest.mark.asyncio
+async def test_generate_form_data_includes_policy_metadata(
+    sample_bundle: ClinicalBundle,
+    sample_evidence: list[EvidenceItem],
+) -> None:
+    """Response has policy_id + lcd_reference from policy."""
+    policy = PolicyDefinition(
+        policy_id="lcd-test-L12345",
+        policy_name="Test LCD",
+        lcd_reference="L12345",
+        payer="CMS",
+        procedure_codes=["72148"],
+        criteria=[PolicyCriterion(id="c1", description="Test", weight=1.0)],
+    )
+    mock_scorer = ScoreResult(score=0.85, recommendation="APPROVE")
+    mock_llm = AsyncMock(return_value="Summary.")
+    with (
+        patch("src.reasoning.form_generator.calculate_confidence", return_value=mock_scorer),
+        patch("src.reasoning.form_generator.chat_completion", mock_llm),
+    ):
+        result = await generate_form_data(sample_bundle, sample_evidence, policy)
+    assert result.policy_id == "lcd-test-L12345"
+    assert result.lcd_reference == "L12345"
