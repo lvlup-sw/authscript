@@ -301,17 +301,21 @@ public sealed class PostgresPARequestStore : IPARequestStore
         await IdGenerationLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            var maxId = await _context.PriorAuthRequests
+            // Filter to only sequential PA-NNN IDs (exclude PA-DEMO-* etc.)
+            var sequentialIds = await _context.PriorAuthRequests
                 .AsNoTracking()
                 .Select(e => e.Id)
-                .OrderByDescending(id => id)
-                .FirstOrDefaultAsync(ct)
+                .Where(id => id.StartsWith("PA-") && id.Length <= 7)
+                .ToListAsync(ct)
                 .ConfigureAwait(false);
 
             var counter = 1;
-            if (maxId is not null && maxId.StartsWith("PA-") && int.TryParse(maxId[3..], out var existing))
+            foreach (var id in sequentialIds)
             {
-                counter = existing + 1;
+                if (int.TryParse(id[3..], out var existing) && existing >= counter)
+                {
+                    counter = existing + 1;
+                }
             }
 
             return $"PA-{counter:D3}";
