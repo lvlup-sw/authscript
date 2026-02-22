@@ -6,6 +6,7 @@
 
 namespace Gateway.API.Data.Mappings;
 
+using System.Globalization;
 using System.Text.Json;
 using Gateway.API.Data.Entities;
 using Gateway.API.GraphQL.Models;
@@ -15,7 +16,10 @@ using Gateway.API.GraphQL.Models;
 /// </summary>
 public static class PriorAuthRequestMappings
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    /// <summary>
+    /// Shared JSON serializer options for criteria serialization.
+    /// </summary>
+    internal static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
@@ -88,7 +92,7 @@ public static class PriorAuthRequestMappings
         {
             Id = model.Id,
             PatientId = model.PatientId,
-            FhirPatientId = fhirPatientId ?? model.Patient.Id,
+            FhirPatientId = fhirPatientId ?? model.FhirPatientId ?? model.Patient.Id,
             PatientName = model.Patient.Name,
             PatientMrn = model.Patient.Mrn,
             PatientDob = NullIfEmpty(model.Patient.Dob),
@@ -108,10 +112,10 @@ public static class PriorAuthRequestMappings
             Status = model.Status,
             Confidence = model.Confidence,
             CriteriaJson = criteriaJson,
-            CreatedAt = DateTimeOffset.Parse(model.CreatedAt),
-            UpdatedAt = DateTimeOffset.Parse(model.UpdatedAt),
-            ReadyAt = model.ReadyAt is not null ? DateTimeOffset.Parse(model.ReadyAt) : null,
-            SubmittedAt = model.SubmittedAt is not null ? DateTimeOffset.Parse(model.SubmittedAt) : null,
+            CreatedAt = DateTimeOffset.Parse(model.CreatedAt, CultureInfo.InvariantCulture),
+            UpdatedAt = DateTimeOffset.Parse(model.UpdatedAt, CultureInfo.InvariantCulture),
+            ReadyAt = model.ReadyAt is not null ? DateTimeOffset.Parse(model.ReadyAt, CultureInfo.InvariantCulture) : null,
+            SubmittedAt = model.SubmittedAt is not null ? DateTimeOffset.Parse(model.SubmittedAt, CultureInfo.InvariantCulture) : null,
             ReviewTimeSeconds = model.ReviewTimeSeconds,
         };
     }

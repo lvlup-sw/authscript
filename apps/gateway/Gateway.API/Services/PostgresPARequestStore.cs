@@ -18,10 +18,7 @@ using Microsoft.EntityFrameworkCore;
 /// </summary>
 public sealed class PostgresPARequestStore : IPARequestStore
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    };
+    private static readonly SemaphoreSlim IdGenerationLock = new(1, 1);
 
     private readonly GatewayDbContext _context;
 
@@ -132,7 +129,7 @@ public sealed class PostgresPARequestStore : IPARequestStore
 
         if (criteria is not null)
         {
-            entity.CriteriaJson = JsonSerializer.Serialize(criteria, JsonOptions);
+            entity.CriteriaJson = JsonSerializer.Serialize(criteria, PriorAuthRequestMappings.JsonOptions);
         }
 
         entity.UpdatedAt = DateTimeOffset.UtcNow;
@@ -160,12 +157,13 @@ public sealed class PostgresPARequestStore : IPARequestStore
             return null;
         }
 
+        var now = DateTimeOffset.UtcNow;
         entity.Status = "ready";
         entity.ClinicalSummary = clinicalSummary;
         entity.Confidence = confidence;
-        entity.CriteriaJson = JsonSerializer.Serialize(criteria, JsonOptions);
-        entity.ReadyAt = DateTimeOffset.UtcNow;
-        entity.UpdatedAt = DateTimeOffset.UtcNow;
+        entity.CriteriaJson = JsonSerializer.Serialize(criteria, PriorAuthRequestMappings.JsonOptions);
+        entity.ReadyAt = now;
+        entity.UpdatedAt = now;
 
         await _context.SaveChangesAsync(ct).ConfigureAwait(false);
 
@@ -186,10 +184,11 @@ public sealed class PostgresPARequestStore : IPARequestStore
             return null;
         }
 
+        var now = DateTimeOffset.UtcNow;
         entity.Status = "waiting_for_insurance";
-        entity.SubmittedAt = DateTimeOffset.UtcNow;
+        entity.SubmittedAt = now;
         entity.ReviewTimeSeconds += addReviewTimeSeconds;
-        entity.UpdatedAt = DateTimeOffset.UtcNow;
+        entity.UpdatedAt = now;
 
         await _context.SaveChangesAsync(ct).ConfigureAwait(false);
 
@@ -299,20 +298,28 @@ public sealed class PostgresPARequestStore : IPARequestStore
 
     private async Task<string> GenerateIdAsync(CancellationToken ct)
     {
-        var maxId = await _context.PriorAuthRequests
-            .AsNoTracking()
-            .Select(e => e.Id)
-            .OrderByDescending(id => id)
-            .FirstOrDefaultAsync(ct)
-            .ConfigureAwait(false);
-
-        var counter = 1;
-        if (maxId is not null && maxId.StartsWith("PA-") && int.TryParse(maxId[3..], out var existing))
+        await IdGenerationLock.WaitAsync(ct).ConfigureAwait(false);
+        try
         {
-            counter = existing + 1;
-        }
+            var maxId = await _context.PriorAuthRequests
+                .AsNoTracking()
+                .Select(e => e.Id)
+                .OrderByDescending(id => id)
+                .FirstOrDefaultAsync(ct)
+                .ConfigureAwait(false);
 
-        return $"PA-{counter:D3}";
+            var counter = 1;
+            if (maxId is not null && maxId.StartsWith("PA-") && int.TryParse(maxId[3..], out var existing))
+            {
+                counter = existing + 1;
+            }
+
+            return $"PA-{counter:D3}";
+        }
+        finally
+        {
+            IdGenerationLock.Release();
+        }
     }
 
     private static string ToRelativeTimeAgo(DateTimeOffset updatedAt)

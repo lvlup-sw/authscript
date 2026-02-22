@@ -2,6 +2,7 @@ using Gateway.API.Contracts;
 using Gateway.API.GraphQL.Inputs;
 using Gateway.API.GraphQL.Models;
 using Gateway.API.Services;
+using Microsoft.Extensions.Logging;
 
 namespace Gateway.API.GraphQL.Mutations;
 
@@ -74,6 +75,7 @@ public sealed class Mutation
         [Service] IPARequestStore store,
         [Service] IFhirDataAggregator fhirAggregator,
         [Service] IIntelligenceClient intelligenceClient,
+        [Service] ILogger<Mutation> logger,
         CancellationToken ct)
     {
         var paRequest = await store.GetByIdAsync(id, ct);
@@ -81,30 +83,39 @@ public sealed class Mutation
 
         // Use FHIR patient ID for real clinical data
         var fhirPatientId = paRequest.FhirPatientId ?? paRequest.PatientId;
-        var clinicalBundle = await fhirAggregator.AggregateClinicalDataAsync(fhirPatientId, cancellationToken: ct);
 
-        // Call Intelligence for AI analysis
-        var analysisResult = await intelligenceClient.AnalyzeAsync(clinicalBundle, paRequest.ProcedureCode, ct);
-
-        // Map criteria from analysis
-        var criteria = analysisResult.SupportingEvidence.Select(e => new CriterionModel
+        try
         {
-            Met = e.Status.Equals("MET", StringComparison.OrdinalIgnoreCase),
-            Label = e.CriterionId,
-            Reason = e.Evidence,
-        }).ToList();
+            var clinicalBundle = await fhirAggregator.AggregateClinicalDataAsync(fhirPatientId, cancellationToken: ct);
 
-        var confidence = (int)(analysisResult.ConfidenceScore * 100);
+            // Call Intelligence for AI analysis
+            var analysisResult = await intelligenceClient.AnalyzeAsync(clinicalBundle, paRequest.ProcedureCode, ct);
 
-        return await store.ApplyAnalysisResultAsync(
-            id, analysisResult.ClinicalSummary, confidence, criteria, ct);
+            // Map criteria from analysis
+            var criteria = analysisResult.SupportingEvidence.Select(e => new CriterionModel
+            {
+                Met = e.Status.Equals("MET", StringComparison.OrdinalIgnoreCase),
+                Label = e.CriterionId,
+                Reason = e.Evidence,
+            }).ToList();
+
+            var confidence = (int)Math.Round(analysisResult.ConfidenceScore * 100);
+
+            return await store.ApplyAnalysisResultAsync(
+                id, analysisResult.ClinicalSummary, confidence, criteria, ct);
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogError(ex, "External service call failed while processing PA request {PaRequestId}", id);
+            throw new GraphQLException($"Failed to process PA request: external service unavailable.");
+        }
     }
 
     public async Task<PARequestModel?> SubmitPARequest(
         string id,
-        [Service] IPARequestStore store,
-        CancellationToken ct,
-        int addReviewTimeSeconds = 0)
+        int addReviewTimeSeconds = 0,
+        [Service] IPARequestStore store = default!,
+        CancellationToken ct = default)
     {
         return await store.SubmitAsync(id, addReviewTimeSeconds, ct);
     }
