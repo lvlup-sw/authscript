@@ -1,0 +1,513 @@
+2026-02-22T04:00:20.4964030Z Waiting for resource 'dashboard-installer' to complete.
+2026-02-22T04:00:20.4967692Z Waiting for resource 'postgres' to enter the 'Running' state.
+2026-02-22T04:00:20.4995819Z Waiting for resource 'postgres' to enter the 'Running' state.
+[sys] Starting process...: Cmd = /home/reedsalus/.local/bin/npm, Args = ["install"]
+2026-02-22T04:00:20.5020898Z Waiting for resource 'gateway' to enter the 'Running' state.
+2026-02-22T04:00:20.5026869Z Waiting for resource 'authscript' to enter the 'Running' state.
+2026-02-22T04:00:20.5026924Z Waiting for resource 'authscript' to enter the 'Running' state.
+2026-02-22T04:00:20.5027803Z Waiting for resource 'redis' to enter the 'Running' state.
+2026-02-22T04:00:20.5028575Z Waiting for resource 'intelligence' to enter the 'Running' state.
+2026-02-22T04:00:20.5680000Z eafaf5ec161f9d36423bdfb2013ede8284b9d7dfe9d26506b93ef9ba0b18c43b
+2026-02-22T04:00:20.5790000Z 3ce9c3932055e8247d48f43acaf860c75474af2b54ae2456ede55d3612e33a18
+2026-02-22T04:00:21.8985300Z 
+2026-02-22T04:00:21.8988510Z PostgreSQL Database directory appears to contain a database; Skipping initialization
+2026-02-22T04:00:21.8989000Z 
+2026-02-22T04:00:21.9124960Z 2026-02-22 04:00:21.912 UTC [1] LOG:  starting PostgreSQL 17.6 (Debian 17.6-2.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+2026-02-22T04:00:21.9126210Z 2026-02-22 04:00:21.912 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2026-02-22T04:00:21.9126640Z 2026-02-22 04:00:21.912 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2026-02-22T04:00:21.9136760Z 2026-02-22 04:00:21.913 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2026-02-22T04:00:21.9158110Z 2026-02-22 04:00:21.915 UTC [24] LOG:  database system was shut down at 2026-02-22 03:16:32 UTC
+2026-02-22T04:00:21.9183000Z 2026-02-22 04:00:21.918 UTC [1] LOG:  database system is ready to accept connections
+2026-02-22T04:00:22.1145455Z Waiting for resource 'authscript' to become healthy.
+2026-02-22T04:00:22.1145459Z Waiting for resource 'authscript' to become healthy.
+2026-02-22T04:00:22.1145462Z Waiting for resource 'postgres' to become healthy.
+2026-02-22T04:00:22.1145462Z Waiting for resource 'postgres' to become healthy.
+2026-02-22T04:00:22.2448701Z Creating database 'authscript'
+2026-02-22T04:00:22.2451908Z Waiting for resource ready to execute for 'postgres'.
+2026-02-22T04:00:22.2451983Z Waiting for resource ready to execute for 'postgres'.
+2026-02-22T04:00:22.2453258Z Waiting for resource ready to execute for 'authscript'.
+2026-02-22T04:00:22.2453341Z Waiting for resource ready to execute for 'authscript'.
+2026-02-22T04:00:22.2453676Z Finished waiting for resource 'authscript'.
+2026-02-22T04:00:22.2453733Z Finished waiting for resource 'authscript'.
+2026-02-22T04:00:22.2461120Z 2026-02-22 04:00:22.246 UTC [29] ERROR:  database "authscript" already exists
+2026-02-22T04:00:22.2462210Z 2026-02-22 04:00:22.246 UTC [29] STATEMENT:  CREATE DATABASE "authscript"
+2026-02-22T04:00:22.2491719Z Database 'authscript' already exists
+2026-02-22T04:00:22.2506372Z Finished waiting for resource 'postgres'.
+2026-02-22T04:00:22.2506380Z Finished waiting for resource 'postgres'.
+2026-02-22T04:00:22.2720000Z [1/2] STEP 1/5: FROM ghcr.io/astral-sh/uv:0.5-python3.11-bookworm-slim AS builder
+2026-02-22T04:00:22.2860000Z [1/2] STEP 2/5: WORKDIR /app
+2026-02-22T04:00:22.3020000Z --> Using cache 405e5f9781343df3de20e6c062f90f7f9058fbce49ce6f3d7932cdd733d34f2f
+2026-02-22T04:00:22.3020000Z --> 405e5f978134
+2026-02-22T04:00:22.3050000Z [1/2] STEP 3/5: COPY pyproject.toml ./
+2026-02-22T04:00:22.3770000Z --> Using cache decbb6313aac8f8909fe30573d0487def361251a47f424f8928ace6e120da7ea
+2026-02-22T04:00:22.3770000Z --> decbb6313aac
+2026-02-22T04:00:22.3800000Z [1/2] STEP 4/5: RUN --mount=type=cache,target=/root/.cache/uv     uv venv .venv &&     uv pip install --python .venv/bin/python -r pyproject.toml
+2026-02-22T04:00:22.3840000Z --> Using cache bcbed5647423004c4596429a9b75042a44d0b086a37654efcac061bfe253f04c
+2026-02-22T04:00:22.3840000Z --> bcbed5647423
+2026-02-22T04:00:22.3870000Z [1/2] STEP 5/5: COPY src/ ./src/
+2026-02-22T04:00:22.5240000Z --> 460f9ce0685b
+2026-02-22T04:00:22.5290000Z [2/2] STEP 1/13: FROM python:3.11-slim-bookworm AS runtime
+2026-02-22T04:00:22.5330000Z [2/2] STEP 2/13: RUN groupadd --gid 1000 appgroup &&     useradd --uid 1000 --gid appgroup --shell /bin/bash --create-home appuser
+2026-02-22T04:00:22.5360000Z --> Using cache 08f688c66fba85659e7f41b86215f7d4aa4c4a92e266d33f79c7c6bd65cffcc1
+2026-02-22T04:00:22.5360000Z --> 08f688c66fba
+2026-02-22T04:00:22.5380000Z [2/2] STEP 3/13: WORKDIR /app
+2026-02-22T04:00:22.5560000Z --> Using cache 14964234e668c0e9d058df40601e1e45b696811695b0cf061b9fe53715c8005a
+2026-02-22T04:00:22.5560000Z --> 14964234e668
+2026-02-22T04:00:22.5580000Z [2/2] STEP 4/13: COPY --from=builder /app/.venv ./.venv
+2026-02-22T04:00:23.0880000Z --> Using cache b939e5a7b2797a94e94ba35428b3752fc0766495014534386e313d160c9d204f
+2026-02-22T04:00:23.0880000Z --> b939e5a7b279
+2026-02-22T04:00:23.0960000Z [2/2] STEP 5/13: COPY --from=builder /app/src ./src
+2026-02-22T04:00:23.2200000Z --> 6d787bdfa0f2
+2026-02-22T04:00:23.2220000Z [2/2] STEP 6/13: ENV PATH="/app/.venv/bin:$PATH"
+2026-02-22T04:00:23.2510000Z --> 845d4ed2a18f
+2026-02-22T04:00:23.2540000Z [2/2] STEP 7/13: ENV PYTHONUNBUFFERED=1
+2026-02-22T04:00:23.2830000Z --> cd77d91821e6
+2026-02-22T04:00:23.2850000Z [2/2] STEP 8/13: ENV PYTHONDONTWRITEBYTECODE=1
+2026-02-22T04:00:23.3130000Z --> 3989a7e726f1
+2026-02-22T04:00:23.3150000Z [2/2] STEP 9/13: USER appuser
+2026-02-22T04:00:23.3790000Z --> 644a28874ee8
+2026-02-22T04:00:23.3820000Z [2/2] STEP 10/13: EXPOSE 8000
+2026-02-22T04:00:23.4430000Z --> 06f8e0c0869e
+2026-02-22T04:00:23.4450000Z [2/2] STEP 11/13: HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+2026-02-22T04:00:23.4930000Z time="2026-02-21T20:00:23-08:00" level=warning msg="HEALTHCHECK is not supported for OCI image format and will be ignored. Must use `docker` format"
+2026-02-22T04:00:23.5120000Z --> 55ebd17a5e2d
+2026-02-22T04:00:23.5140000Z [2/2] STEP 12/13: CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+2026-02-22T04:00:23.5570000Z time="2026-02-21T20:00:23-08:00" level=warning msg="HEALTHCHECK is not supported for OCI image format and will be ignored. Must use `docker` format"
+2026-02-22T04:00:23.5780000Z --> fbe14961c7c7
+2026-02-22T04:00:23.5810000Z [2/2] STEP 13/13: LABEL "com.microsoft.developer.usvc-dev.build"="0.20.7" "com.microsoft.developer.usvc-dev.group-version"="usvc-dev.developer.microsoft.com/v1"
+2026-02-22T04:00:23.6250000Z time="2026-02-21T20:00:23-08:00" level=warning msg="HEALTHCHECK is not supported for OCI image format and will be ignored. Must use `docker` format"
+2026-02-22T04:00:23.6250000Z [2/2] COMMIT intelligence:7f146f0f87b0dc094594270c2e70d9a06319dbc8
+2026-02-22T04:00:23.6420000Z --> 09d57361ad14
+2026-02-22T04:00:23.6420000Z Successfully tagged localhost/intelligence:7f146f0f87b0dc094594270c2e70d9a06319dbc8
+2026-02-22T04:00:23.7000000Z 09d57361ad1461d0e9854d6b3f325b97644c87dd8617dc7fbabb27db18fcdc51
+2026-02-22T04:00:23.9367860Z 2:C 22 Feb 2026 04:00:23.936 # WARNING Memory overcommit must be enabled! Without it, a background save or replication may fail under low memory condition. Being disabled, it can also cause failures without low memory condition, see https://github.com/jemalloc/jemalloc/issues/1328. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
+2026-02-22T04:00:23.9370110Z 2:C 22 Feb 2026 04:00:23.936 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+2026-02-22T04:00:23.9370570Z 2:C 22 Feb 2026 04:00:23.936 * Redis version=8.2.3, bits=64, commit=00000000, modified=1, pid=2, just started
+2026-02-22T04:00:23.9370900Z 2:C 22 Feb 2026 04:00:23.936 * Configuration loaded
+2026-02-22T04:00:23.9371290Z 2:M 22 Feb 2026 04:00:23.936 * monotonic clock: POSIX clock_gettime
+2026-02-22T04:00:23.9373350Z 2:M 22 Feb 2026 04:00:23.937 * Running mode=standalone, port=6380.
+2026-02-22T04:00:23.9383290Z 2:M 22 Feb 2026 04:00:23.938 * Server initialized
+2026-02-22T04:00:23.9384180Z 2:M 22 Feb 2026 04:00:23.938 * Loading RDB produced by version 8.2.3
+2026-02-22T04:00:23.9384850Z 2:M 22 Feb 2026 04:00:23.938 * RDB age 1708299 seconds
+2026-02-22T04:00:23.9385300Z 2:M 22 Feb 2026 04:00:23.938 * RDB memory usage when created 0.90 Mb
+2026-02-22T04:00:23.9385750Z 2:M 22 Feb 2026 04:00:23.938 * Done loading RDB, keys loaded: 0, keys expired: 0.
+2026-02-22T04:00:23.9386010Z 2:M 22 Feb 2026 04:00:23.938 * DB loaded from disk: 0.000 seconds
+2026-02-22T04:00:23.9386170Z 2:M 22 Feb 2026 04:00:23.938 * Ready to accept connections tcp
+2026-02-22T04:00:23.9386320Z 2:M 22 Feb 2026 04:00:23.938 * Ready to accept connections tls
+2026-02-22T04:00:24.1618968Z Waiting for resource 'redis' to become healthy.
+2026-02-22T04:00:24.2312246Z Waiting for resource ready to execute for 'redis'.
+2026-02-22T04:00:24.2312475Z Finished waiting for resource 'redis'.
+2026-02-22T04:00:25.8336469Z Waiting for resource ready to execute for 'intelligence'.
+2026-02-22T04:00:25.8336778Z Finished waiting for resource 'intelligence'.
+2026-02-22T04:00:25.9700377Z Waiting for resource ready to execute for 'gateway'.
+2026-02-22T04:00:25.9706608Z Finished waiting for resource 'gateway'.
+2026-02-22T04:00:26.4574730Z INFO:     Started server process [1]
+2026-02-22T04:00:26.4576780Z INFO:     Waiting for application startup.
+2026-02-22T04:00:26.4577060Z Starting AuthScript Intelligence Service v0.1.0
+2026-02-22T04:00:26.4577230Z Environment: production
+2026-02-22T04:00:26.4577380Z INFO:     Application startup complete.
+2026-02-22T04:00:26.4598440Z INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2026-02-22T04:00:27.7100000Z /home/reedsalus/Documents/code/prior-auth/apps/gateway/Gateway.API/bin/Debug/net10.0/Gateway.API
+2026-02-22T04:00:27.9780000Z =info: Gateway.API.Data.MigrationService[0]
+2026-02-22T04:00:27.9780000Z       Waiting for database container to be ready...
+2026-02-22T04:00:27.9780000Z info: Gateway.API.Services.Polling.AthenaPollingService[0]
+2026-02-22T04:00:27.9780000Z       AthenaPollingService starting
+2026-02-22T04:00:27.9780000Z info: Gateway.API.Services.Polling.AthenaPollingService[0]
+2026-02-22T04:00:27.9780000Z       Waiting for database migrations to complete...
+2026-02-22T04:00:27.9780000Z info: Microsoft.Hosting.Lifetime[14]
+2026-02-22T04:00:27.9780000Z       Now listening on: http://localhost:43853
+2026-02-22T04:00:27.9780000Z info: Microsoft.Hosting.Lifetime[14]
+2026-02-22T04:00:27.9780000Z       Now listening on: http://localhost:38829
+2026-02-22T04:00:27.9780000Z info: Microsoft.Hosting.Lifetime[0]
+2026-02-22T04:00:27.9780000Z       Application started. Press Ctrl+C to shut down.
+2026-02-22T04:00:27.9780000Z info: Microsoft.Hosting.Lifetime[0]
+2026-02-22T04:00:27.9780000Z       Hosting environment: Development
+2026-02-22T04:00:27.9780000Z info: Microsoft.Hosting.Lifetime[0]
+2026-02-22T04:00:27.9780000Z       Content root path: /home/reedsalus/Documents/code/prior-auth/apps/gateway/Gateway.API
+2026-02-22T04:00:32.9680000Z info: Gateway.API.Data.MigrationService[0]
+2026-02-22T04:00:32.9680000Z       Starting migration for GatewayDbContext...
+2026-02-22T04:00:33.2140000Z warn: Microsoft.EntityFrameworkCore.Model.Validation[10400]
+2026-02-22T04:00:33.2140000Z       Sensitive data logging is enabled. Log entries and exception messages may include sensitive application data; this mode should only be enabled during development.
+2026-02-22T04:00:33.3770000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:00:33.3770000Z       Executed DbCommand (17ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:00:33.3770000Z       SELECT 1
+2026-02-22T04:00:33.3830000Z info: Gateway.API.Data.MigrationService[0]
+2026-02-22T04:00:33.3830000Z       Database exists for GatewayDbContext.
+2026-02-22T04:00:33.4100000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:00:33.4100000Z       Executed DbCommand (5ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:00:33.4100000Z       SELECT "MigrationId", "ProductVersion"
+2026-02-22T04:00:33.4100000Z       FROM "__EFMigrationsHistory"
+2026-02-22T04:00:33.4100000Z       ORDER BY "MigrationId";
+2026-02-22T04:00:33.4320000Z info: Gateway.API.Data.MigrationService[0]
+2026-02-22T04:00:33.4320000Z       Found 0 pending migrations for GatewayDbContext: 
+2026-02-22T04:00:33.4320000Z info: Gateway.API.Data.MigrationService[0]
+2026-02-22T04:00:33.4320000Z       Applying migrations for GatewayDbContext...
+2026-02-22T04:00:33.4340000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:00:33.4340000Z       Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:00:33.4340000Z       SELECT "MigrationId", "ProductVersion"
+2026-02-22T04:00:33.4340000Z       FROM "__EFMigrationsHistory"
+2026-02-22T04:00:33.4340000Z       ORDER BY "MigrationId";
+2026-02-22T04:00:33.4930000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:00:33.4930000Z       Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:00:33.4930000Z       SELECT 1
+2026-02-22T04:00:33.5320000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:00:33.5320000Z       Executed DbCommand (2ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:00:33.5320000Z       CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+2026-02-22T04:00:33.5320000Z           "MigrationId" character varying(150) NOT NULL,
+2026-02-22T04:00:33.5320000Z           "ProductVersion" character varying(32) NOT NULL,
+2026-02-22T04:00:33.5320000Z           CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
+2026-02-22T04:00:33.5320000Z       );
+2026-02-22T04:00:33.5360000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:00:33.5360000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:00:33.5360000Z       LOCK TABLE "__EFMigrationsHistory" IN ACCESS EXCLUSIVE MODE
+2026-02-22T04:00:33.5370000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:00:33.5370000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:00:33.5370000Z       SELECT "MigrationId", "ProductVersion"
+2026-02-22T04:00:33.5370000Z       FROM "__EFMigrationsHistory"
+2026-02-22T04:00:33.5370000Z       ORDER BY "MigrationId";
+2026-02-22T04:00:33.5390000Z info: Microsoft.EntityFrameworkCore.Migrations[20405]
+2026-02-22T04:00:33.5390000Z       No migrations were applied. The database is already up to date.
+2026-02-22T04:00:33.5410000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:00:33.5410000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:00:33.5410000Z       SELECT "MigrationId", "ProductVersion"
+2026-02-22T04:00:33.5410000Z       FROM "__EFMigrationsHistory"
+2026-02-22T04:00:33.5410000Z       ORDER BY "MigrationId";
+2026-02-22T04:00:33.5410000Z info: Gateway.API.Data.MigrationService[0]
+2026-02-22T04:00:33.5410000Z       Successfully applied migrations for GatewayDbContext. Total applied: 4
+2026-02-22T04:00:33.5420000Z info: Gateway.API.Data.MigrationService[0]
+2026-02-22T04:00:33.5420000Z       Running data seeder PARequestDataSeeder for GatewayDbContext...
+2026-02-22T04:00:33.6730000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:00:33.6730000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:00:33.6730000Z       SELECT EXISTS (
+2026-02-22T04:00:33.6730000Z           SELECT 1
+2026-02-22T04:00:33.6730000Z           FROM prior_auth_requests AS p)
+2026-02-22T04:00:33.6810000Z info: Gateway.API.Data.PARequestDataSeeder[0]
+2026-02-22T04:00:33.6810000Z       PA requests already exist, skipping seed.
+2026-02-22T04:00:33.6810000Z info: Gateway.API.Data.MigrationService[0]
+2026-02-22T04:00:33.6810000Z       Data seeder PARequestDataSeeder completed for GatewayDbContext.
+2026-02-22T04:00:33.6810000Z info: Gateway.API.Data.MigrationService[0]
+2026-02-22T04:00:33.6810000Z       Migration process completed successfully for GatewayDbContext.
+2026-02-22T04:00:33.7760000Z info: Gateway.API.Services.Polling.AthenaPollingService[0]
+2026-02-22T04:00:33.7760000Z       Database migrations complete, starting polling
+2026-02-22T04:00:33.8050000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:00:33.8050000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:00:33.8050000Z       SELECT r."PatientId", r."CurrentEncounterStatus", r."EncounterId", r."LastPolledAt", r."PracticeId", r."RegisteredAt", r."WorkItemId"
+2026-02-22T04:00:33.8050000Z       FROM registered_patients AS r
+2026-02-22T04:00:33.8170000Z info: System.Net.Http.HttpClient.Athena.LogicalHandler[100]
+2026-02-22T04:00:33.8170000Z       Start processing HTTP request POST https://api.preview.platform.athenahealth.com/oauth2/v1/token
+2026-02-22T04:00:33.8170000Z info: System.Net.Http.HttpClient.Athena.ClientHandler[100]
+2026-02-22T04:00:33.8170000Z       Sending HTTP request POST https://api.preview.platform.athenahealth.com/oauth2/v1/token
+2026-02-22T04:00:34.2810000Z info: System.Net.Http.HttpClient.Athena.ClientHandler[101]
+2026-02-22T04:00:34.2810000Z       Received HTTP response headers after 460.4837ms - 200
+2026-02-22T04:00:34.2820000Z info: System.Net.Http.HttpClient.Athena.LogicalHandler[101]
+2026-02-22T04:00:34.2820000Z       End processing HTTP request after 466.4602ms - 200
+2026-02-22T04:00:34.2910000Z info: System.Net.Http.HttpClient.IFhirHttpClient.LogicalHandler[100]
+2026-02-22T04:00:34.2910000Z       Start processing HTTP request GET https://api.preview.platform.athenahealth.com/fhir/r4/Encounter?*
+2026-02-22T04:00:34.2910000Z info: System.Net.Http.HttpClient.IFhirHttpClient.ClientHandler[100]
+2026-02-22T04:00:34.2910000Z       Sending HTTP request GET https://api.preview.platform.athenahealth.com/fhir/r4/Encounter?*
+2026-02-22T04:00:34.5710000Z info: System.Net.Http.HttpClient.IFhirHttpClient.ClientHandler[101]
+2026-02-22T04:00:34.5710000Z       Received HTTP response headers after 279.3403ms - 200
+2026-02-22T04:00:34.5710000Z info: System.Net.Http.HttpClient.IFhirHttpClient.LogicalHandler[101]
+2026-02-22T04:00:34.5710000Z       End processing HTTP request after 279.4129ms - 200
+2026-02-22T04:00:34.5760000Z warn: Gateway.API.Services.Polling.AthenaPollingService[0]
+2026-02-22T04:00:34.5760000Z       Could not extract status for patient a-195900.E-60178
+2026-02-22T04:00:40.8160000Z 
+[sys] Added new ContainerNetworkConnection: ContainerName = redis-hhxuxdhh
+2026-02-22T04:00:40.8160000Z up to date, audited 756 packages in 20s
+2026-02-22T04:00:40.8160000Z 
+2026-02-22T04:00:40.8160000Z 195 packages are looking for funding
+2026-02-22T04:00:40.8160000Z   run `npm fund` for details
+2026-02-22T04:00:40.9090000Z 
+2026-02-22T04:00:40.9090000Z 13 high severity vulnerabilities
+2026-02-22T04:00:40.9090000Z 
+2026-02-22T04:00:40.9090000Z To address issues that do not require attention, run:
+2026-02-22T04:00:40.9090000Z   npm audit fix
+2026-02-22T04:00:40.9090000Z 
+2026-02-22T04:00:40.9090000Z To address all issues (including breaking changes), run:
+2026-02-22T04:00:40.9090000Z   npm audit fix --force
+2026-02-22T04:00:40.9090000Z 
+2026-02-22T04:00:40.9090000Z Run `npm audit` for details.
+2026-02-22T04:00:41.4414266Z Finished waiting for resource 'dashboard-installer'.
+[sys] Starting process...: Cmd = /home/reedsalus/.local/bin/npm, Args = ["run", "dev", "--", "--port", "36257"]
+2026-02-22T04:00:41.5290000Z 
+2026-02-22T04:00:41.5290000Z > authscript-dashboard@0.1.0 dev
+2026-02-22T04:00:41.5290000Z > vite --port 36257
+2026-02-22T04:00:41.5290000Z 
+2026-02-22T04:00:41.8700000Z Generated route tree in 106ms
+2026-02-22T04:00:41.8770000Z 
+2026-02-22T04:00:41.8770000Z   VITE v6.4.1  ready in 333 ms
+2026-02-22T04:00:41.8770000Z 
+[sys] Added new ContainerNetworkConnection: ContainerName = postgres-fkhytqhx
+2026-02-22T04:00:41.8770000Z   ➜  Local:   http://localhost:36257/
+2026-02-22T04:00:41.8770000Z   ➜  Network: use --host to expose
+2026-02-22T04:00:43.9390000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:00:43.9390000Z       Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:00:43.9390000Z       SELECT p."Id", p."ClinicalSummary", p."Confidence", p."CreatedAt", p."CriteriaJson", p."DiagnosisCode", p."DiagnosisName", p."FhirPatientId", p."PatientAddress", p."PatientDob", p."PatientId", p."PatientMemberId", p."PatientMrn", p."PatientName", p."PatientPayer", p."PatientPhone", p."PlaceOfService", p."ProcedureCode", p."ProcedureName", p."ProviderId", p."ProviderName", p."ProviderNpi", p."ReadyAt", p."ReviewTimeSeconds", p."ServiceDate", p."Status", p."SubmittedAt", p."UpdatedAt"
+2026-02-22T04:00:43.9390000Z       FROM prior_auth_requests AS p
+2026-02-22T04:00:43.9390000Z       ORDER BY p."CreatedAt" DESC
+2026-02-22T04:00:43.9390000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:00:43.9390000Z       Executed DbCommand (9ms) [Parameters=[@p='5'], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:00:43.9390000Z       SELECT p."Id", p."ClinicalSummary", p."Confidence", p."CreatedAt", p."CriteriaJson", p."DiagnosisCode", p."DiagnosisName", p."FhirPatientId", p."PatientAddress", p."PatientDob", p."PatientId", p."PatientMemberId", p."PatientMrn", p."PatientName", p."PatientPayer", p."PatientPhone", p."PlaceOfService", p."ProcedureCode", p."ProcedureName", p."ProviderId", p."ProviderName", p."ProviderNpi", p."ReadyAt", p."ReviewTimeSeconds", p."ServiceDate", p."Status", p."SubmittedAt", p."UpdatedAt"
+2026-02-22T04:00:43.9390000Z       FROM prior_auth_requests AS p
+2026-02-22T04:00:43.9390000Z       ORDER BY p."UpdatedAt" DESC
+2026-02-22T04:00:43.9390000Z       LIMIT @p
+2026-02-22T04:00:43.9560000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:00:43.9560000Z       Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:00:43.9560000Z       SELECT p."Status", count(*)::int AS "Count"
+2026-02-22T04:00:43.9560000Z       FROM prior_auth_requests AS p
+2026-02-22T04:00:43.9560000Z       GROUP BY p."Status"
+2026-02-22T04:00:48.9830000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:00:48.9830000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:00:48.9830000Z       SELECT p."Status", count(*)::int AS "Count"
+2026-02-22T04:00:48.9830000Z       FROM prior_auth_requests AS p
+2026-02-22T04:00:48.9830000Z       GROUP BY p."Status"
+2026-02-22T04:00:48.9830000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:00:48.9830000Z       Executed DbCommand (0ms) [Parameters=[@p='5'], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:00:48.9830000Z       SELECT p."Id", p."ClinicalSummary", p."Confidence", p."CreatedAt", p."C
+2026-02-22T04:00:48.9830000Z riteriaJson", p."DiagnosisCode", p."DiagnosisName", p."FhirPatientId", p."PatientAddress", p."PatientDob", p."PatientId", p."PatientMemberId", p."PatientMrn", p."PatientName", p."PatientPayer", p."PatientPhone", p."PlaceOfService", p."ProcedureCode", p."ProcedureName", p."ProviderId", p."ProviderName", p."ProviderNpi", p."ReadyAt", p."ReviewTimeSeconds", p."ServiceDate", p."Status", p."SubmittedAt", p."UpdatedAt"
+2026-02-22T04:00:48.9830000Z       FROM prior_auth_requests AS p
+2026-02-22T04:00:48.9830000Z       ORDER BY p."UpdatedAt" DESC
+2026-02-22T04:00:48.9830000Z       LIMIT @p
+2026-02-22T04:00:48.9900000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:00:48.9900000Z       Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:00:48.9900000Z       SELECT p."Id", p."ClinicalSummary", p."Confidence", p."CreatedAt", p."CriteriaJson", p."DiagnosisCode", p."DiagnosisName", p."FhirPatientId", p."PatientAddress", p."PatientDob", p."PatientId", p."PatientMemberId", p."PatientMrn", p."PatientName", p."PatientPayer", p."PatientPhone", p."PlaceOfService", p."ProcedureCode", p."ProcedureName", p."ProviderId", p."ProviderName", p."ProviderNpi", p."ReadyAt", p."ReviewTimeSeconds", p."ServiceDate", p."Status", p."SubmittedAt", p."UpdatedAt"
+2026-02-22T04:00:48.9900000Z       FROM prior_auth_requests AS p
+2026-02-22T04:00:48.9900000Z       ORDER BY p."CreatedAt" DESC
+2026-02-22T04:00:53.9930000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:00:53.9930000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:00:53.9930000Z       SELECT p."Status", count(*)::int AS "Count"
+2026-02-22T04:00:53.9930000Z       FROM prior_auth_requests AS p
+2026-02-22T04:00:53.9930000Z       GROUP BY p."Status"
+2026-02-22T04:00:53.9930000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:00:53.9930000Z       Executed DbCommand (1ms) [Parameters=[@p='5'], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:00:53.9930000Z       SELECT p."Id", p."ClinicalSummary", p."Confidence", p."CreatedAt", p."CriteriaJson", p."DiagnosisCode", p."DiagnosisName", p."FhirPatientId", p."PatientAddress", p."PatientDob", p."PatientId", p."PatientMemberId", p."PatientMrn", p."PatientName", p."PatientPayer", p."PatientPhone", p."PlaceOfService", p."ProcedureCode", p."ProcedureName", p."ProviderId", p."ProviderName", p."ProviderNpi", p."ReadyAt", p."ReviewTimeSeconds", p."ServiceDate", p."Status", p."SubmittedAt", p."UpdatedAt"
+2026-02-22T04:00:53.9930000Z       FROM prior_auth_requests AS p
+2026-02-22T04:00:53.9930000Z       ORDER BY p."UpdatedAt" DESC
+2026-02-22T04:00:53.9930000Z       LIMIT @p
+2026-02-22T04:00:53.9970000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:00:53.9970000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:00:53.9970000Z       SELECT p."Id", p."ClinicalSummary", p."Confidence", p."CreatedAt", p."CriteriaJson", p."DiagnosisCode", p."DiagnosisName", p."FhirPatientId", p."PatientAddress", p."PatientDob", p."PatientId", p."PatientMemberId", p."PatientMrn", p."PatientName", p."PatientPayer", p."PatientPhone", p."PlaceOfService", p."ProcedureCode", p."ProcedureName", p."ProviderId", p."ProviderName", p."ProviderNpi", p."ReadyAt", p."ReviewTimeSeconds", p."ServiceDate", p."Status", p."SubmittedAt", p."UpdatedAt"
+2026-02-22T04:00:53.9970000Z       FROM prior_auth_requests AS p
+2026-02-22T04:00:53.9970000Z       ORDER BY p."CreatedAt" DESC
+2026-02-22T04:00:57.9950000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:00:57.9950000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:00:57.9950000Z       SELECT p."Id"
+2026-02-22T04:00:57.9950000Z       FROM prior_auth_requests AS p
+2026-02-22T04:00:57.9950000Z       ORDER BY p."Id" DESC
+2026-02-22T04:00:57.9950000Z       LIMIT 1
+2026-02-22T04:00:58.1154610Z 2026-02-22 04:00:58.115 UTC [31] ERROR:  duplicate key value violates unique constraint "PK_prior_auth_requests"
+2026-02-22T04:00:58.1166110Z 2026-02-22 04:00:58.115 UTC [31] DETAIL:  Key ("Id")=(PA-001) already exists.
+2026-02-22T04:00:58.1166500Z 2026-02-22 04:00:58.115 UTC [31] STATEMENT:  INSERT INTO prior_auth_requests ("Id", "ClinicalSummary", "Confidence", "CreatedAt", "CriteriaJson", "DiagnosisCode", "DiagnosisName", "FhirPatientId", "PatientAddress", "PatientDob", "PatientId", "PatientMemberId", "PatientMrn", "PatientName", "PatientPayer", "PatientPhone", "PlaceOfService", "ProcedureCode", "ProcedureName", "ProviderId", "ProviderName", "ProviderNpi", "ReadyAt", "ReviewTimeSeconds", "ServiceDate", "Status", "SubmittedAt", "UpdatedAt")
+2026-02-22T04:00:58.1167030Z 	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
+[sys] Added new ContainerNetworkConnection: ContainerName = intelligence-xyuqdxyw
+2026-02-22T04:00:58.1240000Z fail: Microsoft.EntityFrameworkCore.Database.Command[20102]
+2026-02-22T04:00:58.1240000Z       Failed executing DbCommand (19ms) [Parameters=[@p0='PA-001' (Nullable = false), @p1=NULL, @p2='0', @p3='2026-02-22T04:00:57.9963155+00:00' (DbType = DateTime), @p4=NULL (DbType = Object), @p5='M54.5', @p6='Low Back Pain', @p7='a-195900.E-60183' (Nullable = false), @p8='111 Elm Street, Seattle, WA 98102', @p9='05/20/1978', @p10='60183' (Nullable = false), @p11='ATH60183', @p12='60183' (Nullable = false), @p13='Gary Sandbox' (Nullable = false), @p14='Aetna', @p15='(206) 555-0199', @p16='Outpatient', @p17='72148' (Nullable = false), @p18='MRI Lumbar Spine w/o Contrast' (Nullable = false), @p19='DR001', @p20='Dr. Amanda Martinez', @p21='1234567890', @p22=NULL (DbType = DateTime), @p23='0', @p24='February 22, 2026', @p25='draft' (Nullable = false), @p26=NULL (DbType = DateTime), @p27='2026-02-22T04:00:57.9963155+00:00' (DbType = DateTime)], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:00:58.1240000Z       INSERT INTO prior_auth_requests ("Id", "ClinicalSummary", "Confidence", "CreatedAt", "CriteriaJson", "DiagnosisCode", "DiagnosisName", "FhirPatientId", "PatientAddress", "PatientDob", "PatientId", "PatientMemberId", "PatientMrn", "PatientName", "PatientPayer", "PatientPhone", "PlaceOfService", "ProcedureCode", "ProcedureName", "ProviderId", "ProviderName", "ProviderNpi", "ReadyAt", "ReviewTimeSeconds", "ServiceDate", "Status", "SubmittedAt", "UpdatedAt")
+2026-02-22T04:00:58.1240000Z       VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13, @p14, @p15, @p16, @p17, @p18, @p19, @p20, @p21, @p22, @p23, @p24, @p25, @p26, @p27);
+2026-02-22T04:00:58.1430000Z fail: Microsoft.EntityFrameworkCore.Update[10000]
+2026-02-22T04:00:58.1430000Z       An exception occurred in the database while saving changes for context type 'Gateway.API.Data.GatewayDbContext'.
+2026-02-22T04:00:58.1430000Z       Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while saving the entity changes. See the inner exception for details.
+2026-02-22T04:00:58.1430000Z        ---> Npgsql.PostgresException (0x80004005): 23505: duplicate key value violates unique constraint "PK_prior_auth_requests"
+2026-02-22T04:00:58.1430000Z       
+2026-02-22T04:00:58.1430000Z       DETAIL: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+2026-02-22T04:00:58.1430000Z          at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+2026-02-22T04:00:58.1430000Z          at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+2026-02-22T04:00:58.1430000Z          at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z         Exception data:
+2026-02-22T04:00:58.1430000Z           Severity: ERROR
+2026-02-22T04:00:58.1430000Z           SqlState: 23505
+2026-02-22T04:00:58.1430000Z           MessageText: duplicate key value violates unique constraint "PK_prior_auth_requests"
+2026-02-22T04:00:58.1430000Z           Detail: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+2026-02-22T04:00:58.1430000Z           SchemaName: public
+2026-02-22T04:00:58.1430000Z           TableName: prior_auth_requests
+2026-02-22T04:00:58.1430000Z           ConstraintName: PK_prior_auth_requests
+2026-02-22T04:00:58.1430000Z           File: nbtinsert.c
+2026-02-22T04:00:58.1430000Z           Line: 666
+2026-02-22T04:00:58.1430000Z           Routine: _bt_check_unique
+2026-02-22T04:00:58.1430000Z          --- End of inner exception stack trace ---
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.Storage.RelationalDatabase.SaveChangesAsync(IList`1 entries, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(IList`1 entriesToSave, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(StateManager stateManager, Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.<>c__DisplayClass30_0`2.<<ExecuteAsync>b__0>d.MoveNext()
+2026-02-22T04:00:58.1430000Z       --- End of stack trace from previous location ---
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.ExecuteImplementationAsync[TState,TResult](Func`4 operation, Func`4 verifySucceeded, TState state, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.ExecuteImplementationAsync[TState,TResult](Func`4 operation, Func`4 verifySucceeded, TState state, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z       Microsoft.EntityFrameworkCore.DbUpdateException: An error occurred while saving the entity changes. See the inner exception for details.
+2026-02-22T04:00:58.1430000Z        ---> Npgsql.PostgresException (0x80004005): 23505: duplicate key value violates unique constraint "PK_prior_auth_requests"
+2026-02-22T04:00:58.1430000Z       
+2026-02-22T04:00:58.1430000Z       DETAIL: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+2026-02-22T04:00:58.1430000Z          at Npgsql.Internal.NpgsqlConnector.ReadMessageLong(Boolean async, DataRowLoadingMode dataRowLoadingMode, Boolean readingNotifications, Boolean isReadingPrependedMessage)
+2026-02-22T04:00:58.1430000Z          at System.Runtime.CompilerServices.PoolingAsyncValueTaskMethodBuilder`1.StateMachineBox`1.System.Threading.Tasks.Sources.IValueTaskSource<TResult>.GetResult(Int16 token)
+2026-02-22T04:00:58.1430000Z          at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Npgsql.NpgsqlDataReader.NextResult(Boolean async, Boolean isConsuming, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Npgsql.NpgsqlCommand.ExecuteReade
+2026-02-22T04:00:58.1430000Z r(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Npgsql.NpgsqlCommand.ExecuteReader(Boolean async, CommandBehavior behavior, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Npgsql.NpgsqlCommand.ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.Storage.RelationalCommand.ExecuteReaderAsync(RelationalCommandParameterObject parameterObject, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z         Exception data:
+2026-02-22T04:00:58.1430000Z           Severity: ERROR
+2026-02-22T04:00:58.1430000Z           SqlState: 23505
+2026-02-22T04:00:58.1430000Z           MessageText: duplicate key value violates unique constraint "PK_prior_auth_requests"
+2026-02-22T04:00:58.1430000Z           Detail: Detail redacted as it may contain sensitive data. Specify 'Include Error Detail' in the connection string to include this information.
+2026-02-22T04:00:58.1430000Z           SchemaName: public
+2026-02-22T04:00:58.1430000Z           TableName: prior_auth_requests
+2026-02-22T04:00:58.1430000Z           ConstraintName: PK_prior_auth_requests
+2026-02-22T04:00:58.1430000Z           File: nbtinsert.c
+2026-02-22T04:00:58.1430000Z           Line: 666
+2026-02-22T04:00:58.1430000Z           Routine: _bt_check_unique
+2026-02-22T04:00:58.1430000Z          --- End of inner exception stack trace ---
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.Update.ReaderModificationCommandBatch.ExecuteAsync(IRelationalConnection connection, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.Update.Internal.BatchExecutor.ExecuteAsync(IEnumerable`1 commandBatches, IRelationalConnection connection, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.Storage.RelationalDatabase.SaveChangesAsync(IList`1 entries, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(IList`1 entriesToSave, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.ChangeTracking.Internal.StateManager.SaveChangesAsync(StateManager stateManager, Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.<>c__DisplayClass30_0`2.<<ExecuteAsync>b__0>d.MoveNext()
+2026-02-22T04:00:58.1430000Z       --- End of stack trace from previous location ---
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.ExecuteImplementationAsync[TState,TResult](Func`4 operation, Func`4 verifySucceeded, TState state, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.ExecuteImplementationAsync[TState,TResult](Func`4 operation, Func`4 verifySucceeded, TState state, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.Storage.ExecutionStrategy.ExecuteAsync[TState,TResult](TState state, Func`4 operation, Func`4 verifySucceeded, CancellationToken cancellationToken)
+2026-02-22T04:00:58.1430000Z          at Microsoft.EntityFrameworkCore.DbContext.SaveChangesAsync(Boolean acceptAllChangesOnSuccess, CancellationToken cancellationToken)
+2026-02-22T04:00:59.0000000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:00:59.0000000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:00:59.0000000Z       SELECT p."Status", count(*)::int AS "Count"
+2026-02-22T04:00:59.0000000Z       FROM prior_auth_requests AS p
+2026-02-22T04:00:59.0000000Z       GROUP BY p."Status"
+2026-02-22T04:00:59.0000000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:00:59.0000000Z       Executed DbCommand (1ms) [Parameters=[@p='5'], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:00:59.0000000Z       SELECT p."Id", p."ClinicalSummary", p."Confidence", p."CreatedAt", p."CriteriaJson", p."DiagnosisCode", p."DiagnosisName", p."FhirPatientId", p."PatientAddress", p."PatientDob", p."PatientId", p."PatientMemberId", p."PatientMrn", p."PatientName", p."PatientPayer", p."PatientPhone", p."PlaceOfService", p."ProcedureCode", p."ProcedureName", p."ProviderId", p."ProviderName", p."ProviderNpi", p."ReadyAt", p."ReviewTimeSeconds", p."ServiceDate", p."Status", p."SubmittedAt", p."UpdatedAt"
+2026-02-22T04:00:59.0000000Z       FROM prior_auth_requests AS p
+2026-02-22T04:00:59.0000000Z       ORDER BY p."UpdatedAt" DESC
+2026-02-22T04:00:59.0000000Z       LIMIT @p
+2026-02-22T04:00:59.0040000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:00:59.0040000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:00:59.0040000Z       SELECT p."Id", p."ClinicalSummary", p."Confidence", p."CreatedAt", p."CriteriaJson", p."DiagnosisCode", p."DiagnosisName", p."FhirPatientId", p."PatientAddress", p."PatientDob", p."PatientId", p."PatientMemberId", p."PatientMrn", p."PatientName", p."PatientPayer", p."PatientPhone", p."PlaceOfService", p."ProcedureCode", p."ProcedureName", p."ProviderId", p."ProviderName", p."ProviderNpi", p."ReadyAt", p."ReviewTimeSeconds", p."ServiceDate", p."Status", p."SubmittedAt", p."UpdatedAt"
+2026-02-22T04:00:59.0040000Z       FROM prior_auth_requests AS p
+2026-02-22T04:00:59.0040000Z       ORDER BY p."CreatedAt" DESC
+2026-02-22T04:01:04.0080000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:01:04.0080000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:01:04.0080000Z       SELECT p."Status", count(*)::int AS "Count"
+2026-02-22T04:01:04.0080000Z       FROM prior_auth_requests AS p
+2026-02-22T04:01:04.0080000Z       GROUP BY p."Status"
+2026-02-22T04:01:04.0080000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:01:04.0080000Z       Executed DbCommand (0ms) [Parameters=[@p='5'], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:01:04.0080000Z       SELECT p."Id", p."ClinicalSummary", p."Confidence", p."CreatedAt", p."CriteriaJson", p."DiagnosisCode", p."DiagnosisName", p."FhirPatientId", p."PatientAddress", p."PatientDob", p."PatientId", p."PatientMemberId", p."PatientMrn", p."PatientName", p."PatientPayer", p."PatientPhone", p."PlaceOfService", p."ProcedureCode", p."ProcedureName", p."ProviderId", p."ProviderName", p."ProviderNpi", p."ReadyAt", p."ReviewTimeSeconds", p."ServiceDate", p."Status", p."SubmittedAt", p."UpdatedAt"
+2026-02-22T04:01:04.0080000Z       FROM prior_auth_requests AS p
+2026-02-22T04:01:04.0080000Z       ORDER BY p."UpdatedAt" DESC
+2026-02-22T04:01:04.0080000Z       LIMIT @p
+2026-02-22T04:01:04.0100000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:01:04.0100000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:01:04.0100000Z       SELECT p."Id", p."ClinicalSummary", p."Confidence", p."CreatedAt", p."CriteriaJson", p."DiagnosisCode", p."DiagnosisName", p."FhirPatientId", p."PatientAddress", p."PatientDob", p."PatientId", p."PatientMemberId", p."PatientMrn", p."PatientName", p."PatientPayer", p."PatientPhone", p."PlaceOfService", p."ProcedureCode", p."ProcedureName", p."ProviderId", p."ProviderName", p."ProviderNpi", p."ReadyAt", p."ReviewTimeSeconds", p."ServiceDate", p."Status", p."SubmittedAt", p."UpdatedAt"
+2026-02-22T04:01:04.0100000Z       FROM prior_auth_requests AS p
+2026-02-22T04:01:04.0100000Z       ORDER BY p."CreatedAt" DESC
+2026-02-22T04:01:04.5770000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:01:04.5770000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:01:04.5770000Z       SELECT r."PatientId", r."CurrentEncounterStatus", r."EncounterId", r."LastPolledAt", r."PracticeId", r."RegisteredAt", r."WorkItemId"
+2026-02-22T04:01:04.5770000Z       FROM registered_patients AS r
+2026-02-22T04:01:04.5770000Z info: System.Net.Http.HttpClient.IFhirHttpClient.LogicalHandler[100]
+2026-02-22T04:01:04.5770000Z       Start processing HTTP request GET https://api.preview.platform.athenahealth.com/fhir/r4/Encounter?*
+2026-02-22T04:01:04.5770000Z info: System.Net.Http.HttpClient.IFhirHttpClient.ClientHandler[100]
+2026-02-22T04:01:04.5770000Z       Sending HTTP request GET https://api.preview.platform.athenahealth.com/fhir/r4/Encounter?*
+2026-02-22T04:01:04.7110000Z info: System.Net.Http.HttpClient.IFhirHttpClient.ClientHandler[101]
+2026-02-22T04:01:04.7110000Z       Received HTTP response headers after 133.5378ms - 200
+2026-02-22T04:01:04.7110000Z info: System.Net.Http.HttpClient.IFhirHttpClient.LogicalHandler[101]
+2026-02-22T04:01:04.7110000Z       End processing HTTP request after 133.5963ms - 200
+2026-02-22T04:01:04.7110000Z warn: Gateway.API.Services.Polling.AthenaPollingService[0]
+2026-02-22T04:01:04.7110000Z       Could not extract status for patient a-195900.E-60178
+2026-02-22T04:01:09.0140000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:01:09.0140000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:01:09.0140000Z       SELECT p."Status", count(*)::int AS "Count"
+2026-02-22T04:01:09.0140000Z       FROM prior_auth_requests AS p
+2026-02-22T04:01:09.0140000Z       GROUP BY p."Status"
+2026-02-22T04:01:09.0140000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:01:09.0140000Z       Executed DbCommand (0ms) [Parameters=[@p='5'], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:01:09.0140000Z       SELECT p."Id", p."ClinicalSummary", p."Confidence", p."CreatedAt", p."CriteriaJson", p."DiagnosisCode", p."DiagnosisName", p."FhirPatientId", p."PatientAddress", p."PatientDob", p."PatientId", p."PatientMemberId", p."PatientMrn", p."PatientName", p."PatientPayer", p."PatientPhone", p."PlaceOfService", p."ProcedureCode", p."ProcedureName", p."ProviderId", p."ProviderName", p."ProviderNpi", p."ReadyAt", p."ReviewTimeSeconds", p."ServiceDate", p."Status", p."SubmittedAt", p."UpdatedAt"
+2026-02-22T04:01:09.0140000Z       FROM prior_auth_requests AS p
+2026-02-22T04:01:09.0140000Z       ORDER BY p."UpdatedAt" DESC
+2026-02-22T04:01:09.0140000Z       LIMIT @p
+2026-02-22T04:01:09.0180000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:01:09.0180000Z       Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:01:09.0180000Z       SELECT p."Id", p."ClinicalSummary", p."Confidence", p."CreatedAt", p."CriteriaJson", p."DiagnosisCode", p."DiagnosisName", p."FhirPatientId", p."PatientAddress", p."PatientDob", p."PatientId", p."PatientMemberId", p."PatientMrn", p."PatientName", p."PatientPayer", p."PatientPhone", p."PlaceOfService", p."ProcedureCode", p."ProcedureName", p."ProviderId", p."ProviderName", p."ProviderNpi", p."ReadyAt", p."ReviewTimeSeconds", p."ServiceDate", p."Status", p."SubmittedAt", p."UpdatedAt"
+2026-02-22T04:01:09.0180000Z       FROM prior_auth_requests AS p
+2026-02-22T04:01:09.0180000Z       ORDER BY p."CreatedAt" DESC
+2026-02-22T04:01:14.0220000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:01:14.0220000Z       Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:01:14.0220000Z       SELECT p."Status", count(*)::int AS "Count"
+2026-02-22T04:01:14.0220000Z       FROM prior_auth_requests AS p
+2026-02-22T04:01:14.0220000Z       GROUP BY p."Status"
+2026-02-22T04:01:14.0220000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:01:14.0220000Z       Executed DbCommand (2ms) [Parameters=[@p='5'], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:01:14.0220000Z       SELECT p."Id", p."ClinicalSummary", p."Confidence", p."CreatedAt", p."CriteriaJson", p."DiagnosisCode", p."DiagnosisName", p."FhirPatientId", p."PatientAddress", p."PatientDob", p."PatientId", p."PatientMemberId", p."PatientMrn", p."PatientName", p."PatientPayer", p."PatientPhone", p."PlaceOfService", p."ProcedureCode", p."ProcedureName", p."ProviderId", p."ProviderName", p."ProviderNpi", p."ReadyAt", p."ReviewTimeSeconds", p."ServiceDate", p."Status", p."SubmittedAt", p."UpdatedAt"
+2026-02-22T04:01:14.0220000Z       FROM prior_auth_requests AS p
+2026-02-22T04:01:14.0220000Z       ORDER BY p."UpdatedAt" DESC
+2026-02-22T04:01:14.0220000Z       LIMIT @p
+2026-02-22T04:01:14.0230000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:01:14.0230000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:01:14.0230000Z       SELECT p."Id", p."ClinicalSummary", p."Confidence", p."CreatedAt", p."CriteriaJson", p."DiagnosisCode", p."DiagnosisName", p."FhirPatientId", p."PatientAddress", p."PatientDob", p."PatientId", p."PatientMemberId", p."PatientMrn", p."PatientName", p."PatientPayer", p."PatientPhone", p."PlaceOfService", p."ProcedureCode", p."ProcedureName", p."ProviderId", p."ProviderName", p."ProviderNpi", p."ReadyAt", p."ReviewTimeSeconds", p."ServiceDate", p."Status", p."SubmittedAt", p."UpdatedAt"
+2026-02-22T04:01:14.0230000Z       FROM prior_auth_requests AS p
+2026-02-22T04:01:14.0230000Z       ORDER BY p."CreatedAt" DESC
+2026-02-22T04:01:19.0290000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:01:19.0290000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:01:19.0290000Z       SELECT p."Id", p."ClinicalSummary", p."Confidence", p."CreatedAt", p."CriteriaJson", p."DiagnosisCode", p."DiagnosisName", p."FhirPatientId", p."PatientAddress", p."PatientDob", p."PatientId", p."PatientMemberId", p."PatientMrn", p."PatientName", p."PatientPayer", p."PatientPhone", p."PlaceOfService", p."ProcedureCode", p."ProcedureName", p."ProviderId", p."ProviderName", p."ProviderNpi", p."ReadyAt", p."ReviewTimeSeconds", p."ServiceDate", p."Status", p."SubmittedAt", p."UpdatedAt"
+2026-02-22T04:01:19.0290000Z       FROM prior_auth_requests AS p
+2026-02-22T04:01:19.0290000Z       ORDER BY p."CreatedAt" DESC
+2026-02-22T04:01:19.0290000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:01:19.0290000Z       Executed DbCommand (1ms) [Parameters=[@p='5'], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:01:19.0290000Z       SELECT p."Id", p."ClinicalSummary", p."Confidence", p."CreatedAt", p."CriteriaJson", p."DiagnosisCode", p."DiagnosisName", p."FhirPatientId", p."PatientAddress", p."PatientDob", p."PatientId", p."PatientMemberId", p."PatientMrn", p."PatientName", p."PatientPayer", p."PatientPhone", p."PlaceOfService", p."ProcedureCode", p."ProcedureName", p."ProviderId", p."ProviderName", p."ProviderNpi", p."ReadyAt", p."ReviewTimeSeconds", p."ServiceDate", p."Status", p."SubmittedAt", p."UpdatedAt"
+2026-02-22T04:01:19.0290000Z       FROM prior_auth_requests AS p
+2026-02-22T04:01:19.0290000Z       ORDER BY p."UpdatedAt" DESC
+2026-02-22T04:01:19.0290000Z       LIMIT @p
+2026-02-22T04:01:19.0340000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:01:19.0340000Z       Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:01:19.0340000Z       SELECT p."Status", count(*)::int AS "Count"
+2026-02-22T04:01:19.0340000Z       FROM prior_auth_requests AS p
+2026-02-22T04:01:19.0340000Z       GROUP BY p."Status"
+2026-02-22T04:01:24.0370000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:01:24.0370000Z       Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:01:24.0370000Z       SELECT p."Id", p."ClinicalSummary", p."Confidence", p."CreatedAt", p."CriteriaJson", p."DiagnosisCode", p."DiagnosisName", p."FhirPatientId", p."PatientAddress", p."PatientDob", p."PatientId", p."PatientMemberId", p."PatientMrn", p."PatientName", p."PatientPayer", p."PatientPhone", p."PlaceOfService", p."ProcedureCode", p."ProcedureName", p."ProviderId", p."ProviderName", p."ProviderNpi", p."ReadyAt", p."ReviewTimeSeconds", p."ServiceDate", p."Status", p."SubmittedAt", p."UpdatedAt"
+2026-02-22T04:01:24.0370000Z       FROM prior_auth_requests AS p
+2026-02-22T04:01:24.0370000Z       ORDER BY p."CreatedAt" DESC
+2026-02-22T04:01:24.0370000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:01:24.0370000Z       Executed DbCommand (1ms) [Parameters=[@p='5'], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:01:24.0370000Z       SELECT p."Id", p."ClinicalSummary", p."Confidence", p."CreatedAt", p."CriteriaJson", p."DiagnosisCode", p."DiagnosisName", p."FhirPatientId", p."PatientAddress", p."PatientDob", p."PatientId", p."PatientMemberId", p."PatientMrn", p."PatientName", p."PatientPayer", p."PatientPhone", p."PlaceOfService", p."ProcedureCode", p."ProcedureName", p."ProviderId", p."ProviderName", p."ProviderNpi", p."ReadyAt", p."ReviewTimeSeconds", p."ServiceDate", p."Status", p."SubmittedAt", p."UpdatedAt"
+2026-02-22T04:01:24.0370000Z       FROM prior_auth_requests AS p
+2026-02-22T04:01:24.0370000Z       ORDER BY p."UpdatedAt" DESC
+2026-02-22T04:01:24.0370000Z       LIMIT @p
+2026-02-22T04:01:24.0390000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:01:24.0390000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:01:24.0390000Z       SELECT p."Status", count(*)::int AS "Count"
+2026-02-22T04:01:24.0390000Z       FROM prior_auth_requests AS p
+2026-02-22T04:01:24.0390000Z       GROUP BY p."Status"
+2026-02-22T04:01:29.0460000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:01:29.0460000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:01:29.0460000Z       SELECT p."Id", p."ClinicalSummary", p."Confidence", p."CreatedAt", p."CriteriaJson", p."DiagnosisCode", p."DiagnosisName", p."FhirPatientId", p."PatientAddress", p."PatientDob", p."PatientId", p."PatientMemberId", p."PatientMrn", p."PatientName", p."PatientPayer", p."PatientPhone", p."PlaceOfService", p."ProcedureCode", p."ProcedureName", p."ProviderId", p."ProviderName", p."ProviderNpi", p."ReadyAt", p."ReviewTimeSeconds", p."ServiceDate", p."Status", p."SubmittedAt", p."UpdatedAt"
+2026-02-22T04:01:29.0460000Z       FROM prior_auth_requests AS p
+2026-02-22T04:01:29.0460000Z       ORDER BY p."CreatedAt" DESC
+2026-02-22T04:01:29.0460000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:01:29.0460000Z       Executed DbCommand (0ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:01:29.0460000Z       SELECT p."Status", count(*)::int AS "Count"
+2026-02-22T04:01:29.0460000Z       FROM prior_auth_requests AS p
+2026-02-22T04:01:29.0460000Z       GROUP BY p."Status"
+2026-02-22T04:01:29.0460000Z info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+2026-02-22T04:01:29.0460000Z       Executed DbCommand (1ms) [Parameters=[@p='5'], CommandType='Text', CommandTimeout='30']
+2026-02-22T04:01:29.0460000Z       SELECT p."Id", p."ClinicalSummary", p."Confidence", p."CreatedAt", p."CriteriaJson", p."DiagnosisCode", p."DiagnosisName", p."FhirPatientId", p."PatientAddress", p."PatientDob", p."PatientId", p."PatientMemberId", p."PatientMrn", p."PatientName", p."PatientPayer", p."PatientPhone", p."PlaceOfService", p."ProcedureCode", p."ProcedureName", p."ProviderId", p."ProviderName", p."ProviderNpi", p."ReadyAt", p."ReviewTimeSeconds", p."ServiceDate", p."Status", p."SubmittedAt", p."UpdatedAt"
+2026-02-22T04:01:29.0460000Z       FROM prior_auth_requests AS p
+2026-02-22T04:01:29.0460000Z       ORDER BY p."UpdatedAt" DESC
+2026-02-22T04:01:29.0460000Z       LIMIT @p

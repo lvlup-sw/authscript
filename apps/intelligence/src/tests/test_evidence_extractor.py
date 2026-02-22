@@ -319,3 +319,20 @@ async def test_evaluate_criterion_confidence_parsing_default():
     with patch("src.reasoning.evidence_extractor.chat_completion", mock_llm):
         result = await evaluate_criterion(criterion, "data")
     assert result.confidence == 0.7
+
+
+def test_clinical_summary_no_redacted_text():
+    """Clinical summary must not contain '[REDACTED]' text.
+
+    Regression: 'Patient: [REDACTED]' leaked into the LLM prompt and was
+    echoed back into the user-facing clinical summary.
+    """
+    from src.reasoning.evidence_extractor import _build_clinical_summary
+
+    bundle = ClinicalBundle(
+        patient_id="test",
+        patient=PatientInfo(name="Jane Doe", birth_date=date(1960, 3, 15)),
+        conditions=[Condition(code="I50.32", display="Heart failure")],
+    )
+    summary = _build_clinical_summary(bundle)
+    assert "[REDACTED]" not in summary

@@ -88,6 +88,7 @@ Provide a brief explanation of the evidence found.
 
     return EvidenceItem(
         criterion_id=criterion_id,
+        criterion_label=criterion_desc,
         status=status,
         evidence=evidence_text,
         source="LLM analysis",
@@ -95,14 +96,26 @@ Provide a brief explanation of the evidence found.
     )
 
 
-def _build_clinical_summary(clinical_bundle: ClinicalBundle) -> str:
+def _build_clinical_summary(
+    clinical_bundle: ClinicalBundle,
+    policy: PolicyDefinition | dict[str, Any] | None = None,
+) -> str:
     """Build a clinical data summary string for LLM prompts."""
     patient_info = ""
-    if clinical_bundle.patient:
-        patient_info = "Patient: [REDACTED]"
+
+    # Procedure being requested — critical context for LLM evaluation
+    procedure_context = ""
+    if isinstance(policy, PolicyDefinition):
+        codes = ", ".join(policy.procedure_codes)
+        procedure_context = f"Procedure Requested: {policy.policy_name} (CPT {codes})"
+        if policy.lcd_reference:
+            procedure_context += f" — LCD {policy.lcd_reference}"
+    elif isinstance(policy, dict) and policy.get("procedure_codes"):
+        codes = ", ".join(policy["procedure_codes"])
+        procedure_context = f"Procedure Requested: CPT {codes}"
 
     conditions_text = ", ".join(
-        [f"{c.code} ({c.display})" for c in clinical_bundle.conditions if c.display]
+        [f"{c.display} ({c.code})" for c in clinical_bundle.conditions if c.display]
     ) or "None documented"
 
     observations_text = ", ".join(
@@ -113,6 +126,13 @@ def _build_clinical_summary(clinical_bundle: ClinicalBundle) -> str:
         ]
     ) or "None documented"
 
+    procedures_text = ", ".join(
+        [
+            f"{p.display or p.code} ({p.status or 'unknown'})"
+            for p in clinical_bundle.procedures
+        ]
+    ) or "None documented"
+
     if clinical_bundle.document_texts:
         document_text = "\n\n".join(clinical_bundle.document_texts)
     else:
@@ -120,7 +140,9 @@ def _build_clinical_summary(clinical_bundle: ClinicalBundle) -> str:
 
     return f"""
 {patient_info}
+{procedure_context}
 Diagnoses: {conditions_text}
+Prior Procedures: {procedures_text}
 Observations: {observations_text}
 Documents:
 {document_text}
@@ -171,7 +193,7 @@ async def extract_evidence(
     if not criteria:
         return []
 
-    clinical_summary = _build_clinical_summary(clinical_bundle)
+    clinical_summary = _build_clinical_summary(clinical_bundle, policy)
     semaphore = _get_llm_semaphore()
 
     results = await asyncio.gather(
@@ -186,10 +208,14 @@ async def extract_evidence(
             criterion_id = (
                 crit.id if isinstance(crit, PolicyCriterion) else crit.get("id", "unknown")
             )
+            criterion_label = (
+                crit.description if isinstance(crit, PolicyCriterion) else crit.get("description", "")
+            )
             logger.error("Criterion %s evaluation failed: %s", criterion_id, result)
             evidence_items.append(
                 EvidenceItem(
                     criterion_id=criterion_id,
+                    criterion_label=criterion_label,
                     status="UNCLEAR",
                     evidence=f"Evaluation error: {result}",
                     source="LLM analysis",

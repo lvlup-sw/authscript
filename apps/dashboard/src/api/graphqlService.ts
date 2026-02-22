@@ -365,13 +365,13 @@ export function useDiagnoses(enabled = true) {
 export function useCreatePARequest() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { patient: PatientInput; procedureCode: string; diagnosisCode: string; diagnosisName: string; providerId?: string }) => {
+    mutationFn: async (input: { patient: PatientInput; procedureCode: string; diagnosisCode?: string; diagnosisName?: string; providerId?: string }) => {
       const data = await graphqlClient.request<{ createPARequest: PARequest }>(CREATE_PA_REQUEST, {
         input: {
           patient: input.patient,
           procedureCode: input.procedureCode,
-          diagnosisCode: input.diagnosisCode,
-          diagnosisName: input.diagnosisName,
+          ...(input.diagnosisCode && { diagnosisCode: input.diagnosisCode }),
+          ...(input.diagnosisName && { diagnosisName: input.diagnosisName }),
           providerId: input.providerId ?? 'DR001',
         },
       });

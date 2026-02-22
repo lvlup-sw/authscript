@@ -21,7 +21,6 @@ import { ATHENA_TEST_PATIENTS, type Patient } from '@/lib/patients';
 import {
   useProcedures,
   useMedications,
-  useDiagnoses,
   useCreatePARequest,
   useProcessPARequest,
   type Procedure,
@@ -34,7 +33,7 @@ interface NewPAModalProps {
   onClose: () => void;
 }
 
-type Step = 'patient' | 'service' | 'diagnosis' | 'confirm' | 'processing' | 'success';
+type Step = 'patient' | 'service' | 'confirm' | 'processing' | 'success';
 
 const PROCESSING_STEPS = [
   { icon: FileText, label: 'Reading clinical notes...' },
@@ -50,7 +49,6 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [serviceType, setServiceType] = useState<'procedure' | 'medication'>('procedure');
   const [selectedService, setSelectedService] = useState<Procedure | Medication | null>(null);
-  const [selectedDiagnosis, setSelectedDiagnosis] = useState<{ code: string; name: string } | null>(null);
   const [processingStep, setProcessingStep] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [processingError, setProcessingError] = useState<string | null>(null);
@@ -59,7 +57,6 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
   const patients = ATHENA_TEST_PATIENTS;
   const { data: procedures = [] } = useProcedures(isOpen);
   const { data: medications = [] } = useMedications(isOpen);
-  const { data: diagnoses = [] } = useDiagnoses(isOpen);
   const createMutation = useCreatePARequest();
   const processMutation = useProcessPARequest();
 
@@ -88,7 +85,6 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
     setSearchQuery('');
     setSelectedPatient(null);
     setSelectedService(null);
-    setSelectedDiagnosis(null);
     setIsTransitioning(false);
     setProcessingError(null);
     setCreatedRequestId(null);
@@ -112,11 +108,6 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
 
   const handleServiceSelect = (service: Procedure | Medication) => {
     setSelectedService(service);
-    transitionToStep('diagnosis');
-  };
-
-  const handleDiagnosisSelect = (diagnosis: { code: string; name: string }) => {
-    setSelectedDiagnosis(diagnosis);
     setProcessingError(null);
     transitionToStep('confirm');
   };
@@ -147,8 +138,6 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
             phone: selectedPatient!.phone,
           },
           procedureCode: selectedService!.code,
-          diagnosisCode: selectedDiagnosis!.code,
-          diagnosisName: selectedDiagnosis!.name,
         });
         if (!newRequest) {
           throw new Error('Failed to create PA request. Please try again.');
@@ -189,11 +178,6 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
         m.code.includes(searchQuery)
       );
 
-  const filteredDiagnoses = diagnoses.filter(d =>
-    d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    d.code.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
   // Use portal to render modal outside of constrained containers
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto">
@@ -214,7 +198,6 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
             <p className="text-sm text-gray-500">
               {step === 'patient' && 'Select a patient'}
               {step === 'service' && 'Select procedure or medication'}
-              {step === 'diagnosis' && 'Select diagnosis'}
               {step === 'confirm' && 'Review and submit'}
               {step === 'processing' && 'Processing...'}
               {step === 'success' && 'Request created'}
@@ -230,8 +213,8 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
 
         {/* Progress Steps */}
         <div className="flex items-center gap-2 px-5 py-3 bg-gray-50 border-b border-gray-200">
-          {(['patient', 'service', 'diagnosis'] as const).map((s, i) => {
-            const stepOrder = ['patient', 'service', 'diagnosis', 'confirm', 'processing', 'success'] as const;
+          {(['patient', 'service'] as const).map((s, i) => {
+            const stepOrder = ['patient', 'service', 'confirm', 'processing', 'success'] as const;
             const currentIdx = stepOrder.indexOf(step);
             const thisIdx = stepOrder.indexOf(s);
             const isCompleted = currentIdx > thisIdx;
@@ -250,7 +233,7 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
                 )}>
                   {s}
                 </span>
-                {i < 2 && <ChevronRight className="w-4 h-4 text-gray-400" />}
+                {i < 1 && <ChevronRight className="w-4 h-4 text-gray-400" />}
               </div>
             );
           })}
@@ -472,69 +455,6 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
             </>
           )}
 
-          {/* Diagnosis Selection */}
-          {step === 'diagnosis' && !isTransitioning && (
-            <>
-              {processingError && (
-                <div className="mb-4 p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm">
-                  {processingError}
-                </div>
-              )}
-              {/* Selected Patient & Service */}
-              <div className="space-y-2 mb-4">
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-teal/5 border border-teal/20">
-                  <div className="w-8 h-8 rounded-lg bg-teal flex items-center justify-center">
-                    <User className="w-4 h-4 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{selectedPatient?.name}</p>
-                    <p className="text-xs text-gray-500">MRN: {selectedPatient?.mrn}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-200">
-                  <div className="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center">
-                    <FileText className="w-4 h-4 text-gray-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{selectedService?.name}</p>
-                    <p className="text-xs text-gray-500">Code: {selectedService?.code}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search diagnosis by name or ICD-10 code..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal focus:border-teal"
-                  autoFocus
-                />
-              </div>
-
-              <div className="space-y-2">
-                {filteredDiagnoses.map(diagnosis => (
-                  <button
-                    key={diagnosis.code}
-                    onClick={() => handleDiagnosisSelect(diagnosis)}
-                    className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-200 bg-white hover:border-teal hover:bg-teal/5 transition-all text-left click-effect-card"
-                  >
-                    <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center font-mono text-sm text-gray-500">
-                      {diagnosis.code.slice(0, 3)}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-900">{diagnosis.name}</p>
-                      <p className="text-sm text-gray-500">ICD-10: {diagnosis.code}</p>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-
           {/* Confirm Step */}
           {step === 'confirm' && !isTransitioning && (
             <div className="space-y-4">
@@ -565,13 +485,13 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
                     <p className="text-xs text-gray-500">Code: {selectedService?.code}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-200">
-                  <div className="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center font-mono text-xs text-gray-500">
-                    {selectedDiagnosis?.code.slice(0, 3)}
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-teal/5 border border-teal/20">
+                  <div className="w-8 h-8 rounded-lg bg-teal/20 flex items-center justify-center">
+                    <Sparkles className="w-4 h-4 text-teal" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{selectedDiagnosis?.name}</p>
-                    <p className="text-xs text-gray-500">ICD-10: {selectedDiagnosis?.code}</p>
+                    <p className="text-sm font-medium text-gray-900">Diagnosis</p>
+                    <p className="text-xs text-gray-500">Auto-detected from clinical records</p>
                   </div>
                 </div>
               </div>
@@ -614,13 +534,9 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
             <button
               onClick={() => {
                 if (step === 'service') transitionToStep('patient', 300);
-                if (step === 'diagnosis') {
-                  setProcessingError(null);
-                  transitionToStep('service', 300);
-                }
                 if (step === 'confirm') {
                   setProcessingError(null);
-                  transitionToStep('diagnosis', 300);
+                  transitionToStep('service', 300);
                 }
               }}
               className={cn(
@@ -636,7 +552,6 @@ export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
             <p className="text-sm text-gray-500">
               {!isTransitioning && step === 'patient' && `${filteredPatients.length} patients`}
               {!isTransitioning && step === 'service' && `${filteredServices.length} ${serviceType}s`}
-              {!isTransitioning && step === 'diagnosis' && `${filteredDiagnoses.length} diagnoses`}
               {!isTransitioning && step === 'confirm' && 'Ready to submit'}
               {isTransitioning && 'Loading...'}
             </p>

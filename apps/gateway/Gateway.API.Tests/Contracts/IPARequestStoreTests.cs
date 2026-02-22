@@ -17,7 +17,7 @@ public sealed class IPARequestStoreTests
         await store.GetByIdAsync("PA-001");
         await store.CreateAsync(CreateTestModel(), "a-195900.E-60178");
         await store.UpdateFieldsAsync("PA-001", "Diagnosis", "D12.3", "2026-01-15", "Office", "Summary", null);
-        await store.ApplyAnalysisResultAsync("PA-001", "AI summary", 85, new List<CriterionModel>());
+        await store.ApplyAnalysisResultAsync("PA-001", "AI summary", 85, new List<CriterionModel>(), "M54.5", "Low Back Pain");
         await store.SubmitAsync("PA-001", 120);
         await store.AddReviewTimeAsync("PA-001", 30);
         await store.DeleteAsync("PA-001");

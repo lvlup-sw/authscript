@@ -210,17 +210,20 @@ public static class DependencyExtensions
     /// Adds the Intelligence client to the dependency injection container.
     /// Wraps with caching decorator (decorator checks Enabled setting at runtime).
     /// </summary>
-    /// <remarks>
-    /// STUB: Currently registers a stub implementation that returns mock data.
-    /// Production will add HttpClient configuration for the Intelligence service.
-    /// </remarks>
     /// <param name="services">The service collection.</param>
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddIntelligenceClient(this IServiceCollection services)
     {
-        // STUB: Register stub implementation without HTTP client
-        // Production will use: services.AddHttpClient<IIntelligenceClient, IntelligenceClient>(...)
-        services.AddScoped<IIntelligenceClient, IntelligenceClient>();
+        services.AddOptions<Configuration.IntelligenceOptions>()
+            .BindConfiguration(Configuration.IntelligenceOptions.SectionName);
+
+        services.AddHttpClient<IIntelligenceClient, IntelligenceClient>()
+            .ConfigureHttpClient((sp, client) =>
+            {
+                var options = sp.GetRequiredService<IOptions<Configuration.IntelligenceOptions>>().Value;
+                client.BaseAddress = new Uri(options.BaseUrl);
+                client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds);
+            });
 
         // Apply caching decorator (checks Enabled setting at runtime)
         services.Decorate<IIntelligenceClient, CachingIntelligenceClient>();

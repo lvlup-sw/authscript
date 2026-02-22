@@ -9,6 +9,7 @@ class EvidenceItem(BaseModel):
     """Evidence item supporting a policy criterion."""
 
     criterion_id: str = Field(description="ID of the policy criterion")
+    criterion_label: str = Field(default="", description="Human-readable criterion label")
     status: Literal["MET", "NOT_MET", "UNCLEAR"] = Field(description="Criterion status")
     evidence: str = Field(description="Extracted evidence text")
     source: str = Field(description="Source of the evidence")

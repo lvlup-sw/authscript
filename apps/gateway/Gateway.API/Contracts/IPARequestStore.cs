@@ -60,6 +60,8 @@ public interface IPARequestStore
     /// <param name="clinicalSummary">AI-generated clinical summary.</param>
     /// <param name="confidence">Confidence score from analysis.</param>
     /// <param name="criteria">AI-generated criteria list.</param>
+    /// <param name="diagnosisCode">Auto-detected diagnosis code (optional).</param>
+    /// <param name="diagnosisName">Auto-detected diagnosis name (optional).</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The updated PA request if found, null otherwise.</returns>
     Task<PARequestModel?> ApplyAnalysisResultAsync(
@@ -67,6 +69,8 @@ public interface IPARequestStore
         string clinicalSummary,
         int confidence,
         IReadOnlyList<CriterionModel> criteria,
+        string? diagnosisCode = null,
+        string? diagnosisName = null,
         CancellationToken ct = default);
 
     /// <summary>

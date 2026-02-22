@@ -253,3 +253,33 @@ async def test_generate_form_data_includes_policy_metadata(
         result = await generate_form_data(sample_bundle, sample_evidence, policy)
     assert result.policy_id == "lcd-test-L12345"
     assert result.lcd_reference == "L12345"
+
+
+@pytest.mark.asyncio
+async def test_generate_form_data_no_redacted_in_prompt(
+    sample_bundle: ClinicalBundle,
+    sample_evidence: list[EvidenceItem],
+    sample_policy: PolicyDefinition,
+) -> None:
+    """LLM prompt must not contain '[REDACTED]' text.
+
+    Regression: 'Patient: [REDACTED]' in the prompt caused the LLM to
+    echo it back into the user-facing clinical summary.
+    """
+    captured_prompts: list[str] = []
+
+    async def capture_llm(*args, **kwargs):
+        captured_prompts.append(kwargs.get("user_prompt", ""))
+        return "Clinical summary here."
+
+    mock_scorer = ScoreResult(score=0.85, recommendation="APPROVE")
+    mock_llm = AsyncMock(side_effect=capture_llm)
+    with (
+        patch("src.reasoning.form_generator.calculate_confidence", return_value=mock_scorer),
+        patch("src.reasoning.form_generator.chat_completion", mock_llm),
+    ):
+        await generate_form_data(sample_bundle, sample_evidence, sample_policy)
+
+    assert captured_prompts, "LLM should have been called"
+    for prompt in captured_prompts:
+        assert "[REDACTED]" not in prompt

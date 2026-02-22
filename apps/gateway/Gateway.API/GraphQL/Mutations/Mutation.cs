@@ -39,8 +39,8 @@ public sealed class Mutation
             Patient = patient,
             ProcedureCode = input.ProcedureCode,
             ProcedureName = procedureName,
-            Diagnosis = input.DiagnosisName,
-            DiagnosisCode = input.DiagnosisCode,
+            Diagnosis = input.DiagnosisName ?? "Pending",
+            DiagnosisCode = input.DiagnosisCode ?? "PENDING",
             Payer = input.Patient.Payer,
             ProviderId = provider.Id,
             Provider = provider.Name,
@@ -92,18 +92,26 @@ public sealed class Mutation
             // Call Intelligence for AI analysis
             var analysisResult = await intelligenceClient.AnalyzeAsync(clinicalBundle, paRequest.ProcedureCode, ct);
 
-            // Map criteria from analysis
+            // Map criteria from analysis — use human-readable label, fall back to criterion ID
             var criteria = analysisResult.SupportingEvidence.Select(e => new CriterionModel
             {
                 Met = e.Status.Equals("MET", StringComparison.OrdinalIgnoreCase),
-                Label = e.CriterionId,
+                Label = string.IsNullOrEmpty(e.CriterionLabel) ? e.CriterionId : e.CriterionLabel,
                 Reason = e.Evidence,
             }).ToList();
 
             var confidence = (int)Math.Round(analysisResult.ConfidenceScore * 100);
 
+            // Auto-detect primary diagnosis from FHIR conditions
+            var primaryCondition = clinicalBundle.Conditions
+                .FirstOrDefault(c => string.Equals(c.ClinicalStatus, "active", StringComparison.OrdinalIgnoreCase))
+                ?? clinicalBundle.Conditions.FirstOrDefault();
+
             return await store.ApplyAnalysisResultAsync(
-                id, analysisResult.ClinicalSummary, confidence, criteria, ct);
+                id, analysisResult.ClinicalSummary, confidence, criteria,
+                diagnosisCode: primaryCondition?.Code,
+                diagnosisName: primaryCondition?.Display,
+                ct: ct);
         }
         catch (HttpRequestException ex)
         {

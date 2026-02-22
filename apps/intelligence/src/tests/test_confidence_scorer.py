@@ -35,7 +35,7 @@ def test_all_not_met_hits_floor():
 
 
 def test_mixed_met_and_optional_not_met():
-    """3 MET + 1 optional NOT_MET -> high score (only 10% weight NOT_MET)."""
+    """3 MET + 1 optional NOT_MET -> APPROVE (90% weight MET at 0.9 conf)."""
     criteria = [
         _make_criterion("c1", 0.3, required=True),
         _make_criterion("c2", 0.3, required=True),
@@ -48,7 +48,7 @@ def test_mixed_met_and_optional_not_met():
         _make_evidence("c3", "MET"), _make_evidence("c4", "NOT_MET"),
     ]
     result = calculate_confidence(evidence, policy)
-    assert 0.85 <= result.score <= 0.95
+    assert 0.80 <= result.score <= 0.85
 
 
 def test_required_not_met_caps_score():
@@ -84,12 +84,16 @@ def test_multiple_required_not_met_stacks_penalty():
 
 
 def test_unclear_contributes_half():
-    """All UNCLEAR -> score around 0.50."""
+    """All UNCLEAR with medium confidence -> score ~0.35.
+
+    UNCLEAR has status_score=0.5, multiplied by llm_conf=0.7, giving
+    numerator = 0.35 against denominator = 1.0.
+    """
     criteria = [_make_criterion("c1", 0.5), _make_criterion("c2", 0.5)]
     policy = _make_policy(criteria)
     evidence = [_make_evidence("c1", "UNCLEAR", 0.7), _make_evidence("c2", "UNCLEAR", 0.7)]
     result = calculate_confidence(evidence, policy)
-    assert 0.40 <= result.score <= 0.60
+    assert 0.30 <= result.score <= 0.40
 
 
 def test_bypass_treats_bypassed_as_met():
@@ -160,3 +164,46 @@ def test_score_ceiling_never_above_one():
     evidence = [_make_evidence("c1", "MET", 1.0)]
     result = calculate_confidence(evidence, policy)
     assert result.score <= 1.0
+
+
+def test_optional_not_met_reduces_score():
+    """2 required MET + 2 optional NOT_MET should NOT produce 100%.
+
+    Regression: low LLM confidence on NOT_MET criteria previously shrank
+    the denominator, inflating the score to 1.0.
+    """
+    criteria = [
+        _make_criterion("c1", 0.20, required=True),
+        _make_criterion("c2", 0.35, required=True),
+        _make_criterion("c3", 0.25, required=False),
+        _make_criterion("c4", 0.20, required=False),
+    ]
+    policy = _make_policy(criteria)
+    evidence = [
+        _make_evidence("c1", "MET", 0.9),
+        _make_evidence("c2", "MET", 0.9),
+        _make_evidence("c3", "NOT_MET", 0.5),
+        _make_evidence("c4", "NOT_MET", 0.5),
+    ]
+    result = calculate_confidence(evidence, policy)
+    # With 45% of weight NOT_MET, score must be well below 1.0
+    assert result.score < 0.80
+
+
+def test_low_confidence_not_met_cannot_inflate_score():
+    """NOT_MET with very low LLM confidence must not produce score > 0.80.
+
+    Regression: when llm_conf approached 0 for NOT_MET criteria, the denominator
+    collapsed and the score inflated to 1.0.
+    """
+    criteria = [
+        _make_criterion("c1", 0.50, required=True),
+        _make_criterion("c2", 0.50, required=False),
+    ]
+    policy = _make_policy(criteria)
+    evidence = [
+        _make_evidence("c1", "MET", 0.9),
+        _make_evidence("c2", "NOT_MET", 0.1),  # very low confidence
+    ]
+    result = calculate_confidence(evidence, policy)
+    assert result.score < 0.80

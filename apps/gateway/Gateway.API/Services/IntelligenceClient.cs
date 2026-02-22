@@ -1,86 +1,112 @@
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Gateway.API.Contracts;
 using Gateway.API.Models;
 
 namespace Gateway.API.Services;
 
 /// <summary>
-/// STUB: Intelligence client that returns mock PA analysis data.
-/// Production implementation will call the Intelligence service HTTP API.
+/// HTTP client that calls the Intelligence service (Python/FastAPI) for PA analysis.
 /// </summary>
 public sealed class IntelligenceClient : IIntelligenceClient
 {
+    private readonly HttpClient _httpClient;
     private readonly ILogger<IntelligenceClient> _logger;
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+    };
 
     /// <summary>
     /// Initializes a new instance of the <see cref="IntelligenceClient"/> class.
     /// </summary>
+    /// <param name="httpClient">The configured HTTP client.</param>
     /// <param name="logger">Logger for diagnostic output.</param>
-    public IntelligenceClient(ILogger<IntelligenceClient> logger)
+    public IntelligenceClient(HttpClient httpClient, ILogger<IntelligenceClient> logger)
     {
+        _httpClient = httpClient;
         _logger = logger;
     }
 
     /// <inheritdoc />
-    public Task<PAFormData> AnalyzeAsync(
+    public async Task<PAFormData> AnalyzeAsync(
         ClinicalBundle clinicalBundle,
         string procedureCode,
         CancellationToken cancellationToken = default)
     {
         _logger.LogInformation(
-            "STUB: Returning mock analysis for ProcedureCode={ProcedureCode}",
-            procedureCode);
+            "Calling Intelligence service for ProcedureCode={ProcedureCode}, PatientId={PatientId}",
+            procedureCode, clinicalBundle.PatientId);
 
-        var patientName = clinicalBundle.Patient?.FullName ?? "Unknown Patient";
-        var patientDob = clinicalBundle.Patient?.BirthDate?.ToString("yyyy-MM-dd") ?? "Unknown";
-        var memberId = clinicalBundle.Patient?.MemberId ?? "Unknown";
-        var diagnosisCodes = clinicalBundle.Conditions
-            .Select(c => c.Code)
-            .Where(c => !string.IsNullOrEmpty(c))
-            .DefaultIfEmpty("M54.5")
-            .ToList();
+        var requestBody = BuildRequestPayload(clinicalBundle, procedureCode);
 
-        var result = new PAFormData
+        var response = await _httpClient.PostAsJsonAsync(
+            "/analyze", requestBody, JsonOptions, cancellationToken);
+
+        response.EnsureSuccessStatusCode();
+
+        var result = await response.Content.ReadFromJsonAsync<PAFormData>(cancellationToken: cancellationToken);
+
+        if (result is null)
         {
-            PatientName = patientName,
-            PatientDob = patientDob,
-            MemberId = memberId,
-            DiagnosisCodes = diagnosisCodes!,
-            ProcedureCode = procedureCode,
-            ClinicalSummary = "STUB: Mock clinical summary for demo purposes. " +
-                "Production will generate AI-powered clinical justification.",
-            SupportingEvidence =
-            [
-                new EvidenceItem
-                {
-                    CriterionId = "diagnosis_present",
-                    Status = "MET",
-                    Evidence = "STUB: Qualifying diagnosis code found",
-                    Source = "Stub implementation",
-                    Confidence = 0.95
-                },
-                new EvidenceItem
-                {
-                    CriterionId = "conservative_therapy",
-                    Status = "MET",
-                    Evidence = "STUB: Conservative therapy documented",
-                    Source = "Stub implementation",
-                    Confidence = 0.90
-                }
-            ],
-            Recommendation = "APPROVE",
-            ConfidenceScore = 0.95,
-            FieldMappings = new Dictionary<string, string>
-            {
-                ["PatientName"] = patientName,
-                ["PatientDOB"] = patientDob,
-                ["MemberID"] = memberId,
-                ["PrimaryDiagnosis"] = diagnosisCodes.FirstOrDefault() ?? "M54.5",
-                ["ProcedureCode"] = procedureCode,
-                ["ClinicalJustification"] = "STUB: Clinical justification",
-                ["RequestedDateOfService"] = DateTime.Today.ToString("yyyy-MM-dd")
-            }
-        };
+            throw new InvalidOperationException("Intelligence service returned null response");
+        }
 
-        return Task.FromResult(result);
+        _logger.LogInformation(
+            "Intelligence analysis complete: Recommendation={Recommendation}, Confidence={Confidence}",
+            result.Recommendation, result.ConfidenceScore);
+
+        return result;
+    }
+
+    private static object BuildRequestPayload(ClinicalBundle clinicalBundle, string procedureCode)
+    {
+        var clinicalData = new Dictionary<string, object?>();
+
+        if (clinicalBundle.Patient is not null)
+        {
+            clinicalData["patient"] = new Dictionary<string, object?>
+            {
+                ["name"] = clinicalBundle.Patient.FullName,
+                ["birth_date"] = clinicalBundle.Patient.BirthDate?.ToString("yyyy-MM-dd"),
+                ["gender"] = clinicalBundle.Patient.Gender,
+                ["member_id"] = clinicalBundle.Patient.MemberId,
+            };
+        }
+
+        clinicalData["conditions"] = clinicalBundle.Conditions.Select(c => new Dictionary<string, object?>
+        {
+            ["code"] = c.Code,
+            ["system"] = c.CodeSystem,
+            ["display"] = c.Display,
+            ["clinical_status"] = c.ClinicalStatus,
+        }).ToList();
+
+        clinicalData["observations"] = clinicalBundle.Observations.Select(o => new Dictionary<string, object?>
+        {
+            ["code"] = o.Code,
+            ["system"] = o.CodeSystem,
+            ["display"] = o.Display,
+            ["value"] = o.Value,
+            ["unit"] = o.Unit,
+        }).ToList();
+
+        clinicalData["procedures"] = clinicalBundle.Procedures.Select(p => new Dictionary<string, object?>
+        {
+            ["code"] = p.Code,
+            ["system"] = p.CodeSystem,
+            ["display"] = p.Display,
+            ["status"] = p.Status,
+        }).ToList();
+
+        return new
+        {
+            patient_id = clinicalBundle.PatientId,
+            procedure_code = procedureCode,
+            clinical_data = clinicalData,
+        };
     }
 }

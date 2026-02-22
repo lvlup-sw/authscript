@@ -138,7 +138,37 @@ public sealed class EncounterProcessingAlbaBootstrap : IAsyncInitializer, IAsync
                 services.RemoveAll<IFhirDataAggregator>();
                 services.AddSingleton(mockAggregator);
 
-                // IntelligenceClient is already a stub - no replacement needed
+                // Replace IIntelligenceClient with mock returning test PA form data
+                var mockIntelligenceClient = Substitute.For<IIntelligenceClient>();
+                mockIntelligenceClient
+                    .AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                    .Returns(call => Task.FromResult(new PAFormData
+                    {
+                        PatientName = "Test Patient",
+                        PatientDob = "1990-01-01",
+                        MemberId = "TEST-001",
+                        DiagnosisCodes = ["M54.5"],
+                        ProcedureCode = call.ArgAt<string>(1), // echo back the requested procedure code
+                        ClinicalSummary = "Test clinical summary for integration tests.",
+                        SupportingEvidence =
+                        [
+                            new EvidenceItem
+                            {
+                                CriterionId = "crit-1",
+                                CriterionLabel = "Test criterion",
+                                Status = "MET",
+                                Evidence = "Test evidence",
+                                Source = "Test",
+                                Confidence = 0.9,
+                            }
+                        ],
+                        Recommendation = "APPROVE",
+                        ConfidenceScore = 0.85,
+                        FieldMappings = new Dictionary<string, string>(),
+                    }));
+                services.RemoveAll<IIntelligenceClient>();
+                services.AddSingleton(mockIntelligenceClient);
+
                 // PdfFormStamper is already a stub - no replacement needed
 
                 // Remove the Aspire Redis registration that would fail without a real connection

@@ -122,6 +122,26 @@ public sealed class PARequestLifecycleAlbaBootstrap : IAsyncInitializer, IAsyncD
                     .Returns(Task.FromResult(CreateEmptyClinicalBundle()));
                 services.RemoveAll<IFhirDataAggregator>();
                 services.AddSingleton(mockAggregator);
+
+                // Replace IIntelligenceClient with mock returning test PA form data
+                var mockIntelligenceClient = Substitute.For<IIntelligenceClient>();
+                mockIntelligenceClient
+                    .AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+                    .Returns(call => Task.FromResult(new PAFormData
+                    {
+                        PatientName = "Test Patient",
+                        PatientDob = "1990-01-01",
+                        MemberId = "TEST-001",
+                        DiagnosisCodes = ["M54.5"],
+                        ProcedureCode = call.ArgAt<string>(1),
+                        ClinicalSummary = "Test clinical summary.",
+                        SupportingEvidence = [],
+                        Recommendation = "APPROVE",
+                        ConfidenceScore = 0.85,
+                        FieldMappings = new Dictionary<string, string>(),
+                    }));
+                services.RemoveAll<IIntelligenceClient>();
+                services.AddSingleton(mockIntelligenceClient);
             });
         }).ConfigureAwait(false);
     }

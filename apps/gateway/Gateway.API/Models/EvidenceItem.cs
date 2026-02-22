@@ -14,6 +14,12 @@ public sealed record EvidenceItem
     public required string CriterionId { get; init; }
 
     /// <summary>
+    /// Gets the human-readable label for the criterion.
+    /// </summary>
+    [JsonPropertyName("criterion_label")]
+    public string CriterionLabel { get; init; } = "";
+
+    /// <summary>
     /// Gets the evaluation status: "met", "not_met", or "insufficient_data".
     /// </summary>
     [JsonPropertyName("status")]

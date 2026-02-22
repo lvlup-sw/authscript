@@ -313,6 +313,53 @@ public class PostgresPARequestStoreTests
         await Assert.That(result.ReadyAt).IsNotNull();
     }
 
+    [Test]
+    public async Task ApplyAnalysisResultAsync_WithDiagnosisFields_UpdatesDiagnosis()
+    {
+        // Arrange
+        using var context = CreateContext();
+        var store = CreateStore(context);
+        var created = await store.CreateAsync(CreateSampleRequest(), "fhir-1");
+
+        // Act
+        var result = await store.ApplyAnalysisResultAsync(
+            created.Id,
+            clinicalSummary: "AI summary",
+            confidence: 90,
+            criteria: [],
+            diagnosisCode: "I10",
+            diagnosisName: "Essential Hypertension");
+
+        // Assert
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.DiagnosisCode).IsEqualTo("I10");
+        await Assert.That(result.Diagnosis).IsEqualTo("Essential Hypertension");
+        await Assert.That(result.Status).IsEqualTo("ready");
+    }
+
+    [Test]
+    public async Task ApplyAnalysisResultAsync_NullDiagnosisFields_KeepsExisting()
+    {
+        // Arrange
+        using var context = CreateContext();
+        var store = CreateStore(context);
+        var created = await store.CreateAsync(CreateSampleRequest(), "fhir-1");
+
+        // Act - pass null for diagnosis fields (should keep original "M54.5" / "Low back pain")
+        var result = await store.ApplyAnalysisResultAsync(
+            created.Id,
+            clinicalSummary: "AI summary",
+            confidence: 90,
+            criteria: [],
+            diagnosisCode: null,
+            diagnosisName: null);
+
+        // Assert - original values preserved
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result!.DiagnosisCode).IsEqualTo("M54.5");
+        await Assert.That(result.Diagnosis).IsEqualTo("Low back pain");
+    }
+
     #endregion
 
     #region SubmitAsync Tests

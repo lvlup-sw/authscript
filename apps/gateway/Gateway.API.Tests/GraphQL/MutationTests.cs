@@ -41,11 +41,11 @@ public class MutationTests
         Phone: "555-0100"
     );
 
-    private static CreatePARequestInput CreateValidInput(string procedureCode = "72148", string? fhirId = null, string? providerId = null) => new(
+    private static CreatePARequestInput CreateValidInput(string procedureCode = "72148", string? fhirId = null, string? providerId = null, string? diagnosisCode = "M54.5", string? diagnosisName = "Low Back Pain") => new(
         Patient: CreatePatientInput(fhirId),
         ProcedureCode: procedureCode,
-        DiagnosisCode: "M54.5",
-        DiagnosisName: "Low Back Pain",
+        DiagnosisCode: diagnosisCode,
+        DiagnosisName: diagnosisName,
         ProviderId: providerId
     );
 
@@ -117,9 +117,10 @@ public class MutationTests
         },
     };
 
-    private static ClinicalBundle CreateClinicalBundle() => new()
+    private static ClinicalBundle CreateClinicalBundle(List<ConditionInfo>? conditions = null) => new()
     {
         PatientId = "FHIR-123",
+        Conditions = conditions ?? [],
     };
 
     // ── CreatePARequest ─────────────────────────────────────────────────────
@@ -244,6 +245,26 @@ public class MutationTests
             Arg.Any<CancellationToken>());
     }
 
+    [Test]
+    public async Task CreatePARequest_NullDiagnosis_UsesPendingPlaceholders()
+    {
+        // Arrange
+        var input = CreateValidInput(diagnosisCode: null, diagnosisName: null);
+        _store.CreateAsync(Arg.Any<PARequestModel>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(CreateStoredRequest());
+
+        // Act
+        await _mutation.CreatePARequest(input, _store, _refData, CancellationToken.None);
+
+        // Assert - diagnosis fields should default to placeholders
+        await _store.Received(1).CreateAsync(
+            Arg.Is<PARequestModel>(r =>
+                r.Diagnosis == "Pending" &&
+                r.DiagnosisCode == "PENDING"),
+            Arg.Any<string>(),
+            Arg.Any<CancellationToken>());
+    }
+
     // ── ProcessPARequest ────────────────────────────────────────────────────
 
     [Test]
@@ -281,7 +302,7 @@ public class MutationTests
         _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(analysisResult);
 
-        _store.ApplyAnalysisResultAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<IReadOnlyList<CriterionModel>>(), Arg.Any<CancellationToken>())
+        _store.ApplyAnalysisResultAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<IReadOnlyList<CriterionModel>>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(storedRequest);
 
         // Act
@@ -309,7 +330,7 @@ public class MutationTests
         _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(analysisResult);
 
-        _store.ApplyAnalysisResultAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<IReadOnlyList<CriterionModel>>(), Arg.Any<CancellationToken>())
+        _store.ApplyAnalysisResultAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<IReadOnlyList<CriterionModel>>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(storedRequest);
 
         // Act
@@ -336,7 +357,7 @@ public class MutationTests
         _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(analysisResult);
 
-        _store.ApplyAnalysisResultAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<IReadOnlyList<CriterionModel>>(), Arg.Any<CancellationToken>())
+        _store.ApplyAnalysisResultAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<IReadOnlyList<CriterionModel>>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(storedRequest);
 
         // Act
@@ -349,6 +370,8 @@ public class MutationTests
             Arg.Any<string>(),
             Arg.Is(86),
             Arg.Any<IReadOnlyList<CriterionModel>>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -367,7 +390,7 @@ public class MutationTests
         _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(analysisResult);
 
-        _store.ApplyAnalysisResultAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<IReadOnlyList<CriterionModel>>(), Arg.Any<CancellationToken>())
+        _store.ApplyAnalysisResultAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<IReadOnlyList<CriterionModel>>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(storedRequest);
 
         // Act
@@ -387,6 +410,8 @@ public class MutationTests
                 criteria[1].Met == false &&
                 criteria[1].Label == "imaging-indicated" &&
                 criteria[1].Reason == "No prior imaging found in records."),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -407,6 +432,79 @@ public class MutationTests
                 "PA-001", _store, _fhirAggregator, _intelligenceClient, _logger, CancellationToken.None));
 
         await Assert.That(exception.Message).IsEqualTo("Failed to process PA request: external service unavailable.");
+    }
+
+    [Test]
+    public async Task ProcessPARequest_AutoDetectsDiagnosis_FromFirstActiveCondition()
+    {
+        // Arrange
+        var storedRequest = CreateStoredRequest(fhirPatientId: "FHIR-123");
+        _store.GetByIdAsync("PA-001", Arg.Any<CancellationToken>())
+            .Returns(storedRequest);
+
+        var conditions = new List<ConditionInfo>
+        {
+            new() { Id = "cond-1", Code = "I10", Display = "Essential Hypertension", ClinicalStatus = "active" },
+            new() { Id = "cond-2", Code = "E11.9", Display = "Type 2 Diabetes", ClinicalStatus = "active" },
+        };
+        var clinicalBundle = CreateClinicalBundle(conditions);
+        _fhirAggregator.AggregateClinicalDataAsync(Arg.Any<string>(), cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(clinicalBundle);
+
+        var analysisResult = CreateAnalysisResult();
+        _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(analysisResult);
+
+        _store.ApplyAnalysisResultAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<IReadOnlyList<CriterionModel>>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(storedRequest);
+
+        // Act
+        await _mutation.ProcessPARequest(
+            "PA-001", _store, _fhirAggregator, _intelligenceClient, _logger, CancellationToken.None);
+
+        // Assert - first active condition should be used as diagnosis
+        await _store.Received(1).ApplyAnalysisResultAsync(
+            Arg.Is("PA-001"),
+            Arg.Any<string>(),
+            Arg.Any<int>(),
+            Arg.Any<IReadOnlyList<CriterionModel>>(),
+            Arg.Is("I10"),
+            Arg.Is("Essential Hypertension"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ProcessPARequest_NoConditions_PassesNullDiagnosis()
+    {
+        // Arrange
+        var storedRequest = CreateStoredRequest(fhirPatientId: "FHIR-123");
+        _store.GetByIdAsync("PA-001", Arg.Any<CancellationToken>())
+            .Returns(storedRequest);
+
+        var clinicalBundle = CreateClinicalBundle(); // no conditions
+        _fhirAggregator.AggregateClinicalDataAsync(Arg.Any<string>(), cancellationToken: Arg.Any<CancellationToken>())
+            .Returns(clinicalBundle);
+
+        var analysisResult = CreateAnalysisResult();
+        _intelligenceClient.AnalyzeAsync(Arg.Any<ClinicalBundle>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(analysisResult);
+
+        _store.ApplyAnalysisResultAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<int>(), Arg.Any<IReadOnlyList<CriterionModel>>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(storedRequest);
+
+        // Act
+        await _mutation.ProcessPARequest(
+            "PA-001", _store, _fhirAggregator, _intelligenceClient, _logger, CancellationToken.None);
+
+        // Assert - no conditions means null diagnosis passed (keeps existing placeholder)
+        await _store.Received(1).ApplyAnalysisResultAsync(
+            Arg.Is("PA-001"),
+            Arg.Any<string>(),
+            Arg.Any<int>(),
+            Arg.Any<IReadOnlyList<CriterionModel>>(),
+            Arg.Is<string?>(s => s == null),
+            Arg.Is<string?>(s => s == null),
+            Arg.Any<CancellationToken>());
     }
 
     // ── UpdatePARequest ─────────────────────────────────────────────────────

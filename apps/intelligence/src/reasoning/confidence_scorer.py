@@ -53,7 +53,7 @@ def calculate_confidence(
             status_score = STATUS_SCORES.get(e.status, 0.5)
 
         numerator += weight * status_score * llm_conf
-        denominator += weight * llm_conf
+        denominator += weight
 
     if denominator == 0:
         raw_score = SCORE_FLOOR

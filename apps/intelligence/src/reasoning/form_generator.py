@@ -64,7 +64,6 @@ Based on the following evidence evaluation, generate a brief clinical summary
 Evidence Summary:
 {evidence_summary}
 
-Patient: [REDACTED]
 Diagnoses: {', '.join(diagnosis_codes)}
 Procedure: {procedure_code}
 

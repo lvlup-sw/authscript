@@ -1,0 +1,30 @@
+2026-02-21T06:36:50.0073793Z Waiting for resource 'dashboard-installer' to complete.
+2026-02-21T06:36:50.0108019Z Waiting for resource 'gateway' to enter the 'Running' state.
+2026-02-21T06:36:52.2376024Z Finished waiting for resource 'dashboard-installer'.
+2026-02-21T06:36:57.4167847Z Waiting for resource ready to execute for 'gateway'.
+2026-02-21T06:36:57.4168012Z Finished waiting for resource 'gateway'.
+2026-02-21T06:36:57.4790000Z 
+2026-02-21T06:36:57.4790000Z > authscript-dashboard@0.1.0 dev
+2026-02-21T06:36:57.4790000Z > vite --port 37597
+2026-02-21T06:36:57.4790000Z 
+2026-02-21T06:36:57.6890000Z failed to load config from /home/reedsalus/Documents/code/prior-auth/apps/dashboard/vite.config.ts
+2026-02-21T06:36:57.6890000Z error when starting dev server:
+2026-02-21T06:36:57.6890000Z Error: Cannot find native binding. npm has a bug related to optional dependencies (https://github.com/npm/cli/issues/4828). Please try `npm i` again after removing both package-lock.json and node_modules directory.
+2026-02-21T06:36:57.6890000Z     at Object.<anonymous> (/home/reedsalus/Documents/code/prior-auth/node_modules/@tailwindcss/oxide/index.js:559:11)
+2026-02-21T06:36:57.6890000Z     at Module._compile (node:internal/modules/cjs/loader:1761:14)
+2026-02-21T06:36:57.6890000Z     at Object..js (node:internal/modules/cjs/loader:1893:10)
+2026-02-21T06:36:57.6890000Z     at Module.load (node:internal/modules/cjs/loader:1481:32)
+2026-02-21T06:36:57.6890000Z     at Module._load (node:internal/modules/cjs/loader:1300:12)
+2026-02-21T06:36:57.6890000Z     at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+2026-02-21T06:36:57.6890000Z     at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
+2026-02-21T06:36:57.6890000Z     at loadCJSModuleWithModuleLoad (node:internal/modules/esm/translators:339:3)
+2026-02-21T06:36:57.6890000Z     at ModuleWrap.<anonymous> (node:internal/modules/esm/translators:242:7)
+2026-02-21T06:36:57.6890000Z     at ModuleJob.run (node:internal/modules/esm/module_job:413:25)
+2026-02-21T06:36:57.6980000Z npm error Lifecycle script `dev` failed with error:
+2026-02-21T06:36:57.6980000Z npm error code 1
+2026-02-21T06:36:57.6980000Z npm error path /home/reedsalus/Documents/code/prior-auth/apps/dashboard
+2026-02-21T06:36:57.6980000Z npm error workspace authscript-dashboard@0.1.0
+2026-02-21T06:36:57.6980000Z npm error location /home/reedsalus/Documents/code/prior-auth/apps/dashboard
+2026-02-21T06:36:57.6980000Z npm error command failed
+2026-02-21T06:36:57.6990000Z npm error command sh -c vite --port 37597
+[sys] Starting process...: Cmd = /home/reedsalus/.local/bin/npm, Args = ["run", "dev", "--", "--port", "37597"]

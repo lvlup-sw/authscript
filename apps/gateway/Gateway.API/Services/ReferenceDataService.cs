@@ -13,6 +13,7 @@ public sealed class ReferenceDataService
         new ProcedureModel { Code = "27130", Name = "Total Hip Replacement", Category = "surgery", RequiresPA = true },
         new ProcedureModel { Code = "43239", Name = "Upper GI Endoscopy with Biopsy", Category = "surgery", RequiresPA = true },
         new ProcedureModel { Code = "29881", Name = "Knee Arthroscopy", Category = "surgery", RequiresPA = true },
+        new ProcedureModel { Code = "93306", Name = "Echocardiogram, Complete", Category = "imaging", RequiresPA = true },
         new ProcedureModel { Code = "97110", Name = "Physical Therapy - Therapeutic Exercises", Category = "therapy", RequiresPA = false },
         new ProcedureModel { Code = "90834", Name = "Psychotherapy, 45 minutes", Category = "therapy", RequiresPA = true },
     ];
@@ -39,6 +40,10 @@ public sealed class ReferenceDataService
         new DiagnosisModel { Code = "M06.9", Name = "Rheumatoid Arthritis, Unspecified" },
         new DiagnosisModel { Code = "L40.50", Name = "Psoriatic Arthritis" },
         new DiagnosisModel { Code = "J45.20", Name = "Mild Intermittent Asthma, Uncomplicated" },
+        new DiagnosisModel { Code = "J45.50", Name = "Severe Persistent Asthma, Uncomplicated" },
+        new DiagnosisModel { Code = "I50.32", Name = "Chronic Diastolic Heart Failure" },
+        new DiagnosisModel { Code = "I48.91", Name = "Unspecified Atrial Fibrillation" },
+        new DiagnosisModel { Code = "F33.1", Name = "Major Depressive Disorder, Recurrent, Moderate" },
     ];
 
     public IReadOnlyList<PayerModel> Payers { get; } =
@@ -48,6 +53,7 @@ public sealed class ReferenceDataService
         new PayerModel { Id = "UHC", Name = "United Healthcare", Phone = "1-800-328-5979", FaxNumber = "1-800-328-5980" },
         new PayerModel { Id = "CIG", Name = "Cigna", Phone = "1-800-244-6224", FaxNumber = "1-800-244-6225" },
         new PayerModel { Id = "HUM", Name = "Humana", Phone = "1-800-457-4708", FaxNumber = "1-800-457-4709" },
+        new PayerModel { Id = "MCD", Name = "Medicare", Phone = "1-800-633-4227", FaxNumber = "1-800-633-4228" },
     ];
 
     public IReadOnlyList<ProviderModel> Providers { get; } =
@@ -55,6 +61,7 @@ public sealed class ReferenceDataService
         new ProviderModel { Id = "DR001", Name = "Dr. Amanda Martinez", Npi = "1234567890", Specialty = "Family Medicine" },
         new ProviderModel { Id = "DR002", Name = "Dr. Robert Kim", Npi = "0987654321", Specialty = "Orthopedic Surgery" },
         new ProviderModel { Id = "DR003", Name = "Dr. Lisa Thompson", Npi = "1122334455", Specialty = "Neurology" },
+        new ProviderModel { Id = "DR004", Name = "Dr. Sarah Mitchell", Npi = "5566778899", Specialty = "Psychiatry" },
     ];
 
     public ProcedureModel? FindProcedureByCode(string code) =>

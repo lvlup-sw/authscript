@@ -37,7 +37,7 @@ public class PARequestDataSeederTests
 
         // Assert
         var count = await context.PriorAuthRequests.CountAsync();
-        await Assert.That(count).IsEqualTo(4);
+        await Assert.That(count).IsEqualTo(7);
     }
 
     [Test]
@@ -54,9 +54,9 @@ public class PARequestDataSeederTests
         // Act — seed again
         await seeder.SeedAsync(context, CancellationToken.None);
 
-        // Assert — still 4, not 8
+        // Assert — still 7, not 14
         var count = await context.PriorAuthRequests.CountAsync();
-        await Assert.That(count).IsEqualTo(4);
+        await Assert.That(count).IsEqualTo(7);
     }
 
     [Test]
@@ -109,7 +109,7 @@ public class PARequestDataSeederTests
     {
         var entities = PARequestDataSeeder.CreateDemoEntities(DateTimeOffset.UtcNow);
 
-        await Assert.That(entities.Length).IsEqualTo(4);
+        await Assert.That(entities.Length).IsEqualTo(7);
     }
 
     [Test]

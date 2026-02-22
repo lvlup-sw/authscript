@@ -28,7 +28,7 @@ public sealed class QueryTests
     {
         var result = _query.GetProcedures(_refData);
 
-        await Assert.That(result.Count).IsEqualTo(9);
+        await Assert.That(result.Count).IsEqualTo(10);
         await Assert.That(result[0].Code).IsEqualTo("72148");
     }
 
@@ -46,7 +46,7 @@ public sealed class QueryTests
     {
         var result = _query.GetProviders(_refData);
 
-        await Assert.That(result.Count).IsEqualTo(3);
+        await Assert.That(result.Count).IsEqualTo(4);
         await Assert.That(result[0].Id).IsEqualTo("DR001");
     }
 
@@ -55,7 +55,7 @@ public sealed class QueryTests
     {
         var result = _query.GetPayers(_refData);
 
-        await Assert.That(result.Count).IsEqualTo(5);
+        await Assert.That(result.Count).IsEqualTo(6);
         await Assert.That(result[0].Id).IsEqualTo("BCBS");
     }
 
@@ -64,7 +64,7 @@ public sealed class QueryTests
     {
         var result = _query.GetDiagnoses(_refData);
 
-        await Assert.That(result.Count).IsEqualTo(10);
+        await Assert.That(result.Count).IsEqualTo(14);
         await Assert.That(result[0].Code).IsEqualTo("M54.5");
     }
 

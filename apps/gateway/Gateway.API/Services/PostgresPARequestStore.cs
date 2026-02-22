@@ -144,6 +144,8 @@ public sealed class PostgresPARequestStore : IPARequestStore
         string clinicalSummary,
         int confidence,
         IReadOnlyList<CriterionModel> criteria,
+        string? diagnosisCode = null,
+        string? diagnosisName = null,
         CancellationToken ct = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
@@ -164,6 +166,16 @@ public sealed class PostgresPARequestStore : IPARequestStore
         entity.CriteriaJson = JsonSerializer.Serialize(criteria, PriorAuthRequestMappings.JsonOptions);
         entity.ReadyAt = now;
         entity.UpdatedAt = now;
+
+        if (diagnosisCode is not null)
+        {
+            entity.DiagnosisCode = diagnosisCode;
+        }
+
+        if (diagnosisName is not null)
+        {
+            entity.DiagnosisName = diagnosisName;
+        }
 
         await _context.SaveChangesAsync(ct).ConfigureAwait(false);
 
