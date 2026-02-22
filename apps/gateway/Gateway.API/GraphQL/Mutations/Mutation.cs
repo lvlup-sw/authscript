@@ -42,6 +42,7 @@ public sealed class Mutation
             Diagnosis = input.DiagnosisName,
             DiagnosisCode = input.DiagnosisCode,
             Payer = input.Patient.Payer,
+            ProviderId = provider.Id,
             Provider = provider.Name,
             ProviderNpi = provider.Npi,
             ServiceDate = DateTimeOffset.UtcNow.ToString("MMMM d, yyyy"),
@@ -113,9 +114,9 @@ public sealed class Mutation
 
     public async Task<PARequestModel?> SubmitPARequest(
         string id,
-        int addReviewTimeSeconds = 0,
-        [Service] IPARequestStore store = default!,
-        CancellationToken ct = default)
+        [Service] IPARequestStore store,
+        CancellationToken ct,
+        int addReviewTimeSeconds = 0)
     {
         return await store.SubmitAsync(id, addReviewTimeSeconds, ct);
     }

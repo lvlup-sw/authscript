@@ -14,6 +14,7 @@ public sealed record PARequestModel
     public required string Diagnosis { get; init; }
     public required string DiagnosisCode { get; init; }
     public required string Payer { get; init; }
+    public string? ProviderId { get; init; }
     public required string Provider { get; init; }
     public required string ProviderNpi { get; init; }
     public required string ServiceDate { get; init; }
