@@ -5,8 +5,7 @@ import { cn } from '@/lib/utils';
 import { 
   ArrowLeft, 
   Check, 
-  X, 
-  XCircle,
+  X,
   AlertCircle, 
   AlertTriangle,
   CheckCircle2, 
@@ -155,9 +154,7 @@ function CriteriaItem({
         {met === null && <AlertCircle className="w-3.5 h-3.5" />}
       </div>
       <span className="text-sm text-foreground flex-1">{label}</span>
-      {met === true && <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />}
-      {met === false && <XCircle className="w-5 h-5 text-red-500 flex-shrink-0" />}
-      {met === null && <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0" />}
+      <span className={cn('text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-md flex-shrink-0', style.text, style.bg)}>{style.statusLabel}</span>
       {isEditing && (
         <span className="text-xs text-muted-foreground">Toggle</span>
       )}
@@ -456,6 +453,7 @@ function AnalysisPage() {
   const displayData = isEditing ? editedData : effectiveRequest;
   const hasUnmetCriteria = (effectiveRequest.criteria || []).some((c: { met: boolean | null }) => c.met !== true);
   const isLowConfidence = effectiveRequest.status === 'ready' && effectiveRequest.confidence < LOW_CONFIDENCE_THRESHOLD;
+  const canSubmit = effectiveRequest.status !== 'draft' && !!effectiveRequest.clinicalSummary?.trim();
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">
@@ -602,8 +600,8 @@ function AnalysisPage() {
                 </button>
                 <button
                   onClick={handleSubmit}
-                  disabled={isSubmitting || showSubmissionOverlay}
-                  className="px-5 py-2.5 text-sm font-semibold bg-teal text-white rounded-xl hover:bg-teal/90 disabled:opacity-70 transition-all shadow-teal flex items-center gap-2 min-w-[160px] justify-center click-effect-primary"
+                  disabled={!canSubmit || isSubmitting || showSubmissionOverlay}
+                  className="px-5 py-2.5 text-sm font-semibold bg-teal text-white rounded-xl hover:bg-teal/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-teal flex items-center gap-2 min-w-[160px] justify-center click-effect-primary"
                 >
                   {(isSubmitting || showSubmissionOverlay) ? (
                     <>
@@ -684,7 +682,7 @@ function AnalysisPage() {
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-bold text-foreground flex items-center gap-2">
                 <FileText className="w-5 h-5 text-teal" />
-                PA Form Data
+                Clinical Details
               </h2>
               <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal/10 text-teal text-xs font-semibold">
                 <Sparkles className="w-3 h-3" />
@@ -693,43 +691,18 @@ function AnalysisPage() {
             </div>
             
             <div className="grid grid-cols-2 gap-x-8">
-              <EditableField 
-                label="Patient Name" 
-                value={request.patient.name} 
-                onChange={() => {}}
-                isEditing={false}
-              />
-              <EditableField 
-                label="Date of Birth" 
-                value={request.patient.dob} 
-                onChange={() => {}}
-                isEditing={false}
-              />
-              <EditableField 
-                label="Member ID" 
-                value={request.patient.memberId} 
-                onChange={() => {}}
-                isEditing={false}
-                mono
-              />
-              <EditableField 
-                label="Diagnosis Code" 
-                value={`${displayData.diagnosisCode} - ${displayData.diagnosis}`} 
+              <EditableField
+                label="Diagnosis Code"
+                value={`${displayData.diagnosisCode} - ${displayData.diagnosis}`}
                 onChange={(v) => {
                   const parts = v.split(' - ');
-                  setEditedData({ 
-                    ...editedData, 
+                  setEditedData({
+                    ...editedData,
                     diagnosisCode: parts[0] || '',
                     diagnosis: parts[1] || ''
                   });
                 }}
                 isEditing={isEditing}
-              />
-              <EditableField 
-                label="Procedure Code" 
-                value={request.procedureCode} 
-                onChange={() => {}}
-                isEditing={false}
               />
               <EditableField 
                 label="Service Date" 
@@ -793,12 +766,14 @@ function AnalysisPage() {
             </div>
             <p className={cn(
               'text-center text-sm font-medium mt-4 p-3 rounded-lg',
-              displayConfidence(effectiveRequest.confidence) >= 80 ? 'bg-success/10 text-success' : 
-              displayConfidence(effectiveRequest.confidence) >= 60 ? 'bg-warning/10 text-warning' : 
+              effectiveRequest.status === 'draft' ? 'bg-secondary text-muted-foreground' :
+              displayConfidence(effectiveRequest.confidence) >= 80 ? 'bg-success/10 text-success' :
+              displayConfidence(effectiveRequest.confidence) >= 60 ? 'bg-warning/10 text-warning' :
               'bg-destructive/10 text-destructive'
             )}>
-              {displayConfidence(effectiveRequest.confidence) >= 80 ? 'High confidence — ready for submission' : 
-               displayConfidence(effectiveRequest.confidence) >= 60 ? 'Medium confidence — review recommended' : 
+              {effectiveRequest.status === 'draft' ? 'Awaiting AI analysis — click Process to begin' :
+               displayConfidence(effectiveRequest.confidence) >= 80 ? 'High confidence — ready for submission' :
+               displayConfidence(effectiveRequest.confidence) >= 60 ? 'Medium confidence — review recommended' :
                'Low confidence — manual review required'}
             </p>
           </div>
@@ -867,13 +842,18 @@ function AnalysisPage() {
             <div className="space-y-3">
               <button
                 onClick={handleSubmit}
-                disabled={isSubmitting || showSubmissionOverlay}
-                className="w-full px-5 py-3.5 text-sm font-semibold bg-teal text-white rounded-xl hover:bg-teal/90 disabled:opacity-70 transition-all shadow-teal flex items-center justify-center gap-2 click-effect-primary"
+                disabled={!canSubmit || isSubmitting || showSubmissionOverlay}
+                className="w-full px-5 py-3.5 text-sm font-semibold bg-teal text-white rounded-xl hover:bg-teal/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-teal flex items-center justify-center gap-2 click-effect-primary"
               >
                 {(isSubmitting || showSubmissionOverlay) ? (
                   <>
                     <LoadingSpinner size="sm" className="border-white border-t-transparent" />
                     <span>Submitting to athenahealth...</span>
+                  </>
+                ) : !canSubmit ? (
+                  <>
+                    <AlertCircle className="w-4 h-4" />
+                    Process request before submitting
                   </>
                 ) : (
                   <>
