@@ -69,7 +69,7 @@ async def test_extract_evidence_confidence_score(
     with patch("src.reasoning.evidence_extractor.chat_completion", mock_llm):
         evidence = await extract_evidence(sample_bundle, sample_policy)
 
-    assert all(e.confidence == 0.80 for e in evidence)
+    assert all(e.confidence == 0.7 for e in evidence)
 
 
 # --- A1: evaluate_criterion tests ---
@@ -91,7 +91,7 @@ async def test_evaluate_criterion_returns_met_evidence_item():
     assert isinstance(result, EvidenceItem)
     assert result.criterion_id == "crit-1"
     assert result.status == "MET"
-    assert result.confidence == 0.8
+    assert result.confidence == 0.7
 
 
 @pytest.mark.asyncio
@@ -108,7 +108,7 @@ async def test_evaluate_criterion_parses_not_met():
         result = await evaluate_criterion(criterion, clinical_summary)
 
     assert result.status == "NOT_MET"
-    assert result.confidence == 0.8
+    assert result.confidence == 0.7
 
 
 @pytest.mark.asyncio
@@ -230,3 +230,92 @@ def test_get_llm_semaphore_returns_singleton():
 
     # Cleanup
     mod._llm_semaphore = None
+
+
+# --- T006: Evidence extractor enhancement tests ---
+
+from src.models.policy import PolicyCriterion, PolicyDefinition
+
+
+def _make_policy_def() -> PolicyDefinition:
+    return PolicyDefinition(
+        policy_id="test-lcd",
+        policy_name="Test LCD Policy",
+        payer="CMS Medicare",
+        procedure_codes=["72148"],
+        criteria=[
+            PolicyCriterion(
+                id="crit-1", description="Test criterion 1", weight=0.5,
+                lcd_section="L34220 — Test Section",
+            ),
+            PolicyCriterion(
+                id="crit-2", description="Test criterion 2", weight=0.5,
+                lcd_section="L34220 — Another Section",
+            ),
+        ],
+    )
+
+
+@pytest.mark.asyncio
+async def test_extract_evidence_accepts_policy_definition():
+    """Pass PolicyDefinition instead of dict -> works."""
+    policy = _make_policy_def()
+    bundle = ClinicalBundle(
+        patient_id="test",
+        patient=PatientInfo(name="Test"),
+        conditions=[Condition(code="M54.5", display="Low back pain")],
+    )
+    mock_llm = AsyncMock(return_value="The criterion is MET based on clinical data.")
+    with patch("src.reasoning.evidence_extractor.chat_completion", mock_llm):
+        evidence = await extract_evidence(bundle, policy)
+    assert len(evidence) == 2
+    assert evidence[0].criterion_id == "crit-1"
+
+
+@pytest.mark.asyncio
+async def test_evaluate_criterion_includes_lcd_section_in_prompt():
+    """Mock LLM captures prompt, verify LCD section text present."""
+    criterion = PolicyCriterion(
+        id="test", description="Test criterion", weight=0.5,
+        lcd_section="L34220 — Coverage Principle",
+    )
+    captured_prompts = []
+
+    async def capture_llm(*args, **kwargs):
+        captured_prompts.append(kwargs.get("user_prompt", args[1] if len(args) > 1 else ""))
+        return "MET. HIGH CONFIDENCE. Evidence found."
+
+    mock_llm = AsyncMock(side_effect=capture_llm)
+    with patch("src.reasoning.evidence_extractor.chat_completion", mock_llm):
+        await evaluate_criterion(criterion, "Clinical data here")
+    assert any("L34220" in p for p in captured_prompts)
+
+
+@pytest.mark.asyncio
+async def test_evaluate_criterion_confidence_parsing_high():
+    """LLM response with 'HIGH CONFIDENCE' -> conf=0.9."""
+    criterion = {"id": "test", "description": "Test"}
+    mock_llm = AsyncMock(return_value="MET. HIGH CONFIDENCE. Strong evidence.")
+    with patch("src.reasoning.evidence_extractor.chat_completion", mock_llm):
+        result = await evaluate_criterion(criterion, "data")
+    assert result.confidence == 0.9
+
+
+@pytest.mark.asyncio
+async def test_evaluate_criterion_confidence_parsing_low():
+    """LLM response with 'LOW CONFIDENCE' -> conf=0.5."""
+    criterion = {"id": "test", "description": "Test"}
+    mock_llm = AsyncMock(return_value="UNCLEAR. LOW CONFIDENCE. Limited data.")
+    with patch("src.reasoning.evidence_extractor.chat_completion", mock_llm):
+        result = await evaluate_criterion(criterion, "data")
+    assert result.confidence == 0.5
+
+
+@pytest.mark.asyncio
+async def test_evaluate_criterion_confidence_parsing_default():
+    """No confidence signal -> conf=0.7."""
+    criterion = {"id": "test", "description": "Test"}
+    mock_llm = AsyncMock(return_value="MET. Evidence found in records.")
+    with patch("src.reasoning.evidence_extractor.chat_completion", mock_llm):
+        result = await evaluate_criterion(criterion, "data")
+    assert result.confidence == 0.7

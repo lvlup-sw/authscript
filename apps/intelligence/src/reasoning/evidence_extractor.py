@@ -12,39 +12,48 @@ from src.config import settings
 from src.llm_client import chat_completion
 from src.models.clinical_bundle import ClinicalBundle
 from src.models.pa_form import EvidenceItem
+from src.models.policy import PolicyCriterion, PolicyDefinition
 
 logger = logging.getLogger(__name__)
 
 
 async def evaluate_criterion(
-    criterion: dict[str, Any],
+    criterion: PolicyCriterion | dict[str, Any],
     clinical_summary: str,
 ) -> EvidenceItem:
     """
     Evaluate a single policy criterion against clinical data using LLM.
 
     Args:
-        criterion: Policy criterion dict with 'id' and 'description'
+        criterion: PolicyCriterion or dict with 'id' and 'description'
         clinical_summary: Pre-built clinical data summary string
 
     Returns:
         EvidenceItem with evaluation result
     """
-    criterion_id = criterion.get("id", "unknown")
-    criterion_desc = criterion.get("description", "")
+    if isinstance(criterion, PolicyCriterion):
+        criterion_id = criterion.id
+        criterion_desc = criterion.description
+        lcd_section = criterion.lcd_section
+    else:
+        criterion_id = criterion.get("id", "unknown")
+        criterion_desc = criterion.get("description", "")
+        lcd_section = None
 
     system_prompt = (
         "You are a medical prior authorization analyst. Evaluate whether "
         "clinical evidence meets the specified criterion."
     )
+    policy_ref = f"\nPolicy Reference: {lcd_section}" if lcd_section else ""
     user_prompt = f"""
-Criterion: {criterion_desc}
+Criterion: {criterion_desc}{policy_ref}
 
 Clinical Data:
 {clinical_summary}
 
-Evaluate if this criterion is MET, NOT_MET, or UNCLEAR. Provide a brief
-explanation of the evidence found.
+Evaluate if this criterion is MET, NOT_MET, or UNCLEAR.
+Indicate your confidence level: HIGH CONFIDENCE, MEDIUM CONFIDENCE, or LOW CONFIDENCE.
+Provide a brief explanation of the evidence found.
 """
 
     llm_response = await chat_completion(
@@ -64,13 +73,18 @@ explanation of the evidence found.
         # Use regex to handle "NOT MET", "NOT_MET", "NOTMET" variants
         if re.search(r"\bNOT[\s_]?MET\b", response_upper):
             status = "NOT_MET"
-            confidence = 0.8
         elif re.search(r"\bMET\b", response_upper):
             status = "MET"
-            confidence = 0.8
         elif re.search(r"\bUNCLEAR\b", response_upper):
             status = "UNCLEAR"
+
+        # Parse confidence signal from LLM response
+        if "HIGH CONFIDENCE" in response_upper:
+            confidence = 0.9
+        elif "LOW CONFIDENCE" in response_upper:
             confidence = 0.5
+        else:
+            confidence = 0.7  # default MEDIUM
 
     return EvidenceItem(
         criterion_id=criterion_id,
@@ -125,7 +139,7 @@ def _get_llm_semaphore() -> asyncio.Semaphore:
 
 
 async def _bounded_evaluate(
-    criterion: dict[str, Any],
+    criterion: PolicyCriterion | dict[str, Any],
     clinical_summary: str,
     semaphore: asyncio.Semaphore,
 ) -> EvidenceItem:
@@ -136,7 +150,7 @@ async def _bounded_evaluate(
 
 async def extract_evidence(
     clinical_bundle: ClinicalBundle,
-    policy: dict[str, Any],
+    policy: PolicyDefinition | dict[str, Any],
 ) -> list[EvidenceItem]:
     """
     Extract evidence from clinical bundle using LLM to evaluate policy criteria.
@@ -145,12 +159,15 @@ async def extract_evidence(
 
     Args:
         clinical_bundle: FHIR clinical data bundle
-        policy: Policy definition with criteria
+        policy: PolicyDefinition or dict with criteria
 
     Returns:
         List of evidence items, one per policy criterion
     """
-    criteria = policy.get("criteria", [])
+    if isinstance(policy, PolicyDefinition):
+        criteria: list[PolicyCriterion | dict[str, Any]] = list(policy.criteria)
+    else:
+        criteria = policy.get("criteria", [])
     if not criteria:
         return []
 
@@ -165,7 +182,10 @@ async def extract_evidence(
     evidence_items: list[EvidenceItem] = []
     for i, result in enumerate(results):
         if isinstance(result, BaseException):
-            criterion_id = criteria[i].get("id", "unknown")
+            crit = criteria[i]
+            criterion_id = (
+                crit.id if isinstance(crit, PolicyCriterion) else crit.get("id", "unknown")
+            )
             logger.error("Criterion %s evaluation failed: %s", criterion_id, result)
             evidence_items.append(
                 EvidenceItem(
