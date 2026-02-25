@@ -1,0 +1,61 @@
+{
+  "patient_name": "Demo Patient",
+  "patient_dob": "1975-03-20",
+  "member_id": "DEMO-001",
+  "diagnosis_codes": ["M54.5", "M54.41"],
+  "procedure_code": "72148",
+  "clinical_summary": "Patient presents with chronic low back pain and left-sided radiculopathy persisting for over 3 months. Conservative therapy including physical therapy and NSAIDs for 8 weeks has failed to provide adequate relief. MRI of the lumbar spine is medically necessary to evaluate for underlying structural pathology.",
+  "supporting_evidence": [
+    {
+      "criterion_id": "crit-1",
+      "criterion_label": "Clinical indication documented",
+      "status": "MET",
+      "evidence": "Chronic low back pain with radiculopathy documented in clinical notes.",
+      "source": "clinical_data",
+      "confidence": 0.95
+    },
+    {
+      "criterion_id": "crit-2",
+      "criterion_label": "Conservative therapy failed (6+ weeks)",
+      "status": "MET",
+      "evidence": "Physical therapy and NSAIDs administered for 8 weeks without adequate improvement.",
+      "source": "clinical_data",
+      "confidence": 0.92
+    },
+    {
+      "criterion_id": "crit-3",
+      "criterion_label": "Neurological deficit or red flag present",
+      "status": "MET",
+      "evidence": "Progressive numbness in left lower extremity reported and documented.",
+      "source": "clinical_data",
+      "confidence": 0.90
+    },
+    {
+      "criterion_id": "crit-4",
+      "criterion_label": "Imaging not previously performed",
+      "status": "MET",
+      "evidence": "No prior lumbar MRI found in patient record.",
+      "source": "clinical_data",
+      "confidence": 0.88
+    },
+    {
+      "criterion_id": "crit-5",
+      "criterion_label": "Order from qualified provider",
+      "status": "MET",
+      "evidence": "Ordering physician is board-certified in relevant specialty.",
+      "source": "clinical_data",
+      "confidence": 0.95
+    }
+  ],
+  "recommendation": "APPROVE",
+  "confidence_score": 0.88,
+  "field_mappings": {
+    "PatientName": "Demo Patient",
+    "PatientDOB": "1975-03-20",
+    "MemberID": "DEMO-001",
+    "ProcedureCode": "72148",
+    "DiagnosisCodes": "M54.5, M54.41"
+  },
+  "policy_id": "lcd-mri-lumbar-L34220",
+  "lcd_reference": "L34220"
+}

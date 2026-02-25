@@ -125,3 +125,47 @@ async def test_analyze_mri_lumbar_uses_lcd_policy() -> None:
         result = await analyze(request)
     assert result.lcd_reference == "L34220"
     assert result.policy_id == "lcd-mri-lumbar-L34220"
+
+
+@pytest.mark.asyncio
+async def test_analyze_demo_flag_returns_canned_response() -> None:
+    """demo=True with CPT 72148 returns canned high-confidence response."""
+    request = AnalyzeRequest(
+        patient_id="test-demo",
+        procedure_code="72148",
+        clinical_data={
+            "patient": {"name": "Demo Patient", "birth_date": "1975-03-20"},
+        },
+    )
+    result = await analyze(request, demo=True)
+
+    assert result.recommendation == "APPROVE"
+    assert result.confidence_score >= 0.85
+    assert len(result.supporting_evidence) > 0
+    assert all(item.status == "MET" for item in result.supporting_evidence)
+    assert len(result.clinical_summary) > 0
+
+
+@pytest.mark.asyncio
+async def test_analyze_demo_flag_ignored_for_non_demo_procedure() -> None:
+    """demo=True with non-72148 CPT should NOT use canned demo response."""
+    request = AnalyzeRequest(
+        patient_id="test-demo",
+        procedure_code="99213",
+        clinical_data={
+            "patient": {"name": "Demo Patient", "birth_date": "1975-03-20", "member_id": "M999"},
+        },
+    )
+    mock_llm = AsyncMock(return_value="MET. Evidence found.")
+    with (
+        patch("src.reasoning.evidence_extractor.chat_completion", mock_llm),
+        patch("src.reasoning.form_generator.chat_completion", mock_llm),
+    ):
+        result = await analyze(request, demo=True)
+
+    # Should have gone through normal pipeline, not the demo shortcut
+    # The demo fixture has exactly 5 criteria and confidence 0.88
+    assert not (
+        result.confidence_score == 0.88
+        and len(result.supporting_evidence) == 5
+    )
