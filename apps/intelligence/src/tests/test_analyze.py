@@ -141,9 +141,20 @@ async def test_analyze_demo_flag_returns_canned_response() -> None:
 
     assert result.recommendation == "APPROVE"
     assert result.confidence_score >= 0.85
-    assert len(result.supporting_evidence) > 0
+    assert len(result.supporting_evidence) == 5
     assert all(item.status == "MET" for item in result.supporting_evidence)
     assert len(result.clinical_summary) > 0
+    # Verify criterion IDs match real LCD L34220 policy
+    criterion_ids = {item.criterion_id for item in result.supporting_evidence}
+    assert criterion_ids == {
+        "diagnosis_present",
+        "red_flag_screening",
+        "conservative_therapy_4wk",
+        "clinical_rationale",
+        "no_duplicate_imaging",
+    }
+    assert result.policy_id == "lcd-mri-lumbar-L34220"
+    assert result.lcd_reference == "L34220"
 
 
 @pytest.mark.asyncio
@@ -163,9 +174,8 @@ async def test_analyze_demo_flag_ignored_for_non_demo_procedure() -> None:
     ):
         result = await analyze(request, demo=True)
 
-    # Should have gone through normal pipeline, not the demo shortcut
-    # The demo fixture has exactly 5 criteria and confidence 0.88
-    assert not (
-        result.confidence_score == 0.88
-        and len(result.supporting_evidence) == 5
-    )
+    # Should have gone through normal pipeline — verify LLM was called
+    mock_llm.assert_called()
+    # Demo fixture uses LCD L34220 criteria; normal pipeline should not
+    criterion_ids = {item.criterion_id for item in result.supporting_evidence}
+    assert "diagnosis_present" not in criterion_ids or result.policy_id != "lcd-mri-lumbar-L34220"
