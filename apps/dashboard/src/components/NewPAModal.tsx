@@ -31,6 +31,8 @@ import { LoadingSpinner } from './LoadingSpinner';
 interface NewPAModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialPatient?: Patient;
+  initialService?: { code: string; name: string; type: 'procedure' | 'medication' };
 }
 
 type Step = 'patient' | 'service' | 'confirm' | 'processing' | 'success';
@@ -42,13 +44,16 @@ const PROCESSING_STEPS = [
   { icon: FileCheck, label: 'Generating PA form...' },
 ];
 
-export function NewPAModal({ isOpen, onClose }: NewPAModalProps) {
+export function NewPAModal({ isOpen, onClose, initialPatient, initialService }: NewPAModalProps) {
   const navigate = useNavigate();
-  const [step, setStep] = useState<Step>('patient');
+  const hasInitialData = Boolean(initialPatient && initialService);
+  const [step, setStep] = useState<Step>(hasInitialData ? 'confirm' : 'patient');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(initialPatient ?? null);
   const [serviceType, setServiceType] = useState<'procedure' | 'medication'>('procedure');
-  const [selectedService, setSelectedService] = useState<Procedure | Medication | null>(null);
+  const [selectedService, setSelectedService] = useState<Procedure | Medication | null>(
+    initialService ? { code: initialService.code, name: initialService.name, category: '', requiresPA: true } : null,
+  );
   const [processingStep, setProcessingStep] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [processingError, setProcessingError] = useState<string | null>(null);
