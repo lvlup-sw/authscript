@@ -165,8 +165,26 @@ function CriteriaItem({
   );
 }
 
+// Parse a reason string into a summary sentence and supporting evidence items
+export function formatReasonText(reason: string): { summary: string; evidence: string[] } {
+  if (!reason.trim()) return { summary: '', evidence: [] };
+
+  // Split on sentence boundaries: period followed by a space and uppercase letter,
+  // or period at the end of the string
+  const sentences = reason
+    .split(/\.(?:\s+(?=[A-Z])|\s*$)/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+    .map((s) => (s.endsWith('.') ? s : `${s}.`));
+
+  if (sentences.length === 0) return { summary: reason, evidence: [] };
+
+  const [summary, ...evidence] = sentences;
+  return { summary, evidence };
+}
+
 // Criteria Reason Dialog
-function CriteriaReasonDialog({
+export function CriteriaReasonDialog({
   isOpen,
   onClose,
   met,
@@ -222,11 +240,36 @@ function CriteriaReasonDialog({
         {/* Content */}
         <div className="p-5 space-y-4">
           <h3 className="font-semibold text-gray-900">{label}</h3>
+          {(met === false || met === null) && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
+              <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+              <span className="text-xs font-semibold text-amber-800">
+                {met === false ? 'Action needed' : 'Documentation gap'}
+              </span>
+            </div>
+          )}
           <div className="flex items-start gap-3 p-4 rounded-xl bg-gray-50 border border-gray-200">
             <Sparkles className="w-5 h-5 text-teal flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-xs font-medium text-teal mb-1">AI Analysis</p>
-              <p className="text-sm text-gray-700 leading-relaxed">{reason}</p>
+              {(() => {
+                const { summary, evidence } = formatReasonText(reason);
+                return (
+                  <>
+                    <p className="text-sm text-gray-900 font-semibold leading-relaxed">{summary}</p>
+                    {evidence.length > 0 && (
+                      <ul className="mt-2 space-y-1">
+                        {evidence.map((item, i) => (
+                          <li key={i} className="text-sm text-gray-700 leading-relaxed flex items-start gap-2">
+                            <span className="text-gray-400 mt-0.5 flex-shrink-0">&bull;</span>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
