@@ -31,8 +31,10 @@ import { LoadingSpinner } from './LoadingSpinner';
 interface NewPAModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** When provided, skip patient selection and pre-fill with this patient */
   initialPatient?: Patient;
-  initialService?: { code: string; name: string; type: 'procedure' | 'medication' };
+  /** When provided, skip service selection and pre-fill with this service */
+  initialService?: Procedure | Medication;
 }
 
 type Step = 'patient' | 'service' | 'confirm' | 'processing' | 'success';
@@ -46,18 +48,25 @@ const PROCESSING_STEPS = [
 
 export function NewPAModal({ isOpen, onClose, initialPatient, initialService }: NewPAModalProps) {
   const navigate = useNavigate();
-  const hasInitialData = Boolean(initialPatient && initialService);
-  const [step, setStep] = useState<Step>(hasInitialData ? 'confirm' : 'patient');
+  const hasPrefill = Boolean(initialPatient && initialService);
+  const [step, setStep] = useState<Step>(hasPrefill ? 'confirm' : 'patient');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(initialPatient ?? null);
   const [serviceType, setServiceType] = useState<'procedure' | 'medication'>('procedure');
-  const [selectedService, setSelectedService] = useState<Procedure | Medication | null>(
-    initialService ? { code: initialService.code, name: initialService.name, category: '', requiresPA: true } : null,
-  );
+  const [selectedService, setSelectedService] = useState<Procedure | Medication | null>(initialService ?? null);
   const [processingStep, setProcessingStep] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [processingError, setProcessingError] = useState<string | null>(null);
   const [createdRequestId, setCreatedRequestId] = useState<string | null>(null);
+
+  // When initialPatient/initialService change (e.g., demo mode toggled), sync state
+  useEffect(() => {
+    if (initialPatient && initialService) {
+      setSelectedPatient(initialPatient);
+      setSelectedService(initialService);
+      setStep('confirm');
+    }
+  }, [initialPatient, initialService]);
 
   const patients = ATHENA_TEST_PATIENTS;
   const { data: procedures = [] } = useProcedures(isOpen);

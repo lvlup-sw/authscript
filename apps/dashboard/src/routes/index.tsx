@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { createFileRoute, Link, useSearch } from '@tanstack/react-router';
 import { cn } from '@/lib/utils';
 import {
   CheckCircle2,
@@ -25,6 +25,7 @@ import {
 import { usePARequests, usePAStats, useActivity, type PARequest, type ActivityItem } from '@/api/graphqlService';
 import { NewPAModal } from '@/components/NewPAModal';
 import { Skeleton, SkeletonRow, SkeletonStats } from '@/components/LoadingSpinner';
+import { DEMO_PATIENT, DEMO_SERVICE } from '@/lib/demoData';
 
 export const Route = createFileRoute('/')({
   component: DashboardPage,
@@ -445,9 +446,19 @@ function ActivityItemComponent({ item }: { item: ActivityItem }) {
 }
 
 function DashboardPage() {
+  const search = useSearch({ strict: false }) as Record<string, unknown>;
+  const quickDemo = search.quickDemo === 'true' || search.quickDemo === true;
   const [activeTab, setActiveTab] = useState('pending');
   const [isNewPAModalOpen, setIsNewPAModalOpen] = useState(false);
+  const [demoModalOpen, setDemoModalOpen] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+
+  // Auto-open modal with demo data when ?quickDemo=true is in the URL
+  useEffect(() => {
+    if (quickDemo) {
+      setDemoModalOpen(true);
+    }
+  }, [quickDemo]);
   const [analyticsTimeRange, setAnalyticsTimeRange] = useState<TimeRangePreset>('week');
   const [analyticsCustomStart, setAnalyticsCustomStart] = useState<Date>(() => {
     const d = new Date();
@@ -770,9 +781,14 @@ function DashboardPage() {
       </div>
 
       {/* New PA Modal */}
-      <NewPAModal 
-        isOpen={isNewPAModalOpen} 
-        onClose={() => setIsNewPAModalOpen(false)} 
+      <NewPAModal
+        isOpen={isNewPAModalOpen || demoModalOpen}
+        onClose={() => {
+          setIsNewPAModalOpen(false);
+          setDemoModalOpen(false);
+        }}
+        initialPatient={demoModalOpen ? DEMO_PATIENT : undefined}
+        initialService={demoModalOpen ? DEMO_SERVICE : undefined}
       />
     </div>
   );
