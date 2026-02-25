@@ -39,9 +39,9 @@ python3 scripts/fill_pdf_form.py
 ```
 
 This will:
-- Read the original PDF template from `assets/pdf-templates/co-prescription-drug-prior-authorizathion-request-form.pdf`
+- Read the original PDF template from `assets/pdf-templates/co-prescription-drug-prior-authorization-request-form.pdf`
 - Fill it with Jane Doe's information
-- Save the filled PDF to `assets/pdf-templates/co-prescription-drug-prior-authorizathion-request-form-filled-jane-doe.pdf`
+- Save the filled PDF to `assets/pdf-templates/co-prescription-drug-prior-authorization-request-form-filled-jane-doe.pdf`
 
 ## Manual Filling
 
