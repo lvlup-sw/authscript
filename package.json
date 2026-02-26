@@ -38,6 +38,7 @@
     "@tanstack/router-core": "1.131.35"
   },
   "dependencies": {
+    "lightningcss-darwin-arm64": "^1.31.1",
     "seroval": "^1.5.0"
   }
 }
