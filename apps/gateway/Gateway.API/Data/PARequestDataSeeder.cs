@@ -13,7 +13,7 @@ namespace Gateway.API.Data;
 
 /// <summary>
 /// Seeds demo prior authorization requests for development environments.
-/// Idempotent: skips seeding if any PA requests already exist.
+/// Clears all existing PA requests on startup to ensure a clean demo state.
 /// </summary>
 public sealed class PARequestDataSeeder : IDataSeeder<GatewayDbContext>
 {
@@ -36,10 +36,12 @@ public sealed class PARequestDataSeeder : IDataSeeder<GatewayDbContext>
     /// <inheritdoc />
     public async Task SeedAsync(GatewayDbContext context, CancellationToken cancellationToken)
     {
-        if (await context.PriorAuthRequests.AnyAsync(cancellationToken))
+        var existingCount = await context.PriorAuthRequests.CountAsync(cancellationToken);
+        if (existingCount > 0)
         {
-            _logger.LogInformation("PA requests already exist, skipping seed.");
-            return;
+            _logger.LogInformation("Clearing {Count} existing PA requests for clean demo state.", existingCount);
+            context.PriorAuthRequests.RemoveRange(context.PriorAuthRequests);
+            await context.SaveChangesAsync(cancellationToken);
         }
 
         var now = DateTimeOffset.UtcNow;
@@ -77,7 +79,7 @@ public sealed class PARequestDataSeeder : IDataSeeder<GatewayDbContext>
                 DiagnosisCode = "I50.32",
                 DiagnosisName = "Chronic Diastolic Heart Failure",
                 ProviderId = "DR001",
-                ProviderName = "Dr. Amanda Martinez",
+                ProviderName = "Dr. Kelli Smith",
                 ProviderNpi = "1234567890",
                 ServiceDate = now.AddDays(2).ToString("MMMM d, yyyy"),
                 PlaceOfService = "Outpatient",
@@ -200,7 +202,7 @@ public sealed class PARequestDataSeeder : IDataSeeder<GatewayDbContext>
                 DiagnosisCode = "M54.5",
                 DiagnosisName = "Low Back Pain",
                 ProviderId = "DR001",
-                ProviderName = "Dr. Amanda Martinez",
+                ProviderName = "Dr. Kelli Smith",
                 ProviderNpi = "1234567890",
                 ServiceDate = now.AddDays(3).ToString("MMMM d, yyyy"),
                 PlaceOfService = "Outpatient",

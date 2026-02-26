@@ -170,6 +170,21 @@ h1, h2, h3, h4, h5, h6 {
   animation: scaleIn 0.3s ease-out forwards;
 }
 
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-slide-in {
+  animation: fadeSlideIn 0.5s ease-out both;
+}
+
 .animate-shimmer {
   background: linear-gradient(
     90deg,

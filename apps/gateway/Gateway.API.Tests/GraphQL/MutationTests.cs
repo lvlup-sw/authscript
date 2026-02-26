@@ -70,7 +70,7 @@ public class MutationTests
         Diagnosis = "Low Back Pain",
         DiagnosisCode = "M54.5",
         Payer = "Blue Cross Blue Shield",
-        Provider = "Dr. Amanda Martinez",
+        Provider = "Dr. Kelli Smith",
         ProviderNpi = "1234567890",
         ServiceDate = "February 21, 2026",
         PlaceOfService = "Outpatient",
@@ -236,10 +236,10 @@ public class MutationTests
         // Act
         await _mutation.CreatePARequest(input, _store, _refData, CancellationToken.None);
 
-        // Assert - DR001 is "Dr. Amanda Martinez" with NPI "1234567890"
+        // Assert - DR001 is "Dr. Kelli Smith" with NPI "1234567890"
         await _store.Received(1).CreateAsync(
             Arg.Is<PARequestModel>(r =>
-                r.Provider == "Dr. Amanda Martinez" &&
+                r.Provider == "Dr. Kelli Smith" &&
                 r.ProviderNpi == "1234567890"),
             Arg.Any<string>(),
             Arg.Any<CancellationToken>());

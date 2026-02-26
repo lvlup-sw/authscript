@@ -112,7 +112,7 @@ public class ReferenceDataServiceTests
         var result = svc.FindProviderById("DR001");
 
         await Assert.That(result).IsNotNull();
-        await Assert.That(result!.Name).IsEqualTo("Dr. Amanda Martinez");
+        await Assert.That(result!.Name).IsEqualTo("Dr. Kelli Smith");
     }
 
     [Test]

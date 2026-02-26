@@ -102,3 +102,6 @@ assets/pdf-templates/*-filled*.pdf
 # Workflow state (session-specific)
 docs/workflow-state/
 .worktrees/
+
+# Claude Code
+.claude/

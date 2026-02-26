@@ -41,7 +41,7 @@ public class PARequestDataSeederTests
     }
 
     [Test]
-    public async Task SeedAsync_ExistingData_SkipsSeeding()
+    public async Task SeedAsync_ExistingData_ClearsAndReseeds()
     {
         // Arrange
         using var context = CreateDbContext();
@@ -50,13 +50,18 @@ public class PARequestDataSeederTests
 
         // Seed once
         await seeder.SeedAsync(context, CancellationToken.None);
+        var firstIds = await context.PriorAuthRequests.Select(e => e.CreatedAt).ToListAsync();
 
-        // Act — seed again
+        // Act — seed again (simulates restart)
         await seeder.SeedAsync(context, CancellationToken.None);
 
-        // Assert — still 7, not 14
+        // Assert — still 7 (cleaned and reseeded, not accumulated)
         var count = await context.PriorAuthRequests.CountAsync();
         await Assert.That(count).IsEqualTo(7);
+
+        // Assert — timestamps are fresh (proves data was replaced, not skipped)
+        var secondIds = await context.PriorAuthRequests.Select(e => e.CreatedAt).ToListAsync();
+        await Assert.That(secondIds).IsNotEquivalentTo(firstIds);
     }
 
     [Test]

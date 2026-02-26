@@ -1,12 +1,6 @@
 import { useState, useCallback } from 'react';
-import {
-  useCreatePARequest,
-  useProcessPARequest,
-  useSubmitPARequest,
-  type PARequest,
-  type PatientInput,
-} from '@/api/graphqlService';
-import { DEMO_PATIENT, DEMO_SERVICE } from '@/lib/demoData';
+import type { PARequest } from '@/api/graphqlService';
+import { DEMO_PA_RESULT } from '@/lib/demoData';
 
 export type EhrDemoState = 'idle' | 'signing' | 'processing' | 'reviewing' | 'submitting' | 'complete' | 'error';
 
@@ -19,13 +13,14 @@ export interface EhrDemoFlow {
   reset: () => void;
 }
 
-function toPatientInput(patient: typeof DEMO_PATIENT): PatientInput {
-  const { id, patientId, fhirId, name, mrn, dob, memberId, payer, address, phone } = patient;
-  return { id, patientId, fhirId, name, mrn, dob, memberId, payer, address, phone };
-}
+/** Minimum time (ms) to stay in processing state for animation realism. */
+const PROCESSING_DELAY_MS = 5_000;
 
-function toErrorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : 'Unknown error';
+/** Minimum time (ms) for the submit animation. */
+const SUBMIT_DELAY_MS = 1_500;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export function useEhrDemoFlow(): EhrDemoFlow {
@@ -33,41 +28,52 @@ export function useEhrDemoFlow(): EhrDemoFlow {
   const [paRequest, setPaRequest] = useState<PARequest | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const createPA = useCreatePARequest();
-  const processPA = useProcessPARequest();
-  const submitPA = useSubmitPARequest();
-
   const sign = useCallback(async () => {
     try {
       setState('signing');
-      const created = await createPA.mutateAsync({
-        patient: toPatientInput(DEMO_PATIENT),
-        procedureCode: DEMO_SERVICE.code,
-      });
 
+      // Brief signing phase before processing animation starts
+      await delay(800);
       setState('processing');
-      const processed = await processPA.mutateAsync(created.id);
+
+      // Simulated processing — gives the animation time to complete all steps
+      await delay(PROCESSING_DELAY_MS);
+
+      // Surface the pre-built demo result
+      const result: PARequest = {
+        ...DEMO_PA_RESULT,
+        id: `PA-DEMO-${Date.now()}`,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        readyAt: new Date().toISOString(),
+      };
 
       setState('reviewing');
-      setPaRequest(processed);
+      setPaRequest(result);
     } catch (err) {
       setState('error');
-      setError(toErrorMessage(err));
+      setError(err instanceof Error ? err.message : 'Unknown error');
     }
-  }, [createPA, processPA]);
+  }, []);
 
   const submit = useCallback(async () => {
     if (!paRequest) return;
 
     try {
       setState('submitting');
-      await submitPA.mutateAsync({ id: paRequest.id });
+      await delay(SUBMIT_DELAY_MS);
+
+      setPaRequest({
+        ...paRequest,
+        status: 'waiting_for_insurance',
+        submittedAt: new Date().toISOString(),
+      });
       setState('complete');
     } catch (err) {
       setState('error');
-      setError(toErrorMessage(err));
+      setError(err instanceof Error ? err.message : 'Unknown error');
     }
-  }, [submitPA, paRequest]);
+  }, [paRequest]);
 
   const reset = useCallback(() => {
     setState('idle');

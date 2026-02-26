@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { PAResultsPanel } from '../PAResultsPanel';
-import type { PARequest, Criterion } from '@/api/graphqlService';
+import type { PARequest } from '@/api/graphqlService';
 
 function buildMockPARequest(overrides: Partial<PARequest> = {}): PARequest {
   return {
@@ -23,7 +23,7 @@ function buildMockPARequest(overrides: Partial<PARequest> = {}): PARequest {
     diagnosis: 'Lumbar radiculopathy',
     diagnosisCode: 'M54.5',
     payer: 'United Healthcare',
-    provider: 'Dr. Sarah Chen',
+    provider: 'Dr. Kelli Smith',
     providerNpi: '1234567890',
     serviceDate: '2026-03-01',
     placeOfService: 'Outpatient',

@@ -3,16 +3,20 @@ import { createPortal } from 'react-dom';
 import { X, FileText, Printer, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LoadingSpinner } from './LoadingSpinner';
-import { generatePAPdfBlob } from '@/lib/pdfGenerator';
+import { generateFilledPAForm } from '@/lib/pdfTemplateFiller';
 import type { PARequest } from '@/api/graphqlService';
 
 interface PdfViewerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  request: PARequest | null;
+  request?: PARequest | null;
+  /** When provided, displays this URL directly instead of generating a filled PDF. */
+  staticUrl?: string;
+  /** Modal title. Defaults to "Prior Authorization Request". */
+  title?: string;
 }
 
-export function PdfViewerModal({ isOpen, onClose, request }: PdfViewerModalProps) {
+export function PdfViewerModal({ isOpen, onClose, request, staticUrl, title }: PdfViewerModalProps) {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,16 +41,29 @@ export function PdfViewerModal({ isOpen, onClose, request }: PdfViewerModalProps
   }, [onClose, reset]);
 
   useEffect(() => {
-    if (!isOpen || !request) {
+    if (!isOpen) {
       reset();
       return;
     }
+
+    // Static URL mode — display directly without generation
+    if (staticUrl) {
+      setPdfUrl(staticUrl);
+      setIsGenerating(false);
+      return;
+    }
+
+    if (!request) {
+      reset();
+      return;
+    }
+
     let cancelled = false;
     setPdfUrl(null);
     setError(null);
     setIsGenerating(true);
 
-    generatePAPdfBlob(request)
+    generateFilledPAForm(request)
       .then((blob) => {
         if (cancelled) return;
         const url = URL.createObjectURL(blob);
@@ -63,7 +80,7 @@ export function PdfViewerModal({ isOpen, onClose, request }: PdfViewerModalProps
     return () => {
       cancelled = true;
     };
-  }, [isOpen, request, reset]);
+  }, [isOpen, request, staticUrl, reset]);
 
   useEffect(() => {
     return () => {
@@ -152,7 +169,7 @@ export function PdfViewerModal({ isOpen, onClose, request }: PdfViewerModalProps
           {/* Header */}
           <div className="flex items-center justify-between p-5 border-b border-gray-200 shrink-0">
             <h2 id="pdf-modal-title" className="text-lg font-bold text-gray-900">
-              Prior Authorization Request
+              {title ?? 'Prior Authorization Request'}
             </h2>
             <button
               onClick={handleClose}

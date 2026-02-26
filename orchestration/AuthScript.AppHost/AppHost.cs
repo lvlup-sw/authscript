@@ -40,9 +40,12 @@ var postgres = builder
     .WithDataVolume("authscript-postgres-data")
     .AddDatabase("authscript");
 
+#pragma warning disable ASPIRECERTIFICATES001 // TLS disabled for local dev
 var redis = builder
     .AddRedis("redis")
-    .WithDataVolume("authscript-redis-data");
+    .WithDataVolume("authscript-redis-data")
+    .WithoutHttpsCertificate();
+#pragma warning restore ASPIRECERTIFICATES001
 
 // ---------------------------------------------------------------------------
 // Intelligence Service (Python/FastAPI in container)

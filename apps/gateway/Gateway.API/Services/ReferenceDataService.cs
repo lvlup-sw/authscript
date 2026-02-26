@@ -58,7 +58,7 @@ public sealed class ReferenceDataService
 
     public IReadOnlyList<ProviderModel> Providers { get; } =
     [
-        new ProviderModel { Id = "DR001", Name = "Dr. Amanda Martinez", Npi = "1234567890", Specialty = "Family Medicine" },
+        new ProviderModel { Id = "DR001", Name = "Dr. Kelli Smith", Npi = "1234567890", Specialty = "Family Medicine" },
         new ProviderModel { Id = "DR002", Name = "Dr. Robert Kim", Npi = "0987654321", Specialty = "Orthopedic Surgery" },
         new ProviderModel { Id = "DR003", Name = "Dr. Lisa Thompson", Npi = "1122334455", Specialty = "Neurology" },
         new ProviderModel { Id = "DR004", Name = "Dr. Sarah Mitchell", Npi = "5566778899", Specialty = "Psychiatry" },

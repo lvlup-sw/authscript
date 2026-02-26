@@ -60,7 +60,7 @@ PATIENT_DATA = {
     "prescription_date": "2026-02-20",
     
     # Prescriber Information
-    "prescriber_name": "Dr. Sarah Chen, MD",
+    "prescriber_name": "Dr. Kelli Smith",
     "prescriber_fax": "(303) 555-0198",
     "prescriber_phone": "(303) 555-0197",
     "prescriber_pager": "",
