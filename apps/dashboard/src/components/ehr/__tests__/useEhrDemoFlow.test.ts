@@ -127,6 +127,134 @@ describe('useEhrDemoFlow', () => {
     expect(result.current.error).toBeNull();
   });
 
+  it('useEhrDemoFlow_Flag_TransitionsToFlagged', async () => {
+    const useEhrDemoFlow = await importHook();
+    const { result } = renderHook(() => useEhrDemoFlow());
+
+    expect(result.current.state).toBe('idle');
+
+    let flagPromise: Promise<void>;
+    act(() => {
+      flagPromise = result.current.flag();
+    });
+
+    // Still idle during delay
+    expect(result.current.state).toBe('idle');
+
+    // After 1500ms → flagged
+    await act(async () => {
+      vi.advanceTimersByTime(1500);
+    });
+
+    await act(async () => {
+      await flagPromise!;
+    });
+
+    expect(result.current.state).toBe('flagged');
+    expect(result.current.preCheckCriteria).not.toBeNull();
+  });
+
+  it('useEhrDemoFlow_Flagged_HasPreCheckCriteria', async () => {
+    const useEhrDemoFlow = await importHook();
+    const { result } = renderHook(() => useEhrDemoFlow());
+
+    let flagPromise: Promise<void>;
+    act(() => {
+      flagPromise = result.current.flag();
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(1500);
+    });
+
+    await act(async () => {
+      await flagPromise!;
+    });
+
+    expect(result.current.state).toBe('flagged');
+    const criteria = result.current.preCheckCriteria!;
+    expect(criteria).toHaveLength(5);
+    expect(criteria.filter((c) => c.status === 'met')).toHaveLength(3);
+    expect(criteria.filter((c) => c.status === 'indeterminate')).toHaveLength(2);
+  });
+
+  it('useEhrDemoFlow_Flagged_Sign_TransitionsToSigning', async () => {
+    const useEhrDemoFlow = await importHook();
+    const { result } = renderHook(() => useEhrDemoFlow());
+
+    // Get to flagged state
+    let flagPromise: Promise<void>;
+    act(() => {
+      flagPromise = result.current.flag();
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(1500);
+    });
+
+    await act(async () => {
+      await flagPromise!;
+    });
+
+    expect(result.current.state).toBe('flagged');
+
+    // Now sign from flagged state
+    let signPromise: Promise<void>;
+    act(() => {
+      signPromise = result.current.sign();
+    });
+
+    expect(result.current.state).toBe('signing');
+
+    // 800ms → processing
+    await act(async () => {
+      vi.advanceTimersByTime(800);
+    });
+    expect(result.current.state).toBe('processing');
+
+    // 5000ms → reviewing
+    await act(async () => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    await act(async () => {
+      await signPromise!;
+    });
+
+    expect(result.current.state).toBe('reviewing');
+    expect(result.current.paRequest).not.toBeNull();
+  });
+
+  it('useEhrDemoFlow_Reset_ClearsPreCheckCriteria', async () => {
+    const useEhrDemoFlow = await importHook();
+    const { result } = renderHook(() => useEhrDemoFlow());
+
+    // Get to flagged state
+    let flagPromise: Promise<void>;
+    act(() => {
+      flagPromise = result.current.flag();
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(1500);
+    });
+
+    await act(async () => {
+      await flagPromise!;
+    });
+
+    expect(result.current.state).toBe('flagged');
+    expect(result.current.preCheckCriteria).not.toBeNull();
+
+    // Reset
+    act(() => {
+      result.current.reset();
+    });
+
+    expect(result.current.state).toBe('idle');
+    expect(result.current.preCheckCriteria).toBeNull();
+  });
+
   it('useEhrDemoFlow_DemoResult_HasAllFiveCriteria', async () => {
     const useEhrDemoFlow = await importHook();
     const { result } = renderHook(() => useEhrDemoFlow());

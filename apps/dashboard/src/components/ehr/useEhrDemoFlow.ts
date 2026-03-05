@@ -1,13 +1,16 @@
 import { useState, useCallback } from 'react';
 import type { PARequest } from '@/api/graphqlService';
-import { DEMO_PA_RESULT } from '@/lib/demoData';
+import { DEMO_PA_RESULT, DEMO_PRECHECK_CRITERIA } from '@/lib/demoData';
+import type { PreCheckCriterion } from '@/lib/demoData';
 
-export type EhrDemoState = 'idle' | 'signing' | 'processing' | 'reviewing' | 'submitting' | 'complete' | 'error';
+export type EhrDemoState = 'idle' | 'flagged' | 'signing' | 'processing' | 'reviewing' | 'submitting' | 'complete' | 'error';
 
 export interface EhrDemoFlow {
   state: EhrDemoState;
   paRequest: PARequest | null;
+  preCheckCriteria: PreCheckCriterion[] | null;
   error: string | null;
+  flag: () => Promise<void>;
   sign: () => Promise<void>;
   submit: () => Promise<void>;
   reset: () => void;
@@ -26,7 +29,15 @@ function delay(ms: number): Promise<void> {
 export function useEhrDemoFlow(): EhrDemoFlow {
   const [state, setState] = useState<EhrDemoState>('idle');
   const [paRequest, setPaRequest] = useState<PARequest | null>(null);
+  const [preCheckCriteria, setPreCheckCriteria] = useState<PreCheckCriterion[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const flag = useCallback(async () => {
+    if (state !== 'idle') return;
+    await delay(1500);
+    setState('flagged');
+    setPreCheckCriteria(DEMO_PRECHECK_CRITERIA);
+  }, [state]);
 
   const sign = useCallback(async () => {
     try {
@@ -78,8 +89,9 @@ export function useEhrDemoFlow(): EhrDemoFlow {
   const reset = useCallback(() => {
     setState('idle');
     setPaRequest(null);
+    setPreCheckCriteria(null);
     setError(null);
   }, []);
 
-  return { state, paRequest, error, sign, submit, reset };
+  return { state, paRequest, preCheckCriteria, error, flag, sign, submit, reset };
 }

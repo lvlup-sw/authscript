@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import type { EhrDemoState } from './useEhrDemoFlow';
 import type { PARequest, Criterion } from '@/api/graphqlService';
+import { EvidenceTag } from './EvidenceTag';
+import { DEMO_PA_RESULT_SOURCES } from '@/lib/demoData';
 
 export interface PAResultsPanelProps {
   state: EhrDemoState;
@@ -146,21 +148,32 @@ function ReviewingView({
 
       {/* Criteria list */}
       <ul className="divide-y divide-slate-100">
-        {paRequest.criteria.map((criterion) => (
-          <li key={criterion.label}>
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 py-2 text-left text-sm hover:bg-slate-50 rounded px-1"
-              onClick={() => onCriterionClick?.(criterion)}
-            >
-              <CriterionStatusIcon met={criterion.met} />
-              <span className="flex-1">{criterion.label}</span>
-              {criterion.reason && (
-                <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />
-              )}
-            </button>
-          </li>
-        ))}
+        {paRequest.criteria.map((criterion) => {
+          const sourceData = DEMO_PA_RESULT_SOURCES[criterion.label];
+          return (
+            <li key={criterion.label}>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 py-2 text-left text-sm hover:bg-slate-50 rounded px-1"
+                onClick={() => onCriterionClick?.(criterion)}
+              >
+                <CriterionStatusIcon met={criterion.met} />
+                <div className="flex-1">
+                  <span>{criterion.label}</span>
+                  {sourceData && (
+                    <div className="mt-0.5 flex items-center gap-2">
+                      <span className="text-sm italic text-slate-500">{sourceData.evidence}</span>
+                      <EvidenceTag source={sourceData.source} />
+                    </div>
+                  )}
+                </div>
+                {criterion.reason && (
+                  <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />
+                )}
+              </button>
+            </li>
+          );
+        })}
       </ul>
 
       {/* Clinical summary */}
