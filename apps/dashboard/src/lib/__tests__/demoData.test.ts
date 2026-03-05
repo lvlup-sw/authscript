@@ -8,6 +8,8 @@ import {
   DEMO_ORDERS,
   DEMO_ENCOUNTER_META,
   DEMO_PA_RESULT,
+  DEMO_PRECHECK_CRITERIA,
+  DEMO_PA_RESULT_SOURCES,
   LCD_L34220_POLICY,
 } from '../demoData';
 
@@ -60,6 +62,44 @@ describe('demoData', () => {
     expect(DEMO_PA_RESULT.provider).toBe('Dr. Kelli Smith');
     expect(DEMO_PA_RESULT.procedureCode).toBe('72148');
     expect(DEMO_PA_RESULT.status).toBe('ready');
+  });
+
+  it('DEMO_PRECHECK_CRITERIA_HasFiveItems', () => {
+    expect(DEMO_PRECHECK_CRITERIA).toHaveLength(5);
+  });
+
+  it('DEMO_PRECHECK_CRITERIA_ThreeMetWithEvidenceAndSource', () => {
+    const met = DEMO_PRECHECK_CRITERIA.filter((c) => c.status === 'met');
+    expect(met).toHaveLength(3);
+    met.forEach((c) => {
+      expect(c.evidence).toBeTruthy();
+      expect(c.source).toBeTruthy();
+    });
+  });
+
+  it('DEMO_PRECHECK_CRITERIA_TwoIndeterminateWithGap', () => {
+    const indeterminate = DEMO_PRECHECK_CRITERIA.filter((c) => c.status === 'indeterminate');
+    expect(indeterminate).toHaveLength(2);
+    indeterminate.forEach((c) => {
+      expect(c.gap).toBeTruthy();
+    });
+  });
+
+  it('DEMO_PRECHECK_CRITERIA_LabelsMatchLCDPolicy', () => {
+    const policyLabels = LCD_L34220_POLICY.criteria.map((c) => c.label);
+    DEMO_PRECHECK_CRITERIA.forEach((c) => {
+      // Each pre-check label should correspond to a policy criterion
+      expect(policyLabels.some((pl) => pl.includes(c.label.substring(0, 10)))).toBe(true);
+    });
+  });
+
+  it('DEMO_PA_RESULT_SOURCES_HasEntryForEachCriterion', () => {
+    DEMO_PA_RESULT.criteria.forEach((c) => {
+      const source = DEMO_PA_RESULT_SOURCES[c.label];
+      expect(source).toBeDefined();
+      expect(source.evidence).toBeTruthy();
+      expect(source.source).toBeTruthy();
+    });
   });
 
   it('LCD_L34220_POLICY_HasFiveCriteriaWithRequirements', () => {

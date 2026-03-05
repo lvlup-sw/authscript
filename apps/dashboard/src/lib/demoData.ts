@@ -63,6 +63,81 @@ export const DEMO_ORDERS = [
 ];
 
 /**
+ * Pre-check criterion — used by the PAReadinessWidget before encounter signing.
+ */
+export interface PreCheckCriterion {
+  label: string;
+  status: 'met' | 'not-met' | 'indeterminate';
+  evidence?: string;
+  gap?: string;
+  source?: string;
+}
+
+/**
+ * Pre-check criteria for LCD L34220 evaluated against the patient chart
+ * BEFORE the encounter is signed. 3/5 met from existing chart data,
+ * 2/5 indeterminate until encounter note is complete.
+ */
+export const DEMO_PRECHECK_CRITERIA: PreCheckCriterion[] = [
+  {
+    label: 'Valid ICD-10 for lumbar pathology',
+    status: 'met',
+    evidence: 'M54.5 (low back pain) on active problem list',
+    source: 'Problem List',
+  },
+  {
+    label: 'Red flag symptoms or progressive neuro deficit',
+    status: 'indeterminate',
+    gap: 'Requires encounter documentation — sign encounter to evaluate',
+  },
+  {
+    label: '4+ weeks conservative management',
+    status: 'met',
+    evidence: 'PT referral 01/10/2026, Naproxen 500mg prescribed 01/15/2026',
+    source: 'Orders / Medications',
+  },
+  {
+    label: 'Clinical rationale documented',
+    status: 'indeterminate',
+    gap: 'Requires encounter documentation — sign encounter to evaluate',
+  },
+  {
+    label: 'No recent duplicative imaging',
+    status: 'met',
+    evidence: 'No prior CT or MRI of lumbar spine in record',
+    source: 'Imaging History',
+  },
+];
+
+/**
+ * Source/evidence mapping for the post-sign PA result criteria.
+ * Keyed by criterion label, provides extracted evidence and chart source
+ * for the evidence trail display in PAResultsPanel.
+ */
+export const DEMO_PA_RESULT_SOURCES: Record<string, { evidence: string; source: string }> = {
+  'Valid ICD-10 for lumbar pathology': {
+    evidence: 'M54.5, M54.51 — low back pain, lumbar radiculopathy left',
+    source: 'Assessment',
+  },
+  'Cauda equina, tumor, infection, major neuro deficit': {
+    evidence: 'Progressive numbness in left foot over past 3 weeks',
+    source: 'HPI',
+  },
+  '4+ weeks conservative management documented': {
+    evidence: '8 weeks PT (2x/week), naproxen 500mg BID x 6 weeks',
+    source: 'HPI',
+  },
+  'Supporting clinical rationale documented': {
+    evidence: 'Persistent radiculopathy with progressive neuro symptoms despite conservative therapy',
+    source: 'Assessment / Plan',
+  },
+  'No recent duplicative CT/MRI': {
+    evidence: 'No prior lumbar CT or MRI in patient record',
+    source: 'Imaging History',
+  },
+};
+
+/**
  * LCD L34220 policy requirements for MRI Lumbar Spine (CPT 72148).
  * Shown in the pre-sign policy criteria modal so providers can review
  * what documentation is needed before signing.
