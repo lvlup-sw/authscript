@@ -57,6 +57,19 @@ describe('EncounterSidebar', () => {
     expect(analyzingContainer).toHaveAttribute('data-completed', 'true');
   });
 
+  it('EncounterSidebar_Flagged_ShowsPolicyCheckIndicator', () => {
+    render(<EncounterSidebar flowState="flagged" preCheckCount={{ met: 3, total: 5 }} />);
+    expect(screen.getByText('Policy Check')).toBeInTheDocument();
+    expect(screen.getByText(/3\/5/)).toBeInTheDocument();
+  });
+
+  it('EncounterSidebar_Flagged_NoPAStages', () => {
+    render(<EncounterSidebar flowState="flagged" preCheckCount={{ met: 3, total: 5 }} />);
+    expect(screen.queryByText('Analyzing')).not.toBeInTheDocument();
+    expect(screen.queryByText('Submit')).not.toBeInTheDocument();
+    expect(screen.queryByText('Complete')).not.toBeInTheDocument();
+  });
+
   it('EncounterSidebar_Complete_AllPAStagesCompleted', () => {
     render(<EncounterSidebar signed={true} flowState="complete" />);
     const completeContainer = screen.getByText('Complete').closest('[data-stage]');

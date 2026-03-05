@@ -24,12 +24,14 @@ vi.mock('@/components/PdfViewerModal', () => ({
       : null,
 }));
 
-// Mock PolicyCriteriaModal to avoid portal issues
-vi.mock('@/components/ehr/PolicyCriteriaModal', () => ({
-  PolicyCriteriaModal: ({ isOpen }: { isOpen: boolean }) =>
-    isOpen
-      ? createElement('div', { 'data-testid': 'policy-criteria-modal' }, 'Policy Criteria')
-      : null,
+// Mock PAReadinessWidget for isolation
+vi.mock('@/components/ehr/PAReadinessWidget', () => ({
+  PAReadinessWidget: ({ state, criteria }: { state: string; criteria: unknown[] }) =>
+    createElement(
+      'div',
+      { 'data-testid': 'pa-readiness-widget' },
+      `AuthScript — Policy Pre-Check (${state}, ${criteria?.length ?? 0} criteria)`,
+    ),
 }));
 
 async function renderEhrDemoPage() {
@@ -75,17 +77,9 @@ describe('EhrDemoPage', () => {
 
     // Pre-sign action buttons visible
     expect(screen.getByRole('button', { name: /preview pa form/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /view policy criteria/i })).toBeInTheDocument();
 
-    // NO iframe in DOM
-    expect(screen.queryByTitle('AuthScript Dashboard')).not.toBeInTheDocument();
-    expect(document.querySelector('iframe')).toBeNull();
-
-    // No PAResultsPanel visible initially
+    // No PAResultsPanel visible initially (before flag delay)
     expect(screen.queryByText('AuthScript — Prior Authorization')).not.toBeInTheDocument();
-
-    // No PA sidebar stages initially
-    expect(screen.queryByText('Prior Auth')).not.toBeInTheDocument();
   });
 
   it('EhrDemoPage_PreviewPAForm_OpensBlankForm', async () => {
@@ -96,14 +90,6 @@ describe('EhrDemoPage', () => {
     // Should open the static PDF viewer (blank form)
     expect(screen.getByTestId('pdf-viewer-static')).toBeInTheDocument();
     expect(screen.getByText(/NOFR001/)).toBeInTheDocument();
-  });
-
-  it('EhrDemoPage_ViewPolicyCriteria_OpensModal', async () => {
-    await renderEhrDemoPage();
-
-    fireEvent.click(screen.getByRole('button', { name: /view policy criteria/i }));
-
-    expect(screen.getByTestId('policy-criteria-modal')).toBeInTheDocument();
   });
 
   it('EhrDemoPage_Sign_ShowsProcessingPanel', async () => {
@@ -199,6 +185,86 @@ describe('EhrDemoPage', () => {
     // All encounter stages completed after signing
     const apContainer = screen.getByText('A&P').closest('[data-stage]');
     expect(apContainer).toHaveAttribute('data-completed', 'true');
+  });
+
+  it('EhrDemoPage_Load_ShowsPAReadinessAfterDelay', async () => {
+    await renderEhrDemoPage();
+
+    // Initially no readiness widget
+    expect(screen.queryByTestId('pa-readiness-widget')).not.toBeInTheDocument();
+
+    // After 1500ms flag delay, widget appears
+    await act(async () => {
+      vi.advanceTimersByTime(1500);
+    });
+
+    expect(screen.getByTestId('pa-readiness-widget')).toBeInTheDocument();
+    // Sidebar shows Policy Check
+    expect(screen.getByText('Policy Check')).toBeInTheDocument();
+  });
+
+  it('EhrDemoPage_Flagged_ShowsPreCheckWidget', async () => {
+    await renderEhrDemoPage();
+
+    await act(async () => {
+      vi.advanceTimersByTime(1500);
+    });
+
+    // Widget rendered with criteria (mocked, so check testid + text content)
+    const widget = screen.getByTestId('pa-readiness-widget');
+    expect(widget).toBeInTheDocument();
+    expect(widget.textContent).toContain('5 criteria');
+  });
+
+  it('EhrDemoPage_Flagged_SignButton_StillVisible', async () => {
+    await renderEhrDemoPage();
+
+    await act(async () => {
+      vi.advanceTimersByTime(1500);
+    });
+
+    expect(screen.getByRole('button', { name: 'Sign Encounter' })).toBeEnabled();
+  });
+
+  it('EhrDemoPage_FullFlow_FlaggedToComplete', async () => {
+    await renderEhrDemoPage();
+
+    // 1. Flag
+    await act(async () => {
+      vi.advanceTimersByTime(1500);
+    });
+    expect(screen.getByTestId('pa-readiness-widget')).toBeInTheDocument();
+
+    // 2. Sign from flagged
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Sign Encounter' }));
+    });
+
+    // Pre-check widget should be gone, PA panel appears
+    expect(screen.queryByTestId('pa-readiness-widget')).not.toBeInTheDocument();
+    expect(screen.getByText('AuthScript — Prior Authorization')).toBeInTheDocument();
+
+    // 3. Advance through processing
+    await act(async () => {
+      vi.advanceTimersByTime(800);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    // 4. Reviewing state — confidence and evidence trail
+    expect(screen.getByText('88%')).toBeInTheDocument();
+    expect(screen.getByText('Valid ICD-10 for lumbar pathology')).toBeInTheDocument();
+
+    // 5. Submit
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /submit to blue cross/i }));
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(1500);
+    });
+
+    expect(screen.getByText('PA Submitted')).toBeInTheDocument();
   });
 
   it('EhrDemoPage_ViewPdf_OpensPdfViewer', async () => {

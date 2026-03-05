@@ -10,6 +10,7 @@ interface EncounterSidebarProps {
   activeStage?: StageName;
   signed?: boolean;
   flowState?: EhrDemoState;
+  preCheckCount?: { met: number; total: number };
 }
 
 type StageState = 'completed' | 'active' | 'pending';
@@ -116,10 +117,12 @@ export function EncounterSidebar({
   activeStage = 'A&P',
   signed = false,
   flowState = 'idle',
+  preCheckCount,
 }: EncounterSidebarProps) {
   // When signed, all encounter stages are completed (activeIndex past last stage)
   const activeIndex = signed ? ENCOUNTER_STAGES.length : ENCOUNTER_STAGES.indexOf(activeStage);
-  const showPA = flowState !== 'idle' && flowState !== 'error';
+  const isFlagged = flowState === 'flagged';
+  const showPAStages = flowState !== 'idle' && flowState !== 'error' && flowState !== 'flagged';
   const paActiveIndex = getPAActiveIndex(flowState);
 
   return (
@@ -134,7 +137,20 @@ export function EncounterSidebar({
         />
       </nav>
 
-      {showPA && (
+      {isFlagged && preCheckCount && (
+        <>
+          <div className="my-4 border-t border-gray-200" />
+          <h2 className="mb-4 px-4 text-xs font-semibold uppercase tracking-wider text-amber-600">
+            Policy Check
+          </h2>
+          <div className="flex items-center gap-2 px-4 py-1 text-sm text-amber-700">
+            <span className="h-2 w-2 rounded-full bg-amber-500" />
+            {preCheckCount.met}/{preCheckCount.total} documented
+          </div>
+        </>
+      )}
+
+      {showPAStages && (
         <>
           <div className="my-4 border-t border-gray-200" />
           <h2 className="mb-4 px-4 text-xs font-semibold uppercase tracking-wider text-blue-600">
