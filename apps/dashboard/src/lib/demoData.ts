@@ -86,7 +86,7 @@ export const DEMO_PRECHECK_CRITERIA: PreCheckCriterion[] = [
     source: 'Problem List',
   },
   {
-    label: 'Red flag symptoms or progressive neuro deficit',
+    label: 'Red flag symptoms or progressive neurological deficit',
     status: 'indeterminate',
     gap: 'Requires encounter documentation — sign encounter to evaluate',
   },

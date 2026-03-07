@@ -86,10 +86,9 @@ describe('demoData', () => {
   });
 
   it('DEMO_PRECHECK_CRITERIA_LabelsMatchLCDPolicy', () => {
-    const policyLabels = LCD_L34220_POLICY.criteria.map((c) => c.label);
+    const policyLabels = new Set(LCD_L34220_POLICY.criteria.map((c) => c.label));
     DEMO_PRECHECK_CRITERIA.forEach((c) => {
-      // Each pre-check label should correspond to a policy criterion
-      expect(policyLabels.some((pl) => pl.includes(c.label.substring(0, 10)))).toBe(true);
+      expect(policyLabels.has(c.label)).toBe(true);
     });
   });
 

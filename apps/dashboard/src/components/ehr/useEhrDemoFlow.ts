@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type { PARequest } from '@/api/graphqlService';
 import { DEMO_PA_RESULT, DEMO_PRECHECK_CRITERIA } from '@/lib/demoData';
 import type { PreCheckCriterion } from '@/lib/demoData';
@@ -31,10 +31,13 @@ export function useEhrDemoFlow(): EhrDemoFlow {
   const [paRequest, setPaRequest] = useState<PARequest | null>(null);
   const [preCheckCriteria, setPreCheckCriteria] = useState<PreCheckCriterion[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const cancelledRef = useRef(false);
 
   const flag = useCallback(async () => {
     if (state !== 'idle') return;
+    cancelledRef.current = false;
     await delay(1500);
+    if (cancelledRef.current) return;
     setState('flagged');
     setPreCheckCriteria(DEMO_PRECHECK_CRITERIA);
   }, [state]);
@@ -87,6 +90,7 @@ export function useEhrDemoFlow(): EhrDemoFlow {
   }, [paRequest]);
 
   const reset = useCallback(() => {
+    cancelledRef.current = true;
     setState('idle');
     setPaRequest(null);
     setPreCheckCriteria(null);
