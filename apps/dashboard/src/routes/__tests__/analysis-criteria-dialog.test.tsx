@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { CriteriaReasonDialog } from '../analysis.$transactionId';
 
 // Mock createPortal so the dialog renders inline instead of into document.body

@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { PAResultsPanel } from '../PAResultsPanel';
 import type { PARequest } from '@/api/graphqlService';
-import { DEMO_PA_RESULT, DEMO_PA_RESULT_SOURCES } from '@/lib/demoData';
+import { DEMO_PA_RESULT } from '@/lib/demoData';
 
 function buildMockPARequest(overrides: Partial<PARequest> = {}): PARequest {
   return {

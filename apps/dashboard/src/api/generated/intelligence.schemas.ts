@@ -45,6 +45,8 @@ export const EvidenceItemStatus = {
 export interface EvidenceItem {
   /** ID of the policy criterion */
   criterion_id: string;
+  /** Human-readable criterion label */
+  criterion_label?: string;
   /** Criterion status */
   status: EvidenceItemStatus;
   /** Extracted evidence text */
@@ -82,6 +84,16 @@ export const PAFormResponseRecommendation = {
 export type PAFormResponseFieldMappings = {[key: string]: string};
 
 /**
+ * Policy identifier
+ */
+export type PAFormResponsePolicyId = string | null;
+
+/**
+ * LCD article reference
+ */
+export type PAFormResponseLcdReference = string | null;
+
+/**
  * Complete PA form response from analysis.
  */
 export interface PAFormResponse {
@@ -109,6 +121,10 @@ export interface PAFormResponse {
   confidence_score: number;
   /** PDF field name to value mappings */
   field_mappings: PAFormResponseFieldMappings;
+  /** Policy identifier */
+  policy_id?: PAFormResponsePolicyId;
+  /** LCD article reference */
+  lcd_reference?: PAFormResponseLcdReference;
 }
 
 export type ValidationErrorLocItem = string | number;
@@ -118,6 +134,13 @@ export interface ValidationError {
   msg: string;
   type: string;
 }
+
+export type AnalyzeAnalyzePostParams = {
+/**
+ * Return canned demo response for supported procedures
+ */
+demo?: boolean;
+};
 
 export type AnalyzeWithDocumentsAnalyzeWithDocumentsPostParams = {
 patient_id: string;
