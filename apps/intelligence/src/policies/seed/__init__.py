@@ -1,4 +1,5 @@
 """Seed policy loader."""
+from src.policies.registry import PolicyRegistry
 from src.policies.seed.echocardiogram import POLICY as ECHOCARDIOGRAM
 from src.policies.seed.epidural_steroid import POLICY as EPIDURAL_STEROID
 from src.policies.seed.mri_brain import POLICY as MRI_BRAIN
@@ -9,6 +10,6 @@ from src.policies.seed.tka import POLICY as TKA
 ALL_SEED_POLICIES = [MRI_LUMBAR, MRI_BRAIN, TKA, PHYSICAL_THERAPY, EPIDURAL_STEROID, ECHOCARDIOGRAM]
 
 
-def register_all_seeds(registry) -> None:
+def register_all_seeds(registry: PolicyRegistry) -> None:
     for policy in ALL_SEED_POLICIES:
         registry.register(policy)

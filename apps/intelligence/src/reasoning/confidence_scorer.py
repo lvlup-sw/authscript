@@ -79,6 +79,7 @@ def calculate_confidence(
     final_score = max(SCORE_FLOOR, min(1.0, raw_score))
 
     # Recommendation from score
+    recommendation: Literal["APPROVE", "MANUAL_REVIEW", "NEED_INFO"]
     if final_score >= 0.80:
         recommendation = "APPROVE"
     elif final_score >= 0.50:

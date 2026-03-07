@@ -5,6 +5,7 @@ Uses LLM-powered reasoning to extract evidence and generate PA form responses.
 
 import asyncio
 import json
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -23,14 +24,15 @@ router = APIRouter()
 _DEMO_PROCEDURE_CODE = "72148"
 
 
+@lru_cache(maxsize=1)
 def _load_demo_response() -> PAFormResponse:
     """Load and cache the canned demo response for MRI Lumbar Spine."""
-    if not hasattr(_load_demo_response, "_cached"):
-        fixture_path = Path(__file__).parent.parent / "fixtures" / "demo_mri_lumbar.json"
-        with open(fixture_path) as f:
-            data = json.load(f)
-        _load_demo_response._cached = PAFormResponse(**data)
-    return _load_demo_response._cached
+    fixture_path = (
+        Path(__file__).parent.parent / "fixtures" / "demo_mri_lumbar.json"
+    )
+    with open(fixture_path) as f:
+        data = json.load(f)
+    return PAFormResponse(**data)
 
 
 class AnalyzeRequest(BaseModel):

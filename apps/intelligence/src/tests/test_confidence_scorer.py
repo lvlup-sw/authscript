@@ -1,9 +1,13 @@
 """Tests for weighted LCD compliance confidence scorer."""
+from typing import Literal
+
 import pytest
 
 from src.models.pa_form import EvidenceItem
 from src.models.policy import PolicyCriterion, PolicyDefinition
 from src.reasoning.confidence_scorer import calculate_confidence
+
+EvidenceStatus = Literal["MET", "NOT_MET", "UNCLEAR"]
 
 
 def _make_criterion(
@@ -22,7 +26,7 @@ def _make_criterion(
 
 def _make_evidence(
     criterion_id: str,
-    status: str,
+    status: EvidenceStatus,
     confidence: float = 0.9,
 ) -> EvidenceItem:
     return EvidenceItem(
