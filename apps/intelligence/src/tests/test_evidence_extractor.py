@@ -7,6 +7,7 @@ import pytest
 
 from src.models.clinical_bundle import ClinicalBundle, Condition, PatientInfo
 from src.models.pa_form import EvidenceItem
+from src.models.policy import PolicyCriterion, PolicyDefinition
 from src.reasoning.evidence_extractor import evaluate_criterion, extract_evidence
 
 
@@ -233,8 +234,6 @@ def test_get_llm_semaphore_returns_singleton():
 
 
 # --- T006: Evidence extractor enhancement tests ---
-
-from src.models.policy import PolicyCriterion, PolicyDefinition
 
 
 def _make_policy_def() -> PolicyDefinition:

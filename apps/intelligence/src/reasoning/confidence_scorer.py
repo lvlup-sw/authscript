@@ -6,7 +6,6 @@ from typing import Literal
 from src.models.pa_form import EvidenceItem
 from src.models.policy import PolicyDefinition
 
-
 STATUS_SCORES = {"MET": 1.0, "UNCLEAR": 0.5, "NOT_MET": 0.0}
 
 SCORE_FLOOR = 0.05

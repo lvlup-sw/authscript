@@ -1,5 +1,4 @@
 """Tests for policy data models."""
-import pytest
 from src.models.policy import PolicyCriterion, PolicyDefinition
 
 

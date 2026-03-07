@@ -44,7 +44,10 @@ class AnalyzeRequest(BaseModel):
 @router.post("", response_model=PAFormResponse)
 async def analyze(
     request: AnalyzeRequest,
-    demo: bool = Query(default=False, description="Return canned demo response for supported procedures"),
+    demo: bool = Query(
+        default=False,
+        description="Return canned demo response for supported procedures",
+    ),
 ) -> PAFormResponse:
     """
     Analyze clinical data and generate PA form response.

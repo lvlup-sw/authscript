@@ -1,5 +1,4 @@
 """Tests for PAFormResponse model update."""
-import pytest
 from src.models.pa_form import PAFormResponse
 
 
