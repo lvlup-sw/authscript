@@ -57,8 +57,8 @@ describe('demoData', () => {
     expect(DEMO_PA_RESULT.criteria.every((c) => c.met === true)).toBe(true);
   });
 
-  it('DEMO_PA_RESULT_Has88PercentConfidence', () => {
-    expect(DEMO_PA_RESULT.confidence).toBe(88);
+  it('DEMO_PA_RESULT_Has93PercentConfidence', () => {
+    expect(DEMO_PA_RESULT.confidence).toBe(93);
     expect(DEMO_PA_RESULT.provider).toBe('Dr. Kelli Smith');
     expect(DEMO_PA_RESULT.procedureCode).toBe('72148');
     expect(DEMO_PA_RESULT.status).toBe('ready');
@@ -88,6 +88,13 @@ describe('demoData', () => {
   it('DEMO_PRECHECK_CRITERIA_LabelsMatchLCDPolicy', () => {
     const policyLabels = new Set(LCD_L34220_POLICY.criteria.map((c) => c.label));
     DEMO_PRECHECK_CRITERIA.forEach((c) => {
+      expect(policyLabels.has(c.label)).toBe(true);
+    });
+  });
+
+  it('DEMO_PA_RESULT_CriteriaLabelsMatchLCDPolicy', () => {
+    const policyLabels = new Set(LCD_L34220_POLICY.criteria.map((c) => c.label));
+    DEMO_PA_RESULT.criteria.forEach((c) => {
       expect(policyLabels.has(c.label)).toBe(true);
     });
   });

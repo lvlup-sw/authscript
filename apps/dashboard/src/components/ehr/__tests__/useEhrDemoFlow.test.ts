@@ -76,7 +76,7 @@ describe('useEhrDemoFlow', () => {
 
     expect(result.current.state).toBe('reviewing');
     expect(result.current.paRequest).not.toBeNull();
-    expect(result.current.paRequest!.confidence).toBe(88);
+    expect(result.current.paRequest!.confidence).toBe(93);
     expect(result.current.paRequest!.criteria).toHaveLength(5);
     expect(result.current.paRequest!.provider).toBe('Dr. Kelli Smith');
   });
@@ -268,7 +268,7 @@ describe('useEhrDemoFlow', () => {
     // Verify LCD L34220 criterion labels
     const labels = criteria.map((c) => c.label);
     expect(labels).toContain('Valid ICD-10 for lumbar pathology');
-    expect(labels).toContain('4+ weeks conservative management documented');
-    expect(labels).toContain('No recent duplicative CT/MRI');
+    expect(labels).toContain('4+ weeks conservative management');
+    expect(labels).toContain('No recent duplicative imaging');
   });
 });

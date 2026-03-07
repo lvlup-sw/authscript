@@ -119,19 +119,19 @@ export const DEMO_PA_RESULT_SOURCES: Record<string, { evidence: string; source: 
     evidence: 'M54.5, M54.51 — low back pain, lumbar radiculopathy left',
     source: 'Assessment',
   },
-  'Cauda equina, tumor, infection, major neuro deficit': {
+  'Red flag symptoms or progressive neurological deficit': {
     evidence: 'Progressive numbness in left foot over past 3 weeks',
     source: 'HPI',
   },
-  '4+ weeks conservative management documented': {
+  '4+ weeks conservative management': {
     evidence: '8 weeks PT (2x/week), naproxen 500mg BID x 6 weeks',
     source: 'HPI',
   },
-  'Supporting clinical rationale documented': {
+  'Clinical rationale documented': {
     evidence: 'Persistent radiculopathy with progressive neuro symptoms despite conservative therapy',
     source: 'Assessment / Plan',
   },
-  'No recent duplicative CT/MRI': {
+  'No recent duplicative imaging': {
     evidence: 'No prior lumbar CT or MRI in patient record',
     source: 'Imaging History',
   },
@@ -180,7 +180,7 @@ export const LCD_L34220_POLICY = {
 /**
  * Pre-built PA result for the EHR demo flow.
  * Matches the Intelligence fixture (demo_mri_lumbar.json) with all 5 LCD L34220
- * criteria MET and 88% confidence. Used instead of the real pipeline which
+ * criteria MET and 93% confidence (per scoring algorithm). Used instead of the real pipeline which
  * queries sparse Athena sandbox data.
  */
 export const DEMO_PA_RESULT: PARequest = {
@@ -213,7 +213,7 @@ export const DEMO_PA_RESULT: PARequest = {
     'MRI lumbar spine w/o contrast medically necessary per LCD L34220 to evaluate disc herniation/stenosis. ' +
     'All LCD criteria met. Policy: lcd-mri-lumbar-L34220.',
   status: 'ready',
-  confidence: 88,
+  confidence: 93,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   readyAt: new Date().toISOString(),
@@ -228,25 +228,25 @@ export const DEMO_PA_RESULT: PARequest = {
     },
     {
       met: true,
-      label: 'Cauda equina, tumor, infection, major neuro deficit',
+      label: 'Red flag symptoms or progressive neurological deficit',
       reason:
         'Progressive neurological deficit identified: numbness in left foot worsening over 3 weeks, consistent with L5-S1 nerve root compression. This constitutes an immediate MRI indication per LCD L34220.',
     },
     {
       met: true,
-      label: '4+ weeks conservative management documented',
+      label: '4+ weeks conservative management',
       reason:
         'Physical therapy (2x/week for 8 weeks) and NSAIDs (naproxen 500mg BID for 6 weeks) documented with no improvement. Exceeds the 4-week minimum required by LCD L34220.',
     },
     {
       met: true,
-      label: 'Supporting clinical rationale documented',
+      label: 'Clinical rationale documented',
       reason:
         'Clinical rationale clearly documented: persistent radiculopathy with progressive neurological symptoms despite conservative therapy. Structural pathology (disc herniation, spinal stenosis) suspected and requires imaging confirmation to guide treatment.',
     },
     {
       met: true,
-      label: 'No recent duplicative CT/MRI',
+      label: 'No recent duplicative imaging',
       reason:
         'No prior lumbar CT or MRI found in patient record. This is the initial advanced imaging request for this episode of care.',
     },

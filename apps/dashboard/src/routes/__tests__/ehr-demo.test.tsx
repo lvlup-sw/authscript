@@ -139,13 +139,13 @@ describe('EhrDemoPage', () => {
       vi.advanceTimersByTime(5000);
     });
 
-    // Confidence score from DEMO_PA_RESULT
-    expect(screen.getByText('88%')).toBeInTheDocument();
+    // Confidence score from DEMO_PA_RESULT (93% per scoring algorithm)
+    expect(screen.getByText('93%')).toBeInTheDocument();
 
     // LCD L34220 criteria visible
     expect(screen.getByText('Valid ICD-10 for lumbar pathology')).toBeInTheDocument();
-    expect(screen.getByText('4+ weeks conservative management documented')).toBeInTheDocument();
-    expect(screen.getByText('No recent duplicative CT/MRI')).toBeInTheDocument();
+    expect(screen.getByText('4+ weeks conservative management')).toBeInTheDocument();
+    expect(screen.getByText('No recent duplicative imaging')).toBeInTheDocument();
 
     // Submit button visible
     expect(screen.getByRole('button', { name: /submit to blue cross/i })).toBeInTheDocument();
@@ -253,7 +253,7 @@ describe('EhrDemoPage', () => {
     });
 
     // 4. Reviewing state — confidence and evidence trail
-    expect(screen.getByText('88%')).toBeInTheDocument();
+    expect(screen.getByText('93%')).toBeInTheDocument();
     expect(screen.getByText('Valid ICD-10 for lumbar pathology')).toBeInTheDocument();
 
     // 5. Submit
