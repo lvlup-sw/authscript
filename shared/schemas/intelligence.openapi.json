@@ -12,17 +12,31 @@
           "Analysis"
         ],
         "summary": "Analyze",
-        "description": "Analyze clinical data and generate PA form response.\n\nUses LLM to extract evidence from clinical data and generate PA form.",
+        "description": "Analyze clinical data and generate PA form response.\n\nUses LLM to extract evidence from clinical data and generate PA form.\nResolves policy from registry; unknown CPT codes fall back to generic policy.\nWhen demo=True and procedure_code is 72148, returns a canned demo response.",
         "operationId": "analyze_analyze_post",
+        "parameters": [
+          {
+            "name": "demo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Return canned demo response for supported procedures",
+              "default": false,
+              "title": "Demo"
+            },
+            "description": "Return canned demo response for supported procedures"
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/AnalyzeRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -220,6 +234,12 @@
             "title": "Criterion Id",
             "description": "ID of the policy criterion"
           },
+          "criterion_label": {
+            "type": "string",
+            "title": "Criterion Label",
+            "description": "Human-readable criterion label",
+            "default": ""
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -339,6 +359,30 @@
             "type": "object",
             "title": "Field Mappings",
             "description": "PDF field name to value mappings"
+          },
+          "policy_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policy Id",
+            "description": "Policy identifier"
+          },
+          "lcd_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lcd Reference",
+            "description": "LCD article reference"
           }
         },
         "type": "object",

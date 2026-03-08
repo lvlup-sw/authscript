@@ -1,5 +1,6 @@
 """Tests for echocardiogram seed policy."""
 import pytest
+
 from src.policies.registry import registry
 from src.policies.seed.echocardiogram import POLICY as ECHOCARDIOGRAM
 

@@ -1,5 +1,6 @@
 """Tests for policy registry."""
 import pytest
+
 from src.models.policy import PolicyDefinition
 from src.policies.registry import PolicyRegistry, registry
 
@@ -71,4 +72,6 @@ def test_seed_policy_weights_sum_approximately_one():
     for cpt in seed_cpts:
         policy = registry.resolve(cpt)
         total = sum(c.weight for c in policy.criteria)
-        assert total == pytest.approx(1.0, abs=0.01), f"Policy {policy.policy_id}: weights sum to {total}"
+        assert total == pytest.approx(1.0, abs=0.01), (
+            f"Policy {policy.policy_id}: weights sum to {total}"
+        )

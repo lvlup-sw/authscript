@@ -209,7 +209,9 @@ async def extract_evidence(
                 crit.id if isinstance(crit, PolicyCriterion) else crit.get("id", "unknown")
             )
             criterion_label = (
-                crit.description if isinstance(crit, PolicyCriterion) else crit.get("description", "")
+                crit.description
+                if isinstance(crit, PolicyCriterion)
+                else crit.get("description", "")
             )
             logger.error("Criterion %s evaluation failed: %s", criterion_id, result)
             evidence_items.append(

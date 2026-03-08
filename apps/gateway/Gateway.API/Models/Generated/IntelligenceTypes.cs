@@ -85,6 +85,12 @@ namespace Gateway.API.Models.Generated
         public string Criterion_id { get; set; }
 
         /// <summary>
+        /// Human-readable criterion label
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("criterion_label", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public string Criterion_label { get; set; } = "";
+
+        /// <summary>
         /// Criterion status
         /// </summary>
         [Newtonsoft.Json.JsonProperty("status", Required = Newtonsoft.Json.Required.Always)]
@@ -206,6 +212,18 @@ namespace Gateway.API.Models.Generated
         [Newtonsoft.Json.JsonProperty("field_mappings", Required = Newtonsoft.Json.Required.Always)]
         public System.Collections.Generic.IDictionary<string, string> Field_mappings { get; set; } = new System.Collections.Generic.Dictionary<string, string>();
 
+        /// <summary>
+        /// Policy identifier
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("policy_id", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public Policy_id Policy_id { get; set; }
+
+        /// <summary>
+        /// LCD article reference
+        /// </summary>
+        [Newtonsoft.Json.JsonProperty("lcd_reference", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public Lcd_reference Lcd_reference { get; set; }
+
         private System.Collections.Generic.IDictionary<string, object> _additionalProperties;
 
         [Newtonsoft.Json.JsonExtensionData]
@@ -268,6 +286,36 @@ namespace Gateway.API.Models.Generated
 
         [System.Runtime.Serialization.EnumMember(Value = @"MANUAL_REVIEW")]
         MANUAL_REVIEW = 2,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Policy_id
+    {
+
+        private System.Collections.Generic.IDictionary<string, object> _additionalProperties;
+
+        [Newtonsoft.Json.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.3.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class Lcd_reference
+    {
+
+        private System.Collections.Generic.IDictionary<string, object> _additionalProperties;
+
+        [Newtonsoft.Json.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
 
     }
 

@@ -6,7 +6,6 @@ from typing import Literal
 from src.models.pa_form import EvidenceItem
 from src.models.policy import PolicyDefinition
 
-
 STATUS_SCORES = {"MET": 1.0, "UNCLEAR": 0.5, "NOT_MET": 0.0}
 
 SCORE_FLOOR = 0.05
@@ -80,6 +79,7 @@ def calculate_confidence(
     final_score = max(SCORE_FLOOR, min(1.0, raw_score))
 
     # Recommendation from score
+    recommendation: Literal["APPROVE", "MANUAL_REVIEW", "NEED_INFO"]
     if final_score >= 0.80:
         recommendation = "APPROVE"
     elif final_score >= 0.50:

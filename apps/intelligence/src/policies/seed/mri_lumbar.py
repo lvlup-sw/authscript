@@ -36,7 +36,10 @@ POLICY = PolicyDefinition(
         ),
         PolicyCriterion(
             id="clinical_rationale",
-            description="Imaging abnormalities alone insufficient; supporting clinical rationale documented",
+            description=(
+                "Imaging abnormalities alone insufficient;"
+                " supporting clinical rationale documented"
+            ),
             weight=0.20,
             required=True,
             lcd_section="L34220 — Coverage Principle",

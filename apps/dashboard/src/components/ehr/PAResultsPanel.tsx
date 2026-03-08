@@ -11,9 +11,12 @@ import {
   CheckCircle2,
   Sparkles,
   FileText,
+  Receipt,
 } from 'lucide-react';
 import type { EhrDemoState } from './useEhrDemoFlow';
 import type { PARequest, Criterion } from '@/api/graphqlService';
+import { EvidenceTag } from './EvidenceTag';
+import { DEMO_PA_RESULT_SOURCES } from '@/lib/demoData';
 
 export interface PAResultsPanelProps {
   state: EhrDemoState;
@@ -22,6 +25,7 @@ export interface PAResultsPanelProps {
   onSubmit: () => void;
   onCriterionClick?: (criterion: Criterion) => void;
   onViewPdf?: () => void;
+  onViewConfirmation?: () => void;
 }
 
 const PROCESSING_STEPS = [
@@ -146,21 +150,32 @@ function ReviewingView({
 
       {/* Criteria list */}
       <ul className="divide-y divide-slate-100">
-        {paRequest.criteria.map((criterion) => (
-          <li key={criterion.label}>
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 py-2 text-left text-sm hover:bg-slate-50 rounded px-1"
-              onClick={() => onCriterionClick?.(criterion)}
-            >
-              <CriterionStatusIcon met={criterion.met} />
-              <span className="flex-1">{criterion.label}</span>
-              {criterion.reason && (
-                <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />
-              )}
-            </button>
-          </li>
-        ))}
+        {paRequest.criteria.map((criterion) => {
+          const sourceData = DEMO_PA_RESULT_SOURCES[criterion.label];
+          return (
+            <li key={criterion.label}>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 py-2 text-left text-sm hover:bg-slate-50 rounded px-1"
+                onClick={() => onCriterionClick?.(criterion)}
+              >
+                <CriterionStatusIcon met={criterion.met} />
+                <div className="flex-1">
+                  <span>{criterion.label}</span>
+                  {sourceData && (
+                    <div className="mt-0.5 flex items-center gap-2">
+                      <span className="text-sm italic text-slate-500">{sourceData.evidence}</span>
+                      <EvidenceTag source={sourceData.source} />
+                    </div>
+                  )}
+                </div>
+                {criterion.reason && (
+                  <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />
+                )}
+              </button>
+            </li>
+          );
+        })}
       </ul>
 
       {/* Clinical summary */}
@@ -218,9 +233,11 @@ function SubmittingView({ paRequest }: { paRequest: PARequest | null }) {
 function CompleteView({
   paRequest,
   onViewPdf,
+  onViewConfirmation,
 }: {
   paRequest: PARequest | null;
   onViewPdf?: () => void;
+  onViewConfirmation?: () => void;
 }) {
   return (
     <div className="flex flex-col items-center gap-3 py-4 text-center">
@@ -238,16 +255,28 @@ function CompleteView({
           </div>
         )}
       </div>
-      {onViewPdf && (
-        <button
-          type="button"
-          className="mt-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-          onClick={onViewPdf}
-        >
-          <FileText className="h-4 w-4" />
-          View PA Form
-        </button>
-      )}
+      <div className="mt-2 flex items-center gap-2">
+        {onViewPdf && (
+          <button
+            type="button"
+            className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+            onClick={onViewPdf}
+          >
+            <FileText className="h-4 w-4" />
+            View Submitted PA Form
+          </button>
+        )}
+        {onViewConfirmation && (
+          <button
+            type="button"
+            className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm font-medium text-green-700 hover:bg-green-100 transition-colors"
+            onClick={onViewConfirmation}
+          >
+            <Receipt className="h-4 w-4" />
+            View Confirmation
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -268,6 +297,7 @@ export function PAResultsPanel({
   onSubmit,
   onCriterionClick,
   onViewPdf,
+  onViewConfirmation,
 }: PAResultsPanelProps) {
   const isProcessing = state === 'signing' || state === 'processing';
 
@@ -302,7 +332,7 @@ export function PAResultsPanel({
 
         {state === 'submitting' && <SubmittingView paRequest={paRequest} />}
 
-        {state === 'complete' && <CompleteView paRequest={paRequest} onViewPdf={onViewPdf} />}
+        {state === 'complete' && <CompleteView paRequest={paRequest} onViewPdf={onViewPdf} onViewConfirmation={onViewConfirmation} />}
 
         {state === 'error' && error && <ErrorView error={error} />}
       </div>

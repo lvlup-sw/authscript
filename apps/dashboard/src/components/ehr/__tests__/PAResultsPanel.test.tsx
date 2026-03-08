@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { PAResultsPanel } from '../PAResultsPanel';
 import type { PARequest } from '@/api/graphqlService';
+import { DEMO_PA_RESULT } from '@/lib/demoData';
 
 function buildMockPARequest(overrides: Partial<PARequest> = {}): PARequest {
   return {
@@ -137,6 +138,25 @@ describe('PAResultsPanel', () => {
     expect(
       screen.queryByRole('button', { name: /submit to/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it('PAResultsPanel_Reviewing_ShowsEvidenceText', () => {
+    render(
+      <PAResultsPanel state="reviewing" paRequest={DEMO_PA_RESULT} onSubmit={vi.fn()} />,
+    );
+    // Evidence text should appear for criteria that have source data
+    // The evidence text comes from DEMO_PA_RESULT_SOURCES lookup
+    expect(screen.getByText(/M54\.5.*low back pain/)).toBeInTheDocument();
+  });
+
+  it('PAResultsPanel_Reviewing_ShowsEvidenceTrailForDemoData', () => {
+    render(
+      <PAResultsPanel state="reviewing" paRequest={DEMO_PA_RESULT} onSubmit={vi.fn()} />,
+    );
+    // Evidence text from DEMO_PA_RESULT_SOURCES should be visible
+    expect(screen.getByText(/8 weeks PT/)).toBeInTheDocument();
+    // Source tags should be visible (HPI appears for multiple criteria)
+    expect(screen.getAllByText('HPI').length).toBeGreaterThanOrEqual(1);
   });
 
   it('PAResultsPanel_Error_ShowsErrorMessage', () => {

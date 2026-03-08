@@ -189,10 +189,13 @@ async def test_generate_form_data_delegates_to_scorer(
     mock_scorer = ScoreResult(score=0.72, recommendation="MANUAL_REVIEW")
     mock_llm = AsyncMock(return_value="Summary.")
     with (
-        patch("src.reasoning.form_generator.calculate_confidence", return_value=mock_scorer) as mock_calc,
+        patch(
+            "src.reasoning.form_generator.calculate_confidence",
+            return_value=mock_scorer,
+        ) as mock_calc,
         patch("src.reasoning.form_generator.chat_completion", mock_llm),
     ):
-        result = await generate_form_data(sample_bundle, sample_evidence, sample_policy)
+        await generate_form_data(sample_bundle, sample_evidence, sample_policy)
     mock_calc.assert_called_once()
 
 

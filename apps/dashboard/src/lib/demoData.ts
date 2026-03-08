@@ -18,17 +18,43 @@ export const DEMO_EHR_PATIENT = {
   name: 'Rebecca Sandbox',
   dob: '09/14/1990',
   mrn: 'ATH60182',
+  age: 35,
+  sex: 'F' as const,
+  insurance: 'Blue Cross Blue Shield',
+  memberId: 'ATH60182',
+  allergies: ['Sulfa drugs', 'Codeine'],
 };
 
 /**
- * Demo encounter clinical content
+ * Demo encounter clinical content.
+ * BASE version omits conservative therapy detail — used for the 4/5 "missing docs" state.
+ * ENHANCED sentence is appended when the presenter "adds documentation."
  */
-export const DEMO_ENCOUNTER = {
+export const DEMO_ENCOUNTER_BASE = {
   cc: 'Chronic lower back pain with radiation to left lower extremity, 6 months duration, worsening over past 3 weeks',
-  hpi: '35-year-old female presents with persistent lumbar pain radiating to the left leg. Pain rated 7/10, worse with prolonged sitting and standing. Reports progressive numbness in left foot over past 3 weeks. Failed 8 weeks of physical therapy (2x/week) and 6 weeks of NSAIDs (naproxen 500mg BID). No improvement with conservative management. Denies bowel/bladder dysfunction, fever, or recent trauma.',
+  hpi: '35-year-old female presents with persistent lumbar pain radiating to the left leg. Pain rated 7/10, worse with prolonged sitting and standing. Reports progressive numbness in left foot over past 3 weeks. Denies bowel/bladder dysfunction, fever, or recent trauma.',
   assessment:
-    'Lumbar radiculopathy, left L5-S1. Failed conservative therapy. Progressive neurological symptoms warrant advanced imaging.',
+    'Lumbar radiculopathy, left L5-S1. Progressive neurological symptoms warrant advanced imaging.',
   plan: 'Order MRI lumbar spine without contrast to evaluate for disc herniation or spinal stenosis. Continue current medications pending imaging results. Follow up in 2 weeks with MRI results.',
+};
+
+/** The sentence added during the "add documentation" demo moment. */
+export const DEMO_HPI_ADDENDUM =
+  'Failed 8 weeks of physical therapy (2x/week) and 6 weeks of NSAIDs (naproxen 500mg BID). No improvement with conservative management.';
+
+export const DEMO_ASSESSMENT_ADDENDUM = 'Failed conservative therapy. ';
+
+/** Full encounter with conservative therapy documented (post-addendum). */
+export const DEMO_ENCOUNTER = {
+  ...DEMO_ENCOUNTER_BASE,
+  hpi: DEMO_ENCOUNTER_BASE.hpi.replace(
+    'Denies bowel/bladder dysfunction',
+    `${DEMO_HPI_ADDENDUM} Denies bowel/bladder dysfunction`,
+  ),
+  assessment: DEMO_ENCOUNTER_BASE.assessment.replace(
+    'Progressive neurological symptoms',
+    `${DEMO_ASSESSMENT_ADDENDUM}Progressive neurological symptoms`,
+  ),
 };
 
 /**
@@ -63,9 +89,19 @@ export const DEMO_ORDERS = [
 ];
 
 /**
+ * Pre-check criterion — used by the PAReadinessWidget before encounter signing.
+ */
+export interface PreCheckCriterion {
+  label: string;
+  status: 'met' | 'not-met' | 'indeterminate';
+  evidence?: string;
+  gap?: string;
+  source?: string;
+}
+
+/**
  * LCD L34220 policy requirements for MRI Lumbar Spine (CPT 72148).
- * Shown in the pre-sign policy criteria modal so providers can review
- * what documentation is needed before signing.
+ * Canonical label source — all demo surfaces reference these labels.
  */
 export const LCD_L34220_POLICY = {
   policyId: 'LCD L34220',
@@ -103,9 +139,121 @@ export const LCD_L34220_POLICY = {
 };
 
 /**
+ * Build pre-check criteria by scanning encounter data.
+ * Accepts the encounter to scan — allows switching between base (4/5) and full (5/5).
+ */
+export function buildPreCheckCriteria(encounter: typeof DEMO_ENCOUNTER): PreCheckCriterion[] {
+  const criteria: PreCheckCriterion[] = [];
+
+  // 1. Valid ICD-10 — check known problem list
+  const diagnosisCode = 'M54.5';
+  criteria.push({
+    label: LCD_L34220_POLICY.criteria[0].label,
+    status: 'met',
+    evidence: `${diagnosisCode} (low back pain) on active problem list`,
+    source: 'Problem List',
+  });
+
+  // 2. Red flag / progressive neuro deficit — scan CC and HPI
+  const ccMentionsProgression = encounter.cc.toLowerCase().includes('worsening');
+  const hpiMentionsDeficit = encounter.hpi.toLowerCase().includes('progressive numbness');
+  const hasRedFlag = ccMentionsProgression || hpiMentionsDeficit;
+  const rawSnippet = hpiMentionsDeficit
+    ? encounter.hpi.match(/progressive numbness[^.]*\./i)?.[0]
+    : encounter.cc.match(/worsening[^,]*/i)?.[0];
+  const redFlagSnippet = rawSnippet
+    ? rawSnippet.charAt(0).toUpperCase() + rawSnippet.slice(1)
+    : undefined;
+  criteria.push({
+    label: LCD_L34220_POLICY.criteria[1].label,
+    status: hasRedFlag ? 'met' : 'indeterminate',
+    evidence: hasRedFlag ? redFlagSnippet?.trim() : undefined,
+    source: hasRedFlag ? 'CC / HPI' : undefined,
+    gap: hasRedFlag ? undefined : 'No red flag symptoms identified in chart',
+  });
+
+  // 3. Conservative management — scan HPI for therapy duration
+  const hpiMentionsPT = /\d+\s*weeks?\s*(of\s+)?physical therapy/i.test(encounter.hpi);
+  const hpiMentionsNSAIDs = /\d+\s*weeks?\s*(of\s+)?NSAIDs/i.test(encounter.hpi);
+  const hasConservative = hpiMentionsPT || hpiMentionsNSAIDs;
+  const conservativeSnippet = encounter.hpi
+    .match(/failed\s+\d+\s+weeks?[^.]*\./i)?.[0];
+  const orderEvidence = DEMO_ORDERS.length > 0
+    ? `Active order: ${DEMO_ORDERS[0].name}`
+    : undefined;
+  criteria.push({
+    label: LCD_L34220_POLICY.criteria[2].label,
+    status: hasConservative ? 'met' : 'indeterminate',
+    evidence: hasConservative
+      ? (conservativeSnippet?.trim() ?? orderEvidence)
+      : undefined,
+    source: hasConservative ? 'HPI / Orders' : undefined,
+    gap: hasConservative ? undefined : 'Conservative therapy documentation not found in HPI',
+  });
+
+  // 4. Clinical rationale — scan assessment for rationale language
+  const assessmentHasRationale =
+    encounter.assessment.toLowerCase().includes('warrant') ||
+    encounter.assessment.toLowerCase().includes('medically necessary');
+  criteria.push({
+    label: LCD_L34220_POLICY.criteria[3].label,
+    status: assessmentHasRationale ? 'met' : 'indeterminate',
+    evidence: assessmentHasRationale ? encounter.assessment : undefined,
+    source: assessmentHasRationale ? 'Assessment' : undefined,
+    gap: assessmentHasRationale ? undefined : 'Clinical rationale not yet documented',
+  });
+
+  // 5. No duplicative imaging — check imaging history (empty = met)
+  const hasPriorImaging = false;
+  criteria.push({
+    label: LCD_L34220_POLICY.criteria[4].label,
+    status: hasPriorImaging ? 'not-met' : 'met',
+    evidence: hasPriorImaging ? undefined : 'No prior CT or MRI of lumbar spine in record',
+    source: 'Imaging History',
+    gap: hasPriorImaging ? 'Prior lumbar imaging found in record' : undefined,
+  });
+
+  return criteria;
+}
+
+/** Initial pre-check against base encounter (4/5 — conservative therapy missing). */
+export const DEMO_PRECHECK_CRITERIA_INITIAL: PreCheckCriterion[] = buildPreCheckCriteria(DEMO_ENCOUNTER_BASE);
+
+/** Full pre-check after documentation added (5/5 — all met). */
+export const DEMO_PRECHECK_CRITERIA_COMPLETE: PreCheckCriterion[] = buildPreCheckCriteria(DEMO_ENCOUNTER);
+
+/**
+ * Source/evidence mapping for the post-sign PA result criteria.
+ * Keyed by criterion label, provides extracted evidence and chart source
+ * for the evidence trail display in PAResultsPanel.
+ */
+export const DEMO_PA_RESULT_SOURCES: Record<string, { evidence: string; source: string }> = {
+  'Valid ICD-10 for lumbar pathology': {
+    evidence: 'M54.5, M54.51 — low back pain, lumbar radiculopathy left',
+    source: 'Assessment',
+  },
+  'Red flag symptoms or progressive neurological deficit': {
+    evidence: 'Progressive numbness in left foot over past 3 weeks',
+    source: 'HPI',
+  },
+  '4+ weeks conservative management': {
+    evidence: '8 weeks PT (2x/week), naproxen 500mg BID x 6 weeks',
+    source: 'HPI',
+  },
+  'Clinical rationale documented': {
+    evidence: 'Persistent radiculopathy with progressive neuro symptoms despite conservative therapy',
+    source: 'Assessment / Plan',
+  },
+  'No recent duplicative imaging': {
+    evidence: 'No prior lumbar CT or MRI in patient record',
+    source: 'Imaging History',
+  },
+};
+
+/**
  * Pre-built PA result for the EHR demo flow.
  * Matches the Intelligence fixture (demo_mri_lumbar.json) with all 5 LCD L34220
- * criteria MET and 88% confidence. Used instead of the real pipeline which
+ * criteria MET and 93% confidence (per scoring algorithm). Used instead of the real pipeline which
  * queries sparse Athena sandbox data.
  */
 export const DEMO_PA_RESULT: PARequest = {
@@ -138,7 +286,7 @@ export const DEMO_PA_RESULT: PARequest = {
     'MRI lumbar spine w/o contrast medically necessary per LCD L34220 to evaluate disc herniation/stenosis. ' +
     'All LCD criteria met. Policy: lcd-mri-lumbar-L34220.',
   status: 'ready',
-  confidence: 88,
+  confidence: 93,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   readyAt: new Date().toISOString(),
@@ -153,25 +301,25 @@ export const DEMO_PA_RESULT: PARequest = {
     },
     {
       met: true,
-      label: 'Cauda equina, tumor, infection, major neuro deficit',
+      label: 'Red flag symptoms or progressive neurological deficit',
       reason:
         'Progressive neurological deficit identified: numbness in left foot worsening over 3 weeks, consistent with L5-S1 nerve root compression. This constitutes an immediate MRI indication per LCD L34220.',
     },
     {
       met: true,
-      label: '4+ weeks conservative management documented',
+      label: '4+ weeks conservative management',
       reason:
         'Physical therapy (2x/week for 8 weeks) and NSAIDs (naproxen 500mg BID for 6 weeks) documented with no improvement. Exceeds the 4-week minimum required by LCD L34220.',
     },
     {
       met: true,
-      label: 'Supporting clinical rationale documented',
+      label: 'Clinical rationale documented',
       reason:
         'Clinical rationale clearly documented: persistent radiculopathy with progressive neurological symptoms despite conservative therapy. Structural pathology (disc herniation, spinal stenosis) suspected and requires imaging confirmation to guide treatment.',
     },
     {
       met: true,
-      label: 'No recent duplicative CT/MRI',
+      label: 'No recent duplicative imaging',
       reason:
         'No prior lumbar CT or MRI found in patient record. This is the initial advanced imaging request for this episode of care.',
     },

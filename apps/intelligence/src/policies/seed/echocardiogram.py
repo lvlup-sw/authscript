@@ -20,28 +20,45 @@ POLICY = PolicyDefinition(
     criteria=[
         PolicyCriterion(
             id="diagnosis_present",
-            description="Valid ICD-10 for cardiac pathology (heart failure, valvular disease, arrhythmia, cardiomyopathy)",
+            description=(
+                "Valid ICD-10 for cardiac pathology"
+                " (heart failure, valvular disease,"
+                " arrhythmia, cardiomyopathy)"
+            ),
             weight=0.20,
             required=True,
             lcd_section="ACC/AHA AUC — Covered Cardiac Diagnoses",
         ),
         PolicyCriterion(
             id="clinical_indication",
-            description="Documented clinical indication for echocardiographic assessment (evaluate EF, assess valvular function, monitor known condition, new symptoms)",
+            description=(
+                "Documented clinical indication for"
+                " echocardiographic assessment (evaluate EF,"
+                " assess valvular function, monitor known"
+                " condition, new symptoms)"
+            ),
             weight=0.35,
             required=True,
             lcd_section="ACC/AHA AUC — Clinical Indications for TTE",
         ),
         PolicyCriterion(
             id="symptom_or_change",
-            description="New or worsening symptoms, or clinical change warranting imaging (dyspnea, edema, chest pain, syncope, new murmur)",
+            description=(
+                "New or worsening symptoms, or clinical change"
+                " warranting imaging (dyspnea, edema,"
+                " chest pain, syncope, new murmur)"
+            ),
             weight=0.25,
             required=False,
             lcd_section="ACC/AHA AUC — Symptom-Based Indications",
         ),
         PolicyCriterion(
             id="no_recent_duplicate",
-            description="No echocardiogram within prior 12 months for same indication, unless clinical change documented",
+            description=(
+                "No echocardiogram within prior 12 months"
+                " for same indication, unless clinical"
+                " change documented"
+            ),
             weight=0.20,
             required=False,
             lcd_section="ACC/AHA AUC — Repeat Study Appropriateness",

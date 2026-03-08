@@ -1,5 +1,6 @@
 """Tests for generic fallback policy builder."""
 import pytest
+
 from src.models.policy import PolicyDefinition
 from src.policies.generic_policy import build_generic_policy
 

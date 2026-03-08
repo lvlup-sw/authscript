@@ -30,7 +30,9 @@ def valid_request() -> AnalyzeRequest:
 @pytest.mark.asyncio
 async def test_analyze_returns_approve(valid_request: AnalyzeRequest) -> None:
     """Should return APPROVE recommendation with high confidence."""
-    mock_llm = AsyncMock(return_value="The criterion is MET based on the evidence. HIGH CONFIDENCE.")
+    mock_llm = AsyncMock(
+        return_value="The criterion is MET based on the evidence. HIGH CONFIDENCE."
+    )
     with (
         patch("src.reasoning.evidence_extractor.chat_completion", mock_llm),
         patch("src.reasoning.form_generator.chat_completion", mock_llm),
@@ -94,7 +96,13 @@ async def test_analyze_unknown_cpt_returns_200_with_generic() -> None:
     request = AnalyzeRequest(
         patient_id="test",
         procedure_code="99999",
-        clinical_data={"patient": {"name": "Test", "birth_date": "1980-01-01", "member_id": "M001"}},
+        clinical_data={
+            "patient": {
+                "name": "Test",
+                "birth_date": "1980-01-01",
+                "member_id": "M001",
+            },
+        },
     )
     mock_llm = AsyncMock(return_value="MET. Evidence found.")
     with (

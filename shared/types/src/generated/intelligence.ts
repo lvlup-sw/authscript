@@ -45,6 +45,8 @@ export const EvidenceItemStatus = {
 export interface EvidenceItem {
   /** ID of the policy criterion */
   criterion_id: string;
+  /** Human-readable criterion label */
+  criterion_label?: string;
   /** Criterion status */
   status: EvidenceItemStatus;
   /** Extracted evidence text */
@@ -82,6 +84,16 @@ export const PAFormResponseRecommendation = {
 export type PAFormResponseFieldMappings = {[key: string]: string};
 
 /**
+ * Policy identifier
+ */
+export type PAFormResponsePolicyId = string | null;
+
+/**
+ * LCD article reference
+ */
+export type PAFormResponseLcdReference = string | null;
+
+/**
  * Complete PA form response from analysis.
  */
 export interface PAFormResponse {
@@ -109,6 +121,10 @@ export interface PAFormResponse {
   confidence_score: number;
   /** PDF field name to value mappings */
   field_mappings: PAFormResponseFieldMappings;
+  /** Policy identifier */
+  policy_id?: PAFormResponsePolicyId;
+  /** LCD article reference */
+  lcd_reference?: PAFormResponseLcdReference;
 }
 
 export type ValidationErrorLocItem = string | number;
@@ -118,6 +134,13 @@ export interface ValidationError {
   msg: string;
   type: string;
 }
+
+export type AnalyzeAnalyzePostParams = {
+/**
+ * Return canned demo response for supported procedures
+ */
+demo?: boolean;
+};
 
 export type AnalyzeWithDocumentsAnalyzeWithDocumentsPostParams = {
 patient_id: string;
@@ -133,6 +156,8 @@ export type RootGet200 = {[key: string]: string};
  * Analyze clinical data and generate PA form response.
 
 Uses LLM to extract evidence from clinical data and generate PA form.
+Resolves policy from registry; unknown CPT codes fall back to generic policy.
+When demo=True and procedure_code is 72148, returns a canned demo response.
  * @summary Analyze
  */
 export type analyzeAnalyzePostResponse200 = {
@@ -154,17 +179,25 @@ export type analyzeAnalyzePostResponseError = (analyzeAnalyzePostResponse422) & 
 
 export type analyzeAnalyzePostResponse = (analyzeAnalyzePostResponseSuccess | analyzeAnalyzePostResponseError)
 
-export const getAnalyzeAnalyzePostUrl = () => {
+export const getAnalyzeAnalyzePostUrl = (params?: AnalyzeAnalyzePostParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/analyze`
+  return stringifiedParams.length > 0 ? `/analyze?${stringifiedParams}` : `/analyze`
 }
 
-export const analyzeAnalyzePost = async (analyzeRequest: AnalyzeRequest, options?: RequestInit): Promise<analyzeAnalyzePostResponse> => {
+export const analyzeAnalyzePost = async (analyzeRequest: AnalyzeRequest,
+    params?: AnalyzeAnalyzePostParams, options?: RequestInit): Promise<analyzeAnalyzePostResponse> => {
   
-  const res = await fetch(getAnalyzeAnalyzePostUrl(),
+  const res = await fetch(getAnalyzeAnalyzePostUrl(params),
   {      
     ...options,
     method: 'POST',

@@ -21,6 +21,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AnalyzeAnalyzePostParams,
   AnalyzeRequest,
   AnalyzeWithDocumentsAnalyzeWithDocumentsPostParams,
   BodyAnalyzeWithDocumentsAnalyzeWithDocumentsPost,
@@ -36,6 +37,8 @@ import type {
  * Analyze clinical data and generate PA form response.
 
 Uses LLM to extract evidence from clinical data and generate PA form.
+Resolves policy from registry; unknown CPT codes fall back to generic policy.
+When demo=True and procedure_code is 72148, returns a canned demo response.
  * @summary Analyze
  */
 export type analyzeAnalyzePostResponse200 = {
@@ -57,17 +60,25 @@ export type analyzeAnalyzePostResponseError = (analyzeAnalyzePostResponse422) & 
 
 export type analyzeAnalyzePostResponse = (analyzeAnalyzePostResponseSuccess | analyzeAnalyzePostResponseError)
 
-export const getAnalyzeAnalyzePostUrl = () => {
+export const getAnalyzeAnalyzePostUrl = (params?: AnalyzeAnalyzePostParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
 
-  
+  const stringifiedParams = normalizedParams.toString();
 
-  return `http://localhost:8000/analyze`
+  return stringifiedParams.length > 0 ? `http://localhost:8000/analyze?${stringifiedParams}` : `http://localhost:8000/analyze`
 }
 
-export const analyzeAnalyzePost = async (analyzeRequest: AnalyzeRequest, options?: RequestInit): Promise<analyzeAnalyzePostResponse> => {
+export const analyzeAnalyzePost = async (analyzeRequest: AnalyzeRequest,
+    params?: AnalyzeAnalyzePostParams, options?: RequestInit): Promise<analyzeAnalyzePostResponse> => {
   
-  const res = await fetch(getAnalyzeAnalyzePostUrl(),
+  const res = await fetch(getAnalyzeAnalyzePostUrl(params),
   {      
     ...options,
     method: 'POST',
@@ -87,8 +98,8 @@ export const analyzeAnalyzePost = async (analyzeRequest: AnalyzeRequest, options
 
 
 export const getAnalyzeAnalyzePostMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof analyzeAnalyzePost>>, TError,{data: AnalyzeRequest}, TContext>, fetch?: RequestInit}
-): UseMutationOptions<Awaited<ReturnType<typeof analyzeAnalyzePost>>, TError,{data: AnalyzeRequest}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof analyzeAnalyzePost>>, TError,{data: AnalyzeRequest;params?: AnalyzeAnalyzePostParams}, TContext>, fetch?: RequestInit}
+): UseMutationOptions<Awaited<ReturnType<typeof analyzeAnalyzePost>>, TError,{data: AnalyzeRequest;params?: AnalyzeAnalyzePostParams}, TContext> => {
 
 const mutationKey = ['analyzeAnalyzePost'];
 const {mutation: mutationOptions, fetch: fetchOptions} = options ?
@@ -100,10 +111,10 @@ const {mutation: mutationOptions, fetch: fetchOptions} = options ?
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof analyzeAnalyzePost>>, {data: AnalyzeRequest}> = (props) => {
-          const {data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof analyzeAnalyzePost>>, {data: AnalyzeRequest;params?: AnalyzeAnalyzePostParams}> = (props) => {
+          const {data,params} = props ?? {};
 
-          return  analyzeAnalyzePost(data,fetchOptions)
+          return  analyzeAnalyzePost(data,params,fetchOptions)
         }
 
         
@@ -119,11 +130,11 @@ const {mutation: mutationOptions, fetch: fetchOptions} = options ?
  * @summary Analyze
  */
 export const useAnalyzeAnalyzePost = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof analyzeAnalyzePost>>, TError,{data: AnalyzeRequest}, TContext>, fetch?: RequestInit}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof analyzeAnalyzePost>>, TError,{data: AnalyzeRequest;params?: AnalyzeAnalyzePostParams}, TContext>, fetch?: RequestInit}
  ): UseMutationResult<
         Awaited<ReturnType<typeof analyzeAnalyzePost>>,
         TError,
-        {data: AnalyzeRequest},
+        {data: AnalyzeRequest;params?: AnalyzeAnalyzePostParams},
         TContext
       > => {
 

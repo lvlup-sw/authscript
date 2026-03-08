@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NewPAModal } from '../NewPAModal';
 import { type Patient } from '../../lib/patients';
+import { type Procedure } from '@/api/graphqlService';
 
 // Mock TanStack Router
 vi.mock('@tanstack/react-router', () => ({
@@ -48,10 +49,11 @@ const mockPatient: Patient = {
   phone: '(253) 555-0654',
 };
 
-const mockService = {
+const mockService: Procedure = {
   code: '72148',
   name: 'MRI Lumbar Spine',
-  type: 'procedure' as const,
+  category: 'Imaging',
+  requiresPA: true,
 };
 
 describe('NewPAModal', () => {

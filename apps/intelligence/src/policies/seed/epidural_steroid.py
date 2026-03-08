@@ -21,7 +21,10 @@ POLICY = PolicyDefinition(
         ),
         PolicyCriterion(
             id="severity_documented",
-            description="Pain severe enough to impact QoL/function, documented with standardized scale",
+            description=(
+                "Pain severe enough to impact QoL/function,"
+                " documented with standardized scale"
+            ),
             weight=0.20,
             required=True,
             lcd_section="L39240 — Requirement 2",
