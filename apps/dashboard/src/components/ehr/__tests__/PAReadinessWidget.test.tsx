@@ -13,19 +13,21 @@ function buildCriteria(): PreCheckCriterion[] {
     },
     {
       label: 'Red flag symptoms or progressive neurological deficit',
-      status: 'indeterminate',
-      gap: 'No neurological findings in chart — document in encounter note',
+      status: 'met',
+      evidence: 'Progressive numbness in left foot over past 3 weeks.',
+      source: 'CC / HPI',
     },
     {
       label: '4+ weeks conservative management',
       status: 'met',
-      evidence: 'PT 2x/week x 8 weeks documented by referring provider',
-      source: 'Referral',
+      evidence: 'Failed 8 weeks of physical therapy and 6 weeks of NSAIDs.',
+      source: 'HPI / Orders',
     },
     {
       label: 'Clinical rationale documented',
-      status: 'indeterminate',
-      gap: 'Rationale not yet documented — include in assessment/plan',
+      status: 'met',
+      evidence: 'Progressive neurological symptoms warrant advanced imaging.',
+      source: 'Assessment',
     },
     {
       label: 'No recent duplicative imaging',
@@ -86,8 +88,8 @@ describe('PAReadinessWidget', () => {
     expect(policyEl.className).toMatch(/font-mono/);
     expect(policyEl.className).toMatch(/uppercase/);
 
-    // Criteria count: 3 met out of 5
-    expect(screen.getByText(/3\/5 criteria documented/)).toBeInTheDocument();
+    // Criteria count: 5 met out of 5
+    expect(screen.getByText(/5\/5 criteria documented/)).toBeInTheDocument();
   });
 
   it('PAReadinessWidget_Ready_ShowsAllCriteria', () => {
@@ -139,7 +141,9 @@ describe('PAReadinessWidget', () => {
   });
 
   it('PAReadinessWidget_Indeterminate_ShowsGap', () => {
-    const criteria = buildCriteria();
+    const criteria: PreCheckCriterion[] = [
+      { label: 'Test criterion', status: 'indeterminate', gap: 'Missing documentation' },
+    ];
 
     render(
       <PAReadinessWidget
@@ -151,9 +155,7 @@ describe('PAReadinessWidget', () => {
       />,
     );
 
-    const gapEl = screen.getByText(
-      /No neurological findings in chart/,
-    );
+    const gapEl = screen.getByText(/Missing documentation/);
     expect(gapEl).toBeInTheDocument();
     expect(gapEl.className).toMatch(/text-amber-600/);
   });

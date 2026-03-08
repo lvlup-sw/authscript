@@ -58,13 +58,13 @@ describe('EncounterSidebar', () => {
   });
 
   it('EncounterSidebar_Flagged_ShowsPolicyCheckIndicator', () => {
-    render(<EncounterSidebar flowState="flagged" preCheckCount={{ met: 3, total: 5 }} />);
+    render(<EncounterSidebar flowState="flagged" preCheckCount={{ met: 5, total: 5 }} />);
     expect(screen.getByText('Policy Check')).toBeInTheDocument();
-    expect(screen.getByText(/3\/5/)).toBeInTheDocument();
+    expect(screen.getByText(/5\/5/)).toBeInTheDocument();
   });
 
   it('EncounterSidebar_Flagged_NoPAStages', () => {
-    render(<EncounterSidebar flowState="flagged" preCheckCount={{ met: 3, total: 5 }} />);
+    render(<EncounterSidebar flowState="flagged" preCheckCount={{ met: 5, total: 5 }} />);
     expect(screen.queryByText('Analyzing')).not.toBeInTheDocument();
     expect(screen.queryByText('Submit')).not.toBeInTheDocument();
     expect(screen.queryByText('Complete')).not.toBeInTheDocument();

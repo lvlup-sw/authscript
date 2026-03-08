@@ -174,8 +174,7 @@ describe('useEhrDemoFlow', () => {
     expect(result.current.state).toBe('flagged');
     const criteria = result.current.preCheckCriteria!;
     expect(criteria).toHaveLength(5);
-    expect(criteria.filter((c) => c.status === 'met')).toHaveLength(3);
-    expect(criteria.filter((c) => c.status === 'indeterminate')).toHaveLength(2);
+    expect(criteria.filter((c) => c.status === 'met')).toHaveLength(5);
   });
 
   it('useEhrDemoFlow_Flagged_Sign_TransitionsToSigning', async () => {

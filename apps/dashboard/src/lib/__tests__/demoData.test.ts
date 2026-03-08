@@ -68,21 +68,27 @@ describe('demoData', () => {
     expect(DEMO_PRECHECK_CRITERIA).toHaveLength(5);
   });
 
-  it('DEMO_PRECHECK_CRITERIA_ThreeMetWithEvidenceAndSource', () => {
+  it('DEMO_PRECHECK_CRITERIA_AllMetWithEvidenceAndSource', () => {
     const met = DEMO_PRECHECK_CRITERIA.filter((c) => c.status === 'met');
-    expect(met).toHaveLength(3);
+    expect(met).toHaveLength(5);
     met.forEach((c) => {
       expect(c.evidence).toBeTruthy();
       expect(c.source).toBeTruthy();
     });
   });
 
-  it('DEMO_PRECHECK_CRITERIA_TwoIndeterminateWithGap', () => {
-    const indeterminate = DEMO_PRECHECK_CRITERIA.filter((c) => c.status === 'indeterminate');
-    expect(indeterminate).toHaveLength(2);
-    indeterminate.forEach((c) => {
-      expect(c.gap).toBeTruthy();
-    });
+  it('DEMO_PRECHECK_CRITERIA_DerivedFromChartData', () => {
+    // Red flag criterion sources evidence from DEMO_ENCOUNTER
+    const redFlag = DEMO_PRECHECK_CRITERIA.find((c) => c.label.includes('Red flag'));
+    expect(redFlag?.evidence).toContain('Progressive numbness');
+
+    // Conservative management sources from DEMO_ENCOUNTER HPI
+    const conservative = DEMO_PRECHECK_CRITERIA.find((c) => c.label.includes('conservative'));
+    expect(conservative?.evidence).toBeTruthy();
+
+    // Clinical rationale sources from DEMO_ENCOUNTER assessment
+    const rationale = DEMO_PRECHECK_CRITERIA.find((c) => c.label.includes('Clinical rationale'));
+    expect(rationale?.evidence).toContain('warrant');
   });
 
   it('DEMO_PRECHECK_CRITERIA_LabelsMatchLCDPolicy', () => {
