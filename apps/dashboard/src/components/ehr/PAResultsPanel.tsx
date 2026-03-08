@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Sparkles,
   FileText,
+  Receipt,
 } from 'lucide-react';
 import type { EhrDemoState } from './useEhrDemoFlow';
 import type { PARequest, Criterion } from '@/api/graphqlService';
@@ -24,6 +25,7 @@ export interface PAResultsPanelProps {
   onSubmit: () => void;
   onCriterionClick?: (criterion: Criterion) => void;
   onViewPdf?: () => void;
+  onViewConfirmation?: () => void;
 }
 
 const PROCESSING_STEPS = [
@@ -231,9 +233,11 @@ function SubmittingView({ paRequest }: { paRequest: PARequest | null }) {
 function CompleteView({
   paRequest,
   onViewPdf,
+  onViewConfirmation,
 }: {
   paRequest: PARequest | null;
   onViewPdf?: () => void;
+  onViewConfirmation?: () => void;
 }) {
   return (
     <div className="flex flex-col items-center gap-3 py-4 text-center">
@@ -251,16 +255,28 @@ function CompleteView({
           </div>
         )}
       </div>
-      {onViewPdf && (
-        <button
-          type="button"
-          className="mt-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-          onClick={onViewPdf}
-        >
-          <FileText className="h-4 w-4" />
-          View PA Form
-        </button>
-      )}
+      <div className="mt-2 flex items-center gap-2">
+        {onViewPdf && (
+          <button
+            type="button"
+            className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+            onClick={onViewPdf}
+          >
+            <FileText className="h-4 w-4" />
+            View Submitted PA Form
+          </button>
+        )}
+        {onViewConfirmation && (
+          <button
+            type="button"
+            className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm font-medium text-green-700 hover:bg-green-100 transition-colors"
+            onClick={onViewConfirmation}
+          >
+            <Receipt className="h-4 w-4" />
+            View Confirmation
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -281,6 +297,7 @@ export function PAResultsPanel({
   onSubmit,
   onCriterionClick,
   onViewPdf,
+  onViewConfirmation,
 }: PAResultsPanelProps) {
   const isProcessing = state === 'signing' || state === 'processing';
 
@@ -315,7 +332,7 @@ export function PAResultsPanel({
 
         {state === 'submitting' && <SubmittingView paRequest={paRequest} />}
 
-        {state === 'complete' && <CompleteView paRequest={paRequest} onViewPdf={onViewPdf} />}
+        {state === 'complete' && <CompleteView paRequest={paRequest} onViewPdf={onViewPdf} onViewConfirmation={onViewConfirmation} />}
 
         {state === 'error' && error && <ErrorView error={error} />}
       </div>

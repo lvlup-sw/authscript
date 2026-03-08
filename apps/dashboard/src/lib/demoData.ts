@@ -18,17 +18,43 @@ export const DEMO_EHR_PATIENT = {
   name: 'Rebecca Sandbox',
   dob: '09/14/1990',
   mrn: 'ATH60182',
+  age: 35,
+  sex: 'F' as const,
+  insurance: 'Blue Cross Blue Shield',
+  memberId: 'ATH60182',
+  allergies: ['Sulfa drugs', 'Codeine'],
 };
 
 /**
- * Demo encounter clinical content
+ * Demo encounter clinical content.
+ * BASE version omits conservative therapy detail — used for the 4/5 "missing docs" state.
+ * ENHANCED sentence is appended when the presenter "adds documentation."
  */
-export const DEMO_ENCOUNTER = {
+export const DEMO_ENCOUNTER_BASE = {
   cc: 'Chronic lower back pain with radiation to left lower extremity, 6 months duration, worsening over past 3 weeks',
-  hpi: '35-year-old female presents with persistent lumbar pain radiating to the left leg. Pain rated 7/10, worse with prolonged sitting and standing. Reports progressive numbness in left foot over past 3 weeks. Failed 8 weeks of physical therapy (2x/week) and 6 weeks of NSAIDs (naproxen 500mg BID). No improvement with conservative management. Denies bowel/bladder dysfunction, fever, or recent trauma.',
+  hpi: '35-year-old female presents with persistent lumbar pain radiating to the left leg. Pain rated 7/10, worse with prolonged sitting and standing. Reports progressive numbness in left foot over past 3 weeks. Denies bowel/bladder dysfunction, fever, or recent trauma.',
   assessment:
-    'Lumbar radiculopathy, left L5-S1. Failed conservative therapy. Progressive neurological symptoms warrant advanced imaging.',
+    'Lumbar radiculopathy, left L5-S1. Progressive neurological symptoms warrant advanced imaging.',
   plan: 'Order MRI lumbar spine without contrast to evaluate for disc herniation or spinal stenosis. Continue current medications pending imaging results. Follow up in 2 weeks with MRI results.',
+};
+
+/** The sentence added during the "add documentation" demo moment. */
+export const DEMO_HPI_ADDENDUM =
+  'Failed 8 weeks of physical therapy (2x/week) and 6 weeks of NSAIDs (naproxen 500mg BID). No improvement with conservative management.';
+
+export const DEMO_ASSESSMENT_ADDENDUM = 'Failed conservative therapy. ';
+
+/** Full encounter with conservative therapy documented (post-addendum). */
+export const DEMO_ENCOUNTER = {
+  ...DEMO_ENCOUNTER_BASE,
+  hpi: DEMO_ENCOUNTER_BASE.hpi.replace(
+    'Denies bowel/bladder dysfunction',
+    `${DEMO_HPI_ADDENDUM} Denies bowel/bladder dysfunction`,
+  ),
+  assessment: DEMO_ENCOUNTER_BASE.assessment.replace(
+    'Progressive neurological symptoms',
+    `${DEMO_ASSESSMENT_ADDENDUM}Progressive neurological symptoms`,
+  ),
 };
 
 /**
@@ -113,15 +139,13 @@ export const LCD_L34220_POLICY = {
 };
 
 /**
- * Build pre-check criteria by scanning actual chart data.
- * Evaluates LCD L34220 criteria against DEMO_ENCOUNTER, DEMO_ORDERS,
- * and known patient chart state (problem list, imaging history).
+ * Build pre-check criteria by scanning encounter data.
+ * Accepts the encounter to scan — allows switching between base (4/5) and full (5/5).
  */
-function buildPreCheckCriteria(): PreCheckCriterion[] {
+export function buildPreCheckCriteria(encounter: typeof DEMO_ENCOUNTER): PreCheckCriterion[] {
   const criteria: PreCheckCriterion[] = [];
 
   // 1. Valid ICD-10 — check known problem list
-  // In production this queries FHIR Condition resources
   const diagnosisCode = 'M54.5';
   criteria.push({
     label: LCD_L34220_POLICY.criteria[0].label,
@@ -131,12 +155,12 @@ function buildPreCheckCriteria(): PreCheckCriterion[] {
   });
 
   // 2. Red flag / progressive neuro deficit — scan CC and HPI
-  const ccMentionsProgression = DEMO_ENCOUNTER.cc.toLowerCase().includes('worsening');
-  const hpiMentionsDeficit = DEMO_ENCOUNTER.hpi.toLowerCase().includes('progressive numbness');
+  const ccMentionsProgression = encounter.cc.toLowerCase().includes('worsening');
+  const hpiMentionsDeficit = encounter.hpi.toLowerCase().includes('progressive numbness');
   const hasRedFlag = ccMentionsProgression || hpiMentionsDeficit;
   const rawSnippet = hpiMentionsDeficit
-    ? DEMO_ENCOUNTER.hpi.match(/progressive numbness[^.]*\./i)?.[0]
-    : DEMO_ENCOUNTER.cc.match(/worsening[^,]*/i)?.[0];
+    ? encounter.hpi.match(/progressive numbness[^.]*\./i)?.[0]
+    : encounter.cc.match(/worsening[^,]*/i)?.[0];
   const redFlagSnippet = rawSnippet
     ? rawSnippet.charAt(0).toUpperCase() + rawSnippet.slice(1)
     : undefined;
@@ -148,11 +172,11 @@ function buildPreCheckCriteria(): PreCheckCriterion[] {
     gap: hasRedFlag ? undefined : 'No red flag symptoms identified in chart',
   });
 
-  // 3. Conservative management — scan HPI for therapy duration + orders
-  const hpiMentionsPT = /\d+\s*weeks?\s*(of\s+)?physical therapy/i.test(DEMO_ENCOUNTER.hpi);
-  const hpiMentionsNSAIDs = /\d+\s*weeks?\s*(of\s+)?NSAIDs/i.test(DEMO_ENCOUNTER.hpi);
+  // 3. Conservative management — scan HPI for therapy duration
+  const hpiMentionsPT = /\d+\s*weeks?\s*(of\s+)?physical therapy/i.test(encounter.hpi);
+  const hpiMentionsNSAIDs = /\d+\s*weeks?\s*(of\s+)?NSAIDs/i.test(encounter.hpi);
   const hasConservative = hpiMentionsPT || hpiMentionsNSAIDs;
-  const conservativeSnippet = DEMO_ENCOUNTER.hpi
+  const conservativeSnippet = encounter.hpi
     .match(/failed\s+\d+\s+weeks?[^.]*\./i)?.[0];
   const orderEvidence = DEMO_ORDERS.length > 0
     ? `Active order: ${DEMO_ORDERS[0].name}`
@@ -164,24 +188,23 @@ function buildPreCheckCriteria(): PreCheckCriterion[] {
       ? (conservativeSnippet?.trim() ?? orderEvidence)
       : undefined,
     source: hasConservative ? 'HPI / Orders' : undefined,
-    gap: hasConservative ? undefined : 'Conservative therapy documentation not found',
+    gap: hasConservative ? undefined : 'Conservative therapy documentation not found in HPI',
   });
 
   // 4. Clinical rationale — scan assessment for rationale language
   const assessmentHasRationale =
-    DEMO_ENCOUNTER.assessment.toLowerCase().includes('warrant') ||
-    DEMO_ENCOUNTER.assessment.toLowerCase().includes('medically necessary');
+    encounter.assessment.toLowerCase().includes('warrant') ||
+    encounter.assessment.toLowerCase().includes('medically necessary');
   criteria.push({
     label: LCD_L34220_POLICY.criteria[3].label,
     status: assessmentHasRationale ? 'met' : 'indeterminate',
-    evidence: assessmentHasRationale ? DEMO_ENCOUNTER.assessment : undefined,
+    evidence: assessmentHasRationale ? encounter.assessment : undefined,
     source: assessmentHasRationale ? 'Assessment' : undefined,
     gap: assessmentHasRationale ? undefined : 'Clinical rationale not yet documented',
   });
 
   // 5. No duplicative imaging — check imaging history (empty = met)
-  // In production this queries FHIR ImagingStudy resources
-  const hasPriorImaging = false; // No prior lumbar imaging in demo chart
+  const hasPriorImaging = false;
   criteria.push({
     label: LCD_L34220_POLICY.criteria[4].label,
     status: hasPriorImaging ? 'not-met' : 'met',
@@ -193,7 +216,11 @@ function buildPreCheckCriteria(): PreCheckCriterion[] {
   return criteria;
 }
 
-export const DEMO_PRECHECK_CRITERIA: PreCheckCriterion[] = buildPreCheckCriteria();
+/** Initial pre-check against base encounter (4/5 — conservative therapy missing). */
+export const DEMO_PRECHECK_CRITERIA_INITIAL: PreCheckCriterion[] = buildPreCheckCriteria(DEMO_ENCOUNTER_BASE);
+
+/** Full pre-check after documentation added (5/5 — all met). */
+export const DEMO_PRECHECK_CRITERIA_COMPLETE: PreCheckCriterion[] = buildPreCheckCriteria(DEMO_ENCOUNTER);
 
 /**
  * Source/evidence mapping for the post-sign PA result criteria.

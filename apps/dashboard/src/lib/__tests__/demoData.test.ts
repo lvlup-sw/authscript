@@ -4,13 +4,16 @@ import {
   DEMO_SERVICE,
   DEMO_EHR_PATIENT,
   DEMO_ENCOUNTER,
+  DEMO_ENCOUNTER_BASE,
   DEMO_VITALS,
   DEMO_ORDERS,
   DEMO_ENCOUNTER_META,
   DEMO_PA_RESULT,
-  DEMO_PRECHECK_CRITERIA,
+  DEMO_PRECHECK_CRITERIA_INITIAL,
+  DEMO_PRECHECK_CRITERIA_COMPLETE,
   DEMO_PA_RESULT_SOURCES,
   LCD_L34220_POLICY,
+  buildPreCheckCriteria,
 } from '../demoData';
 
 describe('demoData', () => {
@@ -64,12 +67,27 @@ describe('demoData', () => {
     expect(DEMO_PA_RESULT.status).toBe('ready');
   });
 
-  it('DEMO_PRECHECK_CRITERIA_HasFiveItems', () => {
-    expect(DEMO_PRECHECK_CRITERIA).toHaveLength(5);
+  it('DEMO_ENCOUNTER_BASE_OmitsConservativeTherapy', () => {
+    expect(DEMO_ENCOUNTER_BASE.hpi).not.toContain('Failed 8 weeks');
+    expect(DEMO_ENCOUNTER_BASE.hpi).not.toContain('NSAIDs');
   });
 
-  it('DEMO_PRECHECK_CRITERIA_AllMetWithEvidenceAndSource', () => {
-    const met = DEMO_PRECHECK_CRITERIA.filter((c) => c.status === 'met');
+  it('DEMO_ENCOUNTER_IncludesConservativeTherapy', () => {
+    expect(DEMO_ENCOUNTER.hpi).toContain('Failed 8 weeks');
+    expect(DEMO_ENCOUNTER.hpi).toContain('naproxen 500mg BID');
+  });
+
+  it('DEMO_PRECHECK_CRITERIA_INITIAL_HasFourMet', () => {
+    expect(DEMO_PRECHECK_CRITERIA_INITIAL).toHaveLength(5);
+    const met = DEMO_PRECHECK_CRITERIA_INITIAL.filter((c) => c.status === 'met');
+    expect(met).toHaveLength(4);
+    const conservative = DEMO_PRECHECK_CRITERIA_INITIAL.find((c) => c.label.includes('conservative'));
+    expect(conservative?.status).toBe('indeterminate');
+  });
+
+  it('DEMO_PRECHECK_CRITERIA_COMPLETE_HasFiveMet', () => {
+    expect(DEMO_PRECHECK_CRITERIA_COMPLETE).toHaveLength(5);
+    const met = DEMO_PRECHECK_CRITERIA_COMPLETE.filter((c) => c.status === 'met');
     expect(met).toHaveLength(5);
     met.forEach((c) => {
       expect(c.evidence).toBeTruthy();
@@ -77,23 +95,25 @@ describe('demoData', () => {
     });
   });
 
-  it('DEMO_PRECHECK_CRITERIA_DerivedFromChartData', () => {
-    // Red flag criterion sources evidence from DEMO_ENCOUNTER
-    const redFlag = DEMO_PRECHECK_CRITERIA.find((c) => c.label.includes('Red flag'));
+  it('buildPreCheckCriteria_DerivedFromChartData', () => {
+    const criteria = buildPreCheckCriteria(DEMO_ENCOUNTER);
+
+    // Red flag criterion sources evidence from encounter
+    const redFlag = criteria.find((c) => c.label.includes('Red flag'));
     expect(redFlag?.evidence).toContain('Progressive numbness');
 
-    // Conservative management sources from DEMO_ENCOUNTER HPI
-    const conservative = DEMO_PRECHECK_CRITERIA.find((c) => c.label.includes('conservative'));
+    // Conservative management sources from encounter HPI
+    const conservative = criteria.find((c) => c.label.includes('conservative'));
     expect(conservative?.evidence).toBeTruthy();
 
-    // Clinical rationale sources from DEMO_ENCOUNTER assessment
-    const rationale = DEMO_PRECHECK_CRITERIA.find((c) => c.label.includes('Clinical rationale'));
+    // Clinical rationale sources from encounter assessment
+    const rationale = criteria.find((c) => c.label.includes('Clinical rationale'));
     expect(rationale?.evidence).toContain('warrant');
   });
 
   it('DEMO_PRECHECK_CRITERIA_LabelsMatchLCDPolicy', () => {
     const policyLabels = new Set(LCD_L34220_POLICY.criteria.map((c) => c.label));
-    DEMO_PRECHECK_CRITERIA.forEach((c) => {
+    DEMO_PRECHECK_CRITERIA_COMPLETE.forEach((c) => {
       expect(policyLabels.has(c.label)).toBe(true);
     });
   });

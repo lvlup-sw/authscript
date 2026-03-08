@@ -5,8 +5,10 @@ import {
   ChevronRight,
   ShieldAlert,
   Loader2,
+  PenLine,
 } from 'lucide-react';
 import type { PreCheckCriterion } from '@/lib/demoData';
+import type { DocState } from './useEhrDemoFlow';
 
 export interface PAReadinessWidgetProps {
   state: 'checking' | 'ready';
@@ -15,6 +17,9 @@ export interface PAReadinessWidgetProps {
   payer: string;
   policyId: string;
   onCriterionClick?: (criterion: PreCheckCriterion) => void;
+  /** Called when user clicks the "Document" link on an indeterminate gap */
+  onGapAction?: () => void;
+  docState?: DocState;
 }
 
 function StatusIcon({ status }: { status: PreCheckCriterion['status'] }) {
@@ -27,14 +32,14 @@ function StatusIcon({ status }: { status: PreCheckCriterion['status'] }) {
   return <X className="h-4 w-4 text-red-600 shrink-0" />;
 }
 
-function ProgressDots({ met, total }: { met: number; total: number }) {
+function ProgressDots({ met, total, allMet }: { met: number; total: number; allMet: boolean }) {
   return (
     <span className="inline-flex items-center gap-0.5">
       {Array.from({ length: total }, (_, i) => (
         <span
           key={i}
-          className={`inline-block h-1.5 w-1.5 rounded-full ${
-            i < met ? 'bg-amber-500' : 'bg-slate-200'
+          className={`inline-block h-1.5 w-1.5 rounded-full transition-colors duration-500 ${
+            i < met ? (allMet ? 'bg-emerald-500' : 'bg-amber-500') : 'bg-slate-200'
           }`}
         />
       ))}
@@ -49,15 +54,18 @@ export function PAReadinessWidget({
   payer,
   policyId,
   onCriterionClick,
+  onGapAction,
+  docState = 'idle',
 }: PAReadinessWidgetProps) {
   const metCount = criteria.filter((c) => c.status === 'met').length;
   const total = criteria.length;
+  const allMet = metCount === total;
 
   return (
-    <div className="rounded-lg border-l-4 border-amber-500 bg-white shadow-sm">
+    <div className={`rounded-lg border-l-4 bg-white shadow-sm transition-colors duration-700 ${allMet ? 'border-emerald-500' : 'border-amber-500'}`}>
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
-        <ShieldAlert className="h-5 w-5 text-amber-600" />
+        <ShieldAlert className={`h-5 w-5 transition-colors duration-700 ${allMet ? 'text-emerald-600' : 'text-amber-600'}`} />
         <span className="text-sm font-semibold text-slate-800">
           AuthScript &mdash; Policy Pre-Check
         </span>
@@ -88,7 +96,7 @@ export function PAReadinessWidget({
               <span>{payer}</span>
               <span className="text-slate-400">|</span>
               <span className="inline-flex items-center gap-1.5">
-                <ProgressDots met={metCount} total={total} />
+                <ProgressDots met={metCount} total={total} allMet={allMet} />
                 <span>
                   {metCount}/{total} criteria documented
                 </span>
@@ -97,19 +105,15 @@ export function PAReadinessWidget({
 
             {/* Criteria list */}
             <ul className="divide-y divide-slate-100">
-              {criteria.map((criterion, index) => {
+              {criteria.map((criterion) => {
                 const isClickable = !!onCriterionClick;
                 const Row = isClickable ? 'button' : 'div';
 
                 return (
-                  <li
-                    key={criterion.label}
-                    className="animate-fadeIn"
-                    style={{ animationDelay: `${index * 80}ms` }}
-                  >
+                  <li key={criterion.label}>
                     <Row
                       type={isClickable ? 'button' : undefined}
-                      className={`flex w-full items-start gap-2 py-2.5 px-1 text-left ${
+                      className={`flex w-full items-start gap-2 py-2.5 px-1 text-left transition-colors duration-500 ${
                         isClickable ? 'hover:bg-slate-50 rounded cursor-pointer' : ''
                       }`}
                       onClick={
@@ -140,6 +144,26 @@ export function PAReadinessWidget({
                         {criterion.status === 'indeterminate' && criterion.gap && (
                           <span className="block mt-0.5 text-sm text-amber-600">
                             {criterion.gap}
+                            {/* Inline "Document" action link */}
+                            {onGapAction && docState === 'idle' && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onGapAction();
+                                }}
+                                className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 underline decoration-dotted underline-offset-2"
+                              >
+                                <PenLine className="h-3 w-3" />
+                                Document
+                              </button>
+                            )}
+                            {docState !== 'idle' && docState !== 'saved' && (
+                              <span className="ml-2 inline-flex items-center gap-1 text-xs text-slate-400">
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                Editing...
+                              </span>
+                            )}
                           </span>
                         )}
                         {criterion.status === 'not-met' && criterion.gap && (

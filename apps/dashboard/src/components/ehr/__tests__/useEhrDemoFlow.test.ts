@@ -44,6 +44,7 @@ describe('useEhrDemoFlow', () => {
     expect(result.current.state).toBe('idle');
     expect(result.current.paRequest).toBeNull();
     expect(result.current.error).toBeNull();
+    expect(result.current.docState).toBe('idle');
   });
 
   it('useEhrDemoFlow_Sign_TransitionsToSigningThenProcessing', async () => {
@@ -125,6 +126,7 @@ describe('useEhrDemoFlow', () => {
     expect(result.current.state).toBe('idle');
     expect(result.current.paRequest).toBeNull();
     expect(result.current.error).toBeNull();
+    expect(result.current.docState).toBe('idle');
   });
 
   it('useEhrDemoFlow_Flag_TransitionsToFlagged', async () => {
@@ -154,7 +156,7 @@ describe('useEhrDemoFlow', () => {
     expect(result.current.preCheckCriteria).not.toBeNull();
   });
 
-  it('useEhrDemoFlow_Flagged_HasPreCheckCriteria', async () => {
+  it('useEhrDemoFlow_Flagged_HasPreCheckCriteria_FourMet', async () => {
     const useEhrDemoFlow = await importHook();
     const { result } = renderHook(() => useEhrDemoFlow());
 
@@ -174,6 +176,75 @@ describe('useEhrDemoFlow', () => {
     expect(result.current.state).toBe('flagged');
     const criteria = result.current.preCheckCriteria!;
     expect(criteria).toHaveLength(5);
+    // Initial state: 4/5 met (conservative therapy is indeterminate)
+    expect(criteria.filter((c) => c.status === 'met')).toHaveLength(4);
+    expect(criteria.find((c) => c.label.includes('conservative'))?.status).toBe('indeterminate');
+  });
+
+  it('useEhrDemoFlow_DocFlow_OpenSuggestion', async () => {
+    const useEhrDemoFlow = await importHook();
+    const { result } = renderHook(() => useEhrDemoFlow());
+
+    expect(result.current.docState).toBe('idle');
+
+    act(() => {
+      result.current.openSuggestion();
+    });
+
+    expect(result.current.docState).toBe('suggesting');
+  });
+
+  it('useEhrDemoFlow_DocFlow_InsertToNote', async () => {
+    const useEhrDemoFlow = await importHook();
+    const { result } = renderHook(() => useEhrDemoFlow());
+
+    act(() => {
+      result.current.openSuggestion();
+    });
+    expect(result.current.docState).toBe('suggesting');
+
+    act(() => {
+      result.current.insertToNote('Failed 8 weeks of physical therapy (2x/week) and 6 weeks of NSAIDs (naproxen 500mg BID). No improvement with conservative management.');
+    });
+    expect(result.current.docState).toBe('inserted');
+    expect(result.current.encounter.hpi).toContain('Failed 8 weeks');
+  });
+
+  it('useEhrDemoFlow_DocFlow_SaveToChart_UpdatesCriteria', async () => {
+    const useEhrDemoFlow = await importHook();
+    const { result } = renderHook(() => useEhrDemoFlow());
+
+    // Get to flagged state first
+    let flagPromise: Promise<void>;
+    act(() => {
+      flagPromise = result.current.flag();
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(1500);
+    });
+    await act(async () => {
+      await flagPromise!;
+    });
+
+    // Walk through doc flow
+    act(() => {
+      result.current.openSuggestion();
+    });
+    act(() => {
+      result.current.insertToNote('Failed 8 weeks of physical therapy (2x/week) and 6 weeks of NSAIDs (naproxen 500mg BID). No improvement with conservative management.');
+    });
+    act(() => {
+      result.current.saveToChart();
+    });
+    expect(result.current.docState).toBe('saving');
+
+    // After save delay → saved + criteria updated to 5/5
+    await act(async () => {
+      vi.advanceTimersByTime(1800);
+    });
+
+    expect(result.current.docState).toBe('saved');
+    const criteria = result.current.preCheckCriteria!;
     expect(criteria.filter((c) => c.status === 'met')).toHaveLength(5);
   });
 

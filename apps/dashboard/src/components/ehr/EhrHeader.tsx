@@ -2,6 +2,11 @@ interface EhrHeaderPatient {
   name: string;
   dob: string;
   mrn: string;
+  age?: number;
+  sex?: 'M' | 'F';
+  insurance?: string;
+  memberId?: string;
+  allergies?: string[];
 }
 
 interface EncounterMeta {
@@ -41,12 +46,35 @@ export function EhrHeader({ patient, encounterMeta }: EhrHeaderProps) {
         <div className="flex items-center gap-6">
           <span className="text-base font-bold text-gray-900">{patient.name}</span>
           <div className="flex items-center gap-4 text-sm text-gray-600">
+            {patient.age != null && patient.sex && (
+              <span>{patient.age}{patient.sex}</span>
+            )}
             <span>
               <span className="font-medium text-gray-500">DOB:</span> {patient.dob}
             </span>
             <span>
               <span className="font-medium text-gray-500">MRN:</span> {patient.mrn}
             </span>
+            {patient.insurance && (
+              <>
+                <span className="text-gray-300">|</span>
+                <span>
+                  <span className="font-medium text-gray-500">Ins:</span> {patient.insurance}
+                </span>
+                {patient.memberId && (
+                  <span className="text-xs text-gray-400">({patient.memberId})</span>
+                )}
+              </>
+            )}
+            {patient.allergies && patient.allergies.length > 0 && (
+              <>
+                <span className="text-gray-300">|</span>
+                <span className="text-red-600">
+                  <span className="font-medium">Allergies:</span>{' '}
+                  {patient.allergies.join(', ')}
+                </span>
+              </>
+            )}
           </div>
         </div>
       </div>

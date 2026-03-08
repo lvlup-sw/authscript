@@ -180,7 +180,7 @@ describe('PAReadinessWidget', () => {
     expect(onCriterionClick).toHaveBeenCalledWith(criteria[0]);
   });
 
-  it('PAReadinessWidget_Ready_HasAmberAccent', () => {
+  it('PAReadinessWidget_AllMet_HasEmeraldAccent', () => {
     const criteria = buildCriteria();
 
     const { container } = render(
@@ -194,6 +194,51 @@ describe('PAReadinessWidget', () => {
     );
 
     const widget = container.firstElementChild;
+    // All 5 criteria met → emerald border
+    expect(widget?.className).toMatch(/border-emerald-500/);
+  });
+
+  it('PAReadinessWidget_PartialMet_HasAmberAccent', () => {
+    const criteria: PreCheckCriterion[] = [
+      { label: 'Met criterion', status: 'met', evidence: 'Found', source: 'HPI' },
+      { label: 'Missing criterion', status: 'indeterminate', gap: 'Not documented' },
+    ];
+
+    const { container } = render(
+      <PAReadinessWidget
+        state="ready"
+        criteria={criteria}
+        order={defaultOrder}
+        payer={defaultPayer}
+        policyId={defaultPolicyId}
+      />,
+    );
+
+    const widget = container.firstElementChild;
     expect(widget?.className).toMatch(/border-amber-500/);
+  });
+
+  it('PAReadinessWidget_Indeterminate_ShowsDocumentLink', () => {
+    const criteria: PreCheckCriterion[] = [
+      { label: 'Test criterion', status: 'indeterminate', gap: 'Missing documentation' },
+    ];
+    const onGapAction = vi.fn();
+
+    render(
+      <PAReadinessWidget
+        state="ready"
+        criteria={criteria}
+        order={defaultOrder}
+        payer={defaultPayer}
+        policyId={defaultPolicyId}
+        onGapAction={onGapAction}
+        docState="idle"
+      />,
+    );
+
+    const docLink = screen.getByText('Document');
+    expect(docLink).toBeInTheDocument();
+    fireEvent.click(docLink);
+    expect(onGapAction).toHaveBeenCalled();
   });
 });
