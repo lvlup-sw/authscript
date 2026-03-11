@@ -51,7 +51,7 @@ describe('demoData', () => {
   });
 
   it('DEMO_ENCOUNTER_META_HasProviderInfo', () => {
-    expect(DEMO_ENCOUNTER_META.provider).toBe('Dr. Kelli Smith');
+    expect(DEMO_ENCOUNTER_META.provider).toBe('Kelli Smith, NP');
     expect(DEMO_ENCOUNTER_META.specialty).toBe('Family Medicine');
   });
 
@@ -62,7 +62,7 @@ describe('demoData', () => {
 
   it('DEMO_PA_RESULT_Has93PercentConfidence', () => {
     expect(DEMO_PA_RESULT.confidence).toBe(93);
-    expect(DEMO_PA_RESULT.provider).toBe('Dr. Kelli Smith');
+    expect(DEMO_PA_RESULT.provider).toBe('Kelli Smith, NP');
     expect(DEMO_PA_RESULT.procedureCode).toBe('72148');
     expect(DEMO_PA_RESULT.status).toBe('ready');
   });

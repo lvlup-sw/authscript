@@ -24,7 +24,7 @@ function buildMockPARequest(overrides: Partial<PARequest> = {}): PARequest {
     diagnosis: 'Lumbar radiculopathy',
     diagnosisCode: 'M54.5',
     payer: 'United Healthcare',
-    provider: 'Dr. Kelli Smith',
+    provider: 'Kelli Smith, NP',
     providerNpi: '1234567890',
     serviceDate: '2026-03-01',
     placeOfService: 'Outpatient',

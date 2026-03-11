@@ -21,14 +21,14 @@ describe('EhrHeader', () => {
       <EhrHeader
         patient={{ name: 'Test Patient', dob: '01/01/2000', mrn: 'MRN-001' }}
         encounterMeta={{
-          provider: 'Dr. Kelli Smith',
+          provider: 'Kelli Smith, NP',
           specialty: 'Family Medicine',
           date: '02/25/2026',
           type: 'Office Visit',
         }}
       />,
     );
-    expect(screen.getByText('Dr. Kelli Smith')).toBeInTheDocument();
+    expect(screen.getByText('Kelli Smith, NP')).toBeInTheDocument();
     expect(screen.getByText('Family Medicine')).toBeInTheDocument();
     expect(screen.getByText('02/25/2026')).toBeInTheDocument();
     expect(screen.getByText('Office Visit')).toBeInTheDocument();

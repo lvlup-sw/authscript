@@ -58,7 +58,7 @@ describe('EhrDemoPage', () => {
     expect(screen.getByText('Rebecca Sandbox')).toBeInTheDocument();
 
     // Encounter metadata visible
-    expect(screen.getByText('Dr. Kelli Smith')).toBeInTheDocument();
+    expect(screen.getByText('Kelli Smith, NP')).toBeInTheDocument();
     expect(screen.getByText('Family Medicine')).toBeInTheDocument();
 
     // EncounterNote shows sections
@@ -89,7 +89,7 @@ describe('EhrDemoPage', () => {
 
     // Should open the static PDF viewer (blank form)
     expect(screen.getByTestId('pdf-viewer-static')).toBeInTheDocument();
-    expect(screen.getByText(/NOFR001/)).toBeInTheDocument();
+    expect(screen.getByText(/MA CT\/CTA\/MRI\/MRA/)).toBeInTheDocument();
   });
 
   it('EhrDemoPage_Sign_ShowsProcessingPanel', async () => {
@@ -148,7 +148,7 @@ describe('EhrDemoPage', () => {
     expect(screen.getByText('No recent duplicative imaging')).toBeInTheDocument();
 
     // Submit button visible
-    expect(screen.getByRole('button', { name: /submit to blue cross/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /submit to aetna/i })).toBeInTheDocument();
 
     // View PA Form button visible (in PAResultsPanel)
     expect(screen.getByRole('button', { name: /^view pa form$/i })).toBeInTheDocument();
@@ -258,7 +258,7 @@ describe('EhrDemoPage', () => {
 
     // 5. Submit
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /submit to blue cross/i }));
+      fireEvent.click(screen.getByRole('button', { name: /submit to aetna/i }));
     });
     await act(async () => {
       vi.advanceTimersByTime(1500);

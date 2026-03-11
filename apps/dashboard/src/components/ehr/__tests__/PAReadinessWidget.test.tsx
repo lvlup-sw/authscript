@@ -39,7 +39,7 @@ function buildCriteria(): PreCheckCriterion[] {
 }
 
 const defaultOrder = { code: '72148', name: 'MRI Lumbar Spine w/o Contrast' };
-const defaultPayer = 'Blue Cross Blue Shield';
+const defaultPayer = 'Aetna';
 const defaultPolicyId = 'LCD L34220';
 
 describe('PAReadinessWidget', () => {
@@ -80,7 +80,7 @@ describe('PAReadinessWidget', () => {
     expect(screen.getByText(/MRI Lumbar Spine/)).toBeInTheDocument();
 
     // Payer
-    expect(screen.getByText(/Blue Cross Blue Shield/)).toBeInTheDocument();
+    expect(screen.getByText(/Aetna/)).toBeInTheDocument();
 
     // Policy ID in monospace/uppercase
     const policyEl = screen.getByText('LCD L34220');

@@ -44,7 +44,7 @@ const mockPatient: Patient = {
   mrn: '60182',
   dob: '09/14/1990',
   memberId: 'ATH60182',
-  payer: 'Blue Cross Blue Shield',
+  payer: 'Aetna',
   address: '654 Birch Road, Tacoma, WA 98402',
   phone: '(253) 555-0654',
 };

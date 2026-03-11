@@ -79,7 +79,7 @@ describe('useEhrDemoFlow', () => {
     expect(result.current.paRequest).not.toBeNull();
     expect(result.current.paRequest!.confidence).toBe(93);
     expect(result.current.paRequest!.criteria).toHaveLength(5);
-    expect(result.current.paRequest!.provider).toBe('Dr. Kelli Smith');
+    expect(result.current.paRequest!.provider).toBe('Kelli Smith, NP');
   });
 
   it('useEhrDemoFlow_Submit_TransitionsToComplete', async () => {

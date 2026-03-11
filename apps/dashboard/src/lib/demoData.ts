@@ -20,7 +20,7 @@ export const DEMO_EHR_PATIENT = {
   mrn: 'ATH60182',
   age: 35,
   sex: 'F' as const,
-  insurance: 'Blue Cross Blue Shield',
+  insurance: 'Aetna',
   memberId: 'ATH60182',
   allergies: ['Sulfa drugs', 'Codeine'],
 };
@@ -61,7 +61,7 @@ export const DEMO_ENCOUNTER = {
  * Encounter metadata — provider, specialty, date, type
  */
 export const DEMO_ENCOUNTER_META = {
-  provider: 'Dr. Kelli Smith',
+  provider: 'Kelli Smith, NP',
   specialty: 'Family Medicine',
   date: '02/25/2026',
   type: 'Office Visit',
@@ -108,7 +108,7 @@ export const LCD_L34220_POLICY = {
   policyName: 'MRI Lumbar Spine',
   procedureCode: '72148',
   procedureName: 'MRI without Contrast, Lumbar Spine',
-  payer: 'Blue Cross Blue Shield',
+  payer: 'Aetna',
   criteria: [
     {
       label: 'Valid ICD-10 for lumbar pathology',
@@ -266,7 +266,7 @@ export const DEMO_PA_RESULT: PARequest = {
     mrn: '60182',
     dob: '09/14/1990',
     memberId: 'ATH60182',
-    payer: 'Blue Cross Blue Shield',
+    payer: 'Aetna',
     address: '654 Birch Road, Tacoma, WA 98402',
     phone: '(253) 555-0654',
   },
@@ -274,8 +274,8 @@ export const DEMO_PA_RESULT: PARequest = {
   procedureName: 'MRI without Contrast, Lumbar Spine',
   diagnosis: 'Low back pain; Lumbar radiculopathy, left',
   diagnosisCode: 'M54.5, M54.51',
-  payer: 'Blue Cross Blue Shield',
-  provider: 'Dr. Kelli Smith',
+  payer: 'Aetna',
+  provider: 'Kelli Smith, NP',
   providerNpi: '1234567890',
   serviceDate: '2026-03-01',
   placeOfService: 'Outpatient',

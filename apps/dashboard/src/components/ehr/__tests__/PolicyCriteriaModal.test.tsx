@@ -44,7 +44,7 @@ describe('PolicyCriteriaModal', () => {
   it('PolicyCriteriaModal_Open_ShowsInfoBanner', () => {
     render(<PolicyCriteriaModal isOpen={true} onClose={vi.fn()} />);
 
-    expect(screen.getByText(/Blue Cross Blue Shield/)).toBeInTheDocument();
+    expect(screen.getByText(/Aetna/)).toBeInTheDocument();
     expect(screen.getByText(/CPT 72148/)).toBeInTheDocument();
     expect(screen.getByText(/AuthScript will automatically verify/)).toBeInTheDocument();
   });

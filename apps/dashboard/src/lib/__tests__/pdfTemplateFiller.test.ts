@@ -47,7 +47,7 @@ const MOCK_REQUEST: PARequest = {
     mrn: '60182',
     dob: '09/14/1990',
     memberId: 'ATH60182',
-    payer: 'Blue Cross Blue Shield',
+    payer: 'Aetna',
     address: '123 Main St',
     phone: '555-0100',
   },
@@ -55,8 +55,8 @@ const MOCK_REQUEST: PARequest = {
   procedureName: 'MRI Lumbar Spine',
   diagnosis: 'Lumbar radiculopathy',
   diagnosisCode: 'M54.16',
-  payer: 'Blue Cross Blue Shield',
-  provider: 'Dr. Kelli Smith',
+  payer: 'Aetna',
+  provider: 'Kelli Smith, NP',
   providerNpi: '1234567890',
   serviceDate: '2026-03-01',
   placeOfService: '11',
@@ -89,15 +89,17 @@ describe('pdfTemplateFiller', () => {
 
     expect(blob).toBeInstanceOf(Blob);
 
-    const patientField = textFieldCalls.find((c) => c.field === 'Patient Name');
+    const patientField = textFieldCalls.find((c) => c.field === 'Patient Name First Last');
     expect(patientField?.value).toBe('Rebecca Sandbox');
 
     const providerField = textFieldCalls.find(
-      (c) => c.field === 'Requesting Provider or Facility Name',
+      (c) => c.field === 'Physician Name First Last',
     );
-    expect(providerField?.value).toBe('Dr. Kelli Smith');
+    expect(providerField?.value).toBe('Kelli Smith, NP');
 
-    expect(checkBoxCalls).toContain('Review Type - Non-Urgent');
+    expect(checkBoxCalls).toContain('MRI');
+    expect(checkBoxCalls).toContain('SPINE');
+    expect(checkBoxCalls).toContain('Radiculopathy');
     expect(flattenCalled).toBe(true);
   });
 
@@ -119,18 +121,28 @@ describe('pdfTemplateFiller', () => {
     await generateFilledPAForm(MOCK_REQUEST);
 
     const codeField = textFieldCalls.find(
-      (c) => c.field === 'Planned Service or Procedure Code Row 1',
+      (c) => c.field === 'CPT Codes',
     );
     expect(codeField?.value).toBe('72148');
 
     const memberField = textFieldCalls.find(
-      (c) => c.field === 'Member or Medicaid ID Number',
+      (c) => c.field === 'Member ID',
     );
     expect(memberField?.value).toBe('ATH60182');
 
-    const icdField = textFieldCalls.find(
-      (c) => c.field === 'Diagnosis Description ICD Version Number',
+    const diagnosisField = textFieldCalls.find(
+      (c) => c.field === 'ICD Diagnosis Codes',
     );
-    expect(icdField?.value).toBe('10');
+    expect(diagnosisField?.value).toBe('M54.16');
+
+    const healthPlanField = textFieldCalls.find(
+      (c) => c.field === 'Health Plan',
+    );
+    expect(healthPlanField?.value).toBe('Aetna');
+
+    const providerField2 = textFieldCalls.find(
+      (c) => c.field === 'Physician Name First Last',
+    );
+    expect(providerField2?.value).toBe('Kelli Smith, NP');
   });
 });

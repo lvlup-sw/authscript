@@ -35,7 +35,7 @@ import {
 import type { Criterion, PARequest } from '@/api/graphqlService';
 import type { Order } from '@/components/ehr/EncounterNote';
 
-const BLANK_PA_FORM_URL = '/pdf-templates/tx-standard-pa-form.pdf';
+const BLANK_PA_FORM_URL = '/pdf-templates/ma-ct-cta-mri-mra-prior-auth-form.pdf';
 
 function deriveOrderStatus(flowState: string, baseStatus: Order['status']): Order['status'] {
   if (flowState === 'idle' || flowState === 'flagged') return baseStatus;
@@ -222,7 +222,7 @@ export function EhrDemoPage() {
                 state="ready"
                 criteria={flow.preCheckCriteria}
                 order={{ code: '72148', name: 'MRI Lumbar Spine w/o Contrast' }}
-                payer="Blue Cross Blue Shield"
+                payer="Aetna"
                 policyId="LCD L34220"
                 onGapAction={() => flow.openSuggestion()}
                 docState={flow.docState}
@@ -280,7 +280,7 @@ export function EhrDemoPage() {
         isOpen={blankFormOpen}
         onClose={() => setBlankFormOpen(false)}
         staticUrl={BLANK_PA_FORM_URL}
-        title="TX Standard PA Request Form (NOFR001)"
+        title="MA CT/CTA/MRI/MRA — Prior Authorization Form"
       />
 
       {/* Submission confirmation receipt */}
