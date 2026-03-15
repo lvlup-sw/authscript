@@ -24,12 +24,12 @@ describe('SceneNav', () => {
   it('SceneNav_ActiveScene_HasFilledStyle', () => {
     renderSceneNav();
 
-    // Default scene is 'encounter', so it should have the active data attribute
+    // Default scene is 'encounter', so it should have aria-current="page"
     const encounterBtn = screen.getByRole('button', { name: /encounter/i });
-    expect(encounterBtn).toHaveAttribute('data-active', 'true');
+    expect(encounterBtn).toHaveAttribute('aria-current', 'page');
 
     const fleetBtn = screen.getByRole('button', { name: /fleet/i });
-    expect(fleetBtn).toHaveAttribute('data-active', 'false');
+    expect(fleetBtn).not.toHaveAttribute('aria-current');
   });
 
   it('SceneNav_ClickPill_CallsSetScene', () => {
@@ -39,11 +39,11 @@ describe('SceneNav', () => {
     fireEvent.click(fleetBtn);
 
     // After click, fleet should now be active
-    expect(fleetBtn).toHaveAttribute('data-active', 'true');
+    expect(fleetBtn).toHaveAttribute('aria-current', 'page');
 
     // And encounter should be inactive
     const encounterBtn = screen.getByRole('button', { name: /encounter/i });
-    expect(encounterBtn).toHaveAttribute('data-active', 'false');
+    expect(encounterBtn).not.toHaveAttribute('aria-current');
   });
 
   it('SceneNav_DemoControls_RendersResetButton', () => {

@@ -95,24 +95,11 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/ehr-demo'
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> worktree-agent-a94f0a45
     | '/fleet'
     | '/help'
     | '/smart-launch'
     | '/analysis/$transactionId'
-<<<<<<< HEAD
-=======
-    | '/help'
-    | '/smart-launch'
-    | '/analysis/$transactionId'
     | '/case/$caseId'
->>>>>>> worktree-agent-a2fd1d4e
-=======
-    | '/case/$caseId'
->>>>>>> worktree-agent-a94f0a45
   id:
     | '__root__'
     | '/'
