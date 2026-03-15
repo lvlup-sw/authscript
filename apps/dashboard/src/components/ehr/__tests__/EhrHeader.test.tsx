@@ -40,4 +40,39 @@ describe('EhrHeader', () => {
     );
     expect(screen.queryByText('Family Medicine')).not.toBeInTheDocument();
   });
+
+  it('EhrHeader_RendersEncounterTypePill', () => {
+    render(
+      <EhrHeader
+        patient={{ name: 'Test', dob: '01/01/2000', mrn: 'MRN-001' }}
+        encounterMeta={{
+          provider: 'Dr. Test',
+          specialty: 'Family Medicine',
+          date: '01/01/2026',
+          type: 'Office Visit',
+          facility: 'Test Clinic',
+        }}
+      />,
+    );
+    // The encounter type should be rendered as a pill/badge
+    const pill = screen.getByText('Office Visit');
+    expect(pill).toBeInTheDocument();
+    expect(pill.className).toContain('rounded');
+  });
+
+  it('EhrHeader_RendersFacilityName', () => {
+    render(
+      <EhrHeader
+        patient={{ name: 'Test', dob: '01/01/2000', mrn: 'MRN-001' }}
+        encounterMeta={{
+          provider: 'Dr. Test',
+          specialty: 'Family Medicine',
+          date: '01/01/2026',
+          type: 'Office Visit',
+          facility: 'Family Care Associates',
+        }}
+      />,
+    );
+    expect(screen.getByText('Family Care Associates')).toBeInTheDocument();
+  });
 });
