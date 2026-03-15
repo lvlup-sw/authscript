@@ -11,8 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SmartLaunchRouteImport } from './routes/smart-launch'
 import { Route as HelpRouteImport } from './routes/help'
+import { Route as FleetRouteImport } from './routes/fleet'
 import { Route as EhrDemoRouteImport } from './routes/ehr-demo'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CaseCaseIdRouteImport } from './routes/case.$caseId'
 import { Route as AnalysisTransactionIdRouteImport } from './routes/analysis.$transactionId'
 
 const SmartLaunchRoute = SmartLaunchRouteImport.update({
@@ -25,6 +27,11 @@ const HelpRoute = HelpRouteImport.update({
   path: '/help',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FleetRoute = FleetRouteImport.update({
+  id: '/fleet',
+  path: '/fleet',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EhrDemoRoute = EhrDemoRouteImport.update({
   id: '/ehr-demo',
   path: '/ehr-demo',
@@ -33,6 +40,11 @@ const EhrDemoRoute = EhrDemoRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CaseCaseIdRoute = CaseCaseIdRouteImport.update({
+  id: '/case/$caseId',
+  path: '/case/$caseId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnalysisTransactionIdRoute = AnalysisTransactionIdRouteImport.update({
@@ -44,50 +56,69 @@ const AnalysisTransactionIdRoute = AnalysisTransactionIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/ehr-demo': typeof EhrDemoRoute
+  '/fleet': typeof FleetRoute
   '/help': typeof HelpRoute
   '/smart-launch': typeof SmartLaunchRoute
   '/analysis/$transactionId': typeof AnalysisTransactionIdRoute
+  '/case/$caseId': typeof CaseCaseIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/ehr-demo': typeof EhrDemoRoute
+  '/fleet': typeof FleetRoute
   '/help': typeof HelpRoute
   '/smart-launch': typeof SmartLaunchRoute
   '/analysis/$transactionId': typeof AnalysisTransactionIdRoute
+  '/case/$caseId': typeof CaseCaseIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/ehr-demo': typeof EhrDemoRoute
+  '/fleet': typeof FleetRoute
   '/help': typeof HelpRoute
   '/smart-launch': typeof SmartLaunchRoute
   '/analysis/$transactionId': typeof AnalysisTransactionIdRoute
+  '/case/$caseId': typeof CaseCaseIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/ehr-demo'
+    | '/fleet'
     | '/help'
     | '/smart-launch'
     | '/analysis/$transactionId'
+    | '/case/$caseId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/ehr-demo' | '/help' | '/smart-launch' | '/analysis/$transactionId'
+  to:
+    | '/'
+    | '/ehr-demo'
+    | '/fleet'
+    | '/help'
+    | '/smart-launch'
+    | '/analysis/$transactionId'
+    | '/case/$caseId'
   id:
     | '__root__'
     | '/'
     | '/ehr-demo'
+    | '/fleet'
     | '/help'
     | '/smart-launch'
     | '/analysis/$transactionId'
+    | '/case/$caseId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   EhrDemoRoute: typeof EhrDemoRoute
+  FleetRoute: typeof FleetRoute
   HelpRoute: typeof HelpRoute
   SmartLaunchRoute: typeof SmartLaunchRoute
   AnalysisTransactionIdRoute: typeof AnalysisTransactionIdRoute
+  CaseCaseIdRoute: typeof CaseCaseIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -106,6 +137,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HelpRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/fleet': {
+      id: '/fleet'
+      path: '/fleet'
+      fullPath: '/fleet'
+      preLoaderRoute: typeof FleetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/ehr-demo': {
       id: '/ehr-demo'
       path: '/ehr-demo'
@@ -118,6 +156,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/case/$caseId': {
+      id: '/case/$caseId'
+      path: '/case/$caseId'
+      fullPath: '/case/$caseId'
+      preLoaderRoute: typeof CaseCaseIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/analysis/$transactionId': {
@@ -133,9 +178,11 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   EhrDemoRoute: EhrDemoRoute,
+  FleetRoute: FleetRoute,
   HelpRoute: HelpRoute,
   SmartLaunchRoute: SmartLaunchRoute,
   AnalysisTransactionIdRoute: AnalysisTransactionIdRoute,
+  CaseCaseIdRoute: CaseCaseIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
