@@ -11,6 +11,7 @@ import {
   Building2,
   Hash,
   Stethoscope,
+  ArrowRight,
 } from 'lucide-react';
 import {
   EhrHeader,
@@ -23,6 +24,8 @@ import {
 import { useEhrDemoFlow } from '@/components/ehr/useEhrDemoFlow';
 import { CriteriaReasonDialog } from './analysis.$transactionId';
 import { PdfViewerModal } from '@/components/PdfViewerModal';
+import { DemoProvider } from '@/components/demo/DemoProvider';
+import { SceneNav } from '@/components/demo/SceneNav';
 import {
   DEMO_EHR_PATIENT,
   DEMO_ENCOUNTER_META,
@@ -193,103 +196,120 @@ export function EhrDemoPage() {
 
   const isSigned = flow.state !== 'idle' && flow.state !== 'flagged';
   const showPostSignPanel = isSigned && flow.state !== 'error';
+  const isComplete = flow.state === 'complete';
 
   // Show highlight only after text has been inserted into the note
   const textInserted = flow.docState === 'inserted' || flow.docState === 'saving' || flow.docState === 'saved';
 
   return (
-    <div className="fixed inset-0 z-[100] min-h-screen bg-gray-100 overflow-auto">
-      <EhrHeader patient={DEMO_EHR_PATIENT} encounterMeta={DEMO_ENCOUNTER_META} />
-      <div className="flex">
-        <EncounterSidebar signed={isSigned} flowState={flow.state} preCheckCount={preCheckCount} />
-        <div className="flex-1 max-w-5xl mx-auto p-6 space-y-6">
-          <EncounterNote
-            encounter={flow.encounter}
-            vitals={{bp: '128/82', hr: 72, temp: 98.6, spo2: 99}}
-            orders={dynamicOrders}
-            hpiHighlight={textInserted ? (flow.insertedHpiText ?? DEMO_HPI_ADDENDUM) : undefined}
-            assessmentHighlight={textInserted ? DEMO_ASSESSMENT_ADDENDUM : undefined}
-            docState={flow.docState}
-            suggestionText={DEMO_HPI_ADDENDUM}
-            onInsertSuggestion={(editedText) => flow.insertToNote(editedText)}
-            onSaveToChart={() => flow.saveToChart()}
-          />
+    <DemoProvider>
+      <div className="fixed inset-0 z-[100] min-h-screen bg-gray-100 overflow-auto">
+        <SceneNav />
+        <EhrHeader patient={DEMO_EHR_PATIENT} encounterMeta={DEMO_ENCOUNTER_META} />
+        <div className="flex">
+          <EncounterSidebar signed={isSigned} flowState={flow.state} preCheckCount={preCheckCount} />
+          <div className="flex-1 max-w-5xl mx-auto p-6 space-y-6">
+            <EncounterNote
+              encounter={flow.encounter}
+              vitals={{bp: '128/82', hr: 72, temp: 98.6, spo2: 99}}
+              orders={dynamicOrders}
+              hpiHighlight={textInserted ? (flow.insertedHpiText ?? DEMO_HPI_ADDENDUM) : undefined}
+              assessmentHighlight={textInserted ? DEMO_ASSESSMENT_ADDENDUM : undefined}
+              docState={flow.docState}
+              suggestionText={DEMO_HPI_ADDENDUM}
+              onInsertSuggestion={(editedText) => flow.insertToNote(editedText)}
+              onSaveToChart={() => flow.saveToChart()}
+            />
 
-          {/* Pre-check readiness widget (visible in flagged state) */}
-          {flow.state === 'flagged' && flow.preCheckCriteria && (
-            <div className="animate-fade-slide-in">
-              <PAReadinessWidget
-                state="ready"
-                criteria={flow.preCheckCriteria}
-                order={{ code: '72148', name: 'MRI Lumbar Spine w/o Contrast' }}
-                payer="Aetna"
-                policyId="LCD L34220"
-                onGapAction={() => flow.openSuggestion()}
-                docState={flow.docState}
-              />
+            {/* Pre-check readiness widget (visible in flagged state) */}
+            {flow.state === 'flagged' && flow.preCheckCriteria && (
+              <div className="animate-fade-slide-in">
+                <PAReadinessWidget
+                  state="ready"
+                  criteria={flow.preCheckCriteria}
+                  order={{ code: '72148', name: 'MRI Lumbar Spine w/o Contrast' }}
+                  payer="Aetna"
+                  policyId="LCD L34220"
+                  onGapAction={() => flow.openSuggestion()}
+                  docState={flow.docState}
+                />
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setBlankFormOpen(true)}
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+              >
+                <FileText className="h-4 w-4" aria-hidden="true" />
+                Preview PA Form
+              </button>
+              <SignEncounterButton onSign={() => flow.sign()} signed={isSigned} />
             </div>
-          )}
 
-          <div className="flex items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => setBlankFormOpen(true)}
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
-            >
-              <FileText className="h-4 w-4" aria-hidden="true" />
-              Preview PA Form
-            </button>
-            <SignEncounterButton onSign={() => flow.sign()} signed={isSigned} />
+            {/* Post-sign PA results panel */}
+            {showPostSignPanel && (
+              <div className="animate-fade-slide-in">
+                <PAResultsPanel
+                  state={flow.state}
+                  paRequest={flow.paRequest}
+                  error={flow.error}
+                  onSubmit={() => flow.submit()}
+                  onCriterionClick={(c) => setSelectedCriterion(c)}
+                  onViewPdf={() => setPdfOpen(true)}
+                  onViewConfirmation={() => setConfirmationOpen(true)}
+                />
+              </div>
+            )}
+
+            {/* Fleet transition trigger — visible after PA submission completes */}
+            {isComplete && (
+              <div className="flex justify-center pt-2">
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-teal-700"
+                >
+                  View in Fleet
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+            )}
           </div>
-
-          {/* Post-sign PA results panel */}
-          {showPostSignPanel && (
-            <div className="animate-fade-slide-in">
-              <PAResultsPanel
-                state={flow.state}
-                paRequest={flow.paRequest}
-                error={flow.error}
-                onSubmit={() => flow.submit()}
-                onCriterionClick={(c) => setSelectedCriterion(c)}
-                onViewPdf={() => setPdfOpen(true)}
-                onViewConfirmation={() => setConfirmationOpen(true)}
-              />
-            </div>
-          )}
         </div>
+
+        {/* Criteria reason dialog */}
+        <CriteriaReasonDialog
+          isOpen={!!selectedCriterion}
+          onClose={() => setSelectedCriterion(null)}
+          met={selectedCriterion?.met ?? null}
+          label={selectedCriterion?.label ?? ''}
+          reason={selectedCriterion?.reason ?? ''}
+        />
+
+        {/* Filled PDF viewer modal (post-sign) */}
+        <PdfViewerModal
+          isOpen={pdfOpen}
+          onClose={() => setPdfOpen(false)}
+          request={flow.paRequest}
+        />
+
+        {/* Blank PA form viewer (pre-sign) */}
+        <PdfViewerModal
+          isOpen={blankFormOpen}
+          onClose={() => setBlankFormOpen(false)}
+          staticUrl={BLANK_PA_FORM_URL}
+          title="MA CT/CTA/MRI/MRA — Prior Authorization Form"
+        />
+
+        {/* Submission confirmation receipt */}
+        <ConfirmationDialog
+          isOpen={confirmationOpen}
+          onClose={() => setConfirmationOpen(false)}
+          paRequest={flow.paRequest}
+        />
       </div>
-
-      {/* Criteria reason dialog */}
-      <CriteriaReasonDialog
-        isOpen={!!selectedCriterion}
-        onClose={() => setSelectedCriterion(null)}
-        met={selectedCriterion?.met ?? null}
-        label={selectedCriterion?.label ?? ''}
-        reason={selectedCriterion?.reason ?? ''}
-      />
-
-      {/* Filled PDF viewer modal (post-sign) */}
-      <PdfViewerModal
-        isOpen={pdfOpen}
-        onClose={() => setPdfOpen(false)}
-        request={flow.paRequest}
-      />
-
-      {/* Blank PA form viewer (pre-sign) */}
-      <PdfViewerModal
-        isOpen={blankFormOpen}
-        onClose={() => setBlankFormOpen(false)}
-        staticUrl={BLANK_PA_FORM_URL}
-        title="MA CT/CTA/MRI/MRA — Prior Authorization Form"
-      />
-
-      {/* Submission confirmation receipt */}
-      <ConfirmationDialog
-        isOpen={confirmationOpen}
-        onClose={() => setConfirmationOpen(false)}
-        paRequest={flow.paRequest}
-      />
-    </div>
+    </DemoProvider>
   );
 }
 
