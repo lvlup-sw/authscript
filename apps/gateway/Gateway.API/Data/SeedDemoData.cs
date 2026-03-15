@@ -208,7 +208,12 @@ public static class SeedDemoData
                     ClinicalSummary = summary,
                     Status = status,
                     Confidence = confidence,
-                    Criteria = criteriaTemplate.ToList(),
+                    Criteria = criteriaTemplate.Select(c => new CriterionModel
+                    {
+                        Label = c.Label,
+                        Met = c.Met,
+                        Reason = c.Reason,
+                    }).ToList(),
                     CreatedAt = createdAt.ToString("o"),
                     UpdatedAt = (submittedAt ?? readyAt ?? createdAt).ToString("o"),
                     ReadyAt = readyAt?.ToString("o"),

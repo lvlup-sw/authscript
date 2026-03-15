@@ -1,3 +1,4 @@
+import { useState, useEffect, useCallback } from 'react';
 import { ReactFlow, ReactFlowProvider, Background, Controls } from '@xyflow/react';
 import type { Node, Edge } from '@xyflow/react';
 import { PatientNode } from './PatientNode';
@@ -5,7 +6,7 @@ import { EvidenceNode } from './EvidenceNode';
 import { CriteriaNode } from './CriteriaNode';
 import { DecisionNode } from './DecisionNode';
 import { AnimatedEdge } from './AnimatedEdge';
-import { DEMO_PA_RESULT_SOURCES } from '@/lib/demoData';
+import { DEMO_PA_RESULT_SOURCES, LCD_L34220_POLICY } from '@/lib/demoData';
 import type { PARequest } from '@/api/graphqlService';
 
 // Register custom node and edge types
@@ -55,12 +56,12 @@ export function buildCaseGraphData(paRequest: PARequest): {
   });
 
   // 2. Evidence nodes (left column, stacked)
-  const evidenceEntries = paRequest.criteria.map((c) => {
-    const sourceInfo = DEMO_PA_RESULT_SOURCES[c.label];
+  const evidenceEntries = paRequest.criteria.map((criterion) => {
+    const sourceInfo = DEMO_PA_RESULT_SOURCES[criterion.label];
     return {
-      text: sourceInfo?.evidence ?? c.reason ?? c.label,
+      text: sourceInfo?.evidence ?? criterion.reason ?? criterion.label,
       source: sourceInfo?.source ?? 'Clinical',
-      criterionLabel: c.label,
+      criterionLabel: criterion.label,
     };
   });
 
@@ -93,16 +94,16 @@ export function buildCaseGraphData(paRequest: PARequest): {
   const criteriaYStart = 120;
   const criteriaSpacing = 100;
 
-  paRequest.criteria.forEach((c, i) => {
+  paRequest.criteria.forEach((criterion, i) => {
     const nodeId = `criteria-${i}`;
     nodes.push({
       id: nodeId,
       type: 'criteria',
       position: { x: 350, y: criteriaYStart + i * criteriaSpacing },
       data: {
-        label: c.label,
-        status: toStatus(c.met),
-        reasoning: c.reason,
+        label: criterion.label,
+        status: toStatus(criterion.met),
+        reasoning: criterion.reason,
       },
     });
 
@@ -128,18 +129,18 @@ export function buildCaseGraphData(paRequest: PARequest): {
     position: { x: 700, y: decisionY },
     data: {
       payer: paRequest.payer,
-      policyId: 'LCD L34220',
+      policyId: LCD_L34220_POLICY.policyId,
       confidence: paRequest.confidence,
       status: paRequest.status,
     },
   });
 
   // Edges: criteria -> decision (solid colored)
-  paRequest.criteria.forEach((_c, i) => {
+  paRequest.criteria.forEach((criterion, i) => {
     const statusColor =
-      _c.met === true
+      criterion.met === true
         ? '#22c55e'
-        : _c.met === false
+        : criterion.met === false
           ? '#ef4444'
           : '#f59e0b';
     edges.push({
@@ -153,6 +154,49 @@ export function buildCaseGraphData(paRequest: PARequest): {
   return { nodes, edges };
 }
 
+/** Timing tiers for sequential node reveal animation (ms) */
+const REVEAL_TIERS: Record<string, [number, number]> = {
+  patient: [0, 300],
+  evidence: [300, 900],
+  criteria: [900, 1500],
+  decision: [1500, 1800],
+};
+
+/** Apply opacity 0 initially, then reveal nodes sequentially by type */
+function useNodeReveal(baseNodes: Node[]): Node[] {
+  const [revealedTypes, setRevealedTypes] = useState<Set<string>>(new Set());
+
+  const scheduleReveals = useCallback(() => {
+    const types = Object.keys(REVEAL_TIERS);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    for (const type of types) {
+      const [, end] = REVEAL_TIERS[type];
+      timers.push(
+        setTimeout(() => {
+          setRevealedTypes((prev) => new Set([...prev, type]));
+        }, end),
+      );
+    }
+
+    return timers;
+  }, []);
+
+  useEffect(() => {
+    const timers = scheduleReveals();
+    return () => timers.forEach(clearTimeout);
+  }, [scheduleReveals]);
+
+  return baseNodes.map((node) => ({
+    ...node,
+    style: {
+      ...node.style,
+      opacity: revealedTypes.has(node.type ?? '') ? 1 : 0,
+      transition: 'opacity 0.3s ease-in',
+    },
+  }));
+}
+
 interface CaseGraphProps {
   paRequest: PARequest;
 }
@@ -160,9 +204,11 @@ interface CaseGraphProps {
 /**
  * Full case graph visualization for a PA request.
  * Shows patient -> evidence -> criteria -> decision flow.
+ * Nodes fade in sequentially: Patient -> Evidence -> Criteria -> Decision.
  */
 export function CaseGraph({ paRequest }: CaseGraphProps) {
-  const { nodes, edges } = buildCaseGraphData(paRequest);
+  const { nodes: baseNodes, edges } = buildCaseGraphData(paRequest);
+  const nodes = useNodeReveal(baseNodes);
 
   return (
     <ReactFlowProvider>

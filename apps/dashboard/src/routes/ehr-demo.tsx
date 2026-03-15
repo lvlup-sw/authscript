@@ -24,7 +24,6 @@ import {
 import { useEhrDemoFlow } from '@/components/ehr/useEhrDemoFlow';
 import { CriteriaReasonDialog } from './analysis.$transactionId';
 import { PdfViewerModal } from '@/components/PdfViewerModal';
-import { DemoProvider } from '@/components/demo/DemoProvider';
 import { SceneNav } from '@/components/demo/SceneNav';
 import {
   DEMO_EHR_PATIENT,
@@ -202,7 +201,6 @@ export function EhrDemoPage() {
   const textInserted = flow.docState === 'inserted' || flow.docState === 'saving' || flow.docState === 'saved';
 
   return (
-    <DemoProvider>
       <div className="fixed inset-0 z-[100] min-h-screen bg-gray-100 overflow-auto">
         <SceneNav />
         <EhrHeader patient={DEMO_EHR_PATIENT} encounterMeta={DEMO_ENCOUNTER_META} />
@@ -309,7 +307,6 @@ export function EhrDemoPage() {
           paRequest={flow.paRequest}
         />
       </div>
-    </DemoProvider>
   );
 }
 

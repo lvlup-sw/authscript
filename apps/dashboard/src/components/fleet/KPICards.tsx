@@ -1,4 +1,6 @@
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { animate } from 'motion';
 
 export interface KPIStats {
   total: number;
@@ -68,10 +70,36 @@ const CARDS: CardConfig[] = [
   },
 ];
 
+/** Hook that animates a number from 0 to target using motion */
+function useCountUp(target: number, duration = 0.8, delay = 0): number {
+  const [value, setValue] = useState(0);
+  const prevTarget = useRef(target);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const controls = animate(prevTarget.current === target ? 0 : prevTarget.current, target, {
+        duration,
+        ease: 'easeOut',
+        onUpdate: (v) => setValue(Math.round(v)),
+      });
+      prevTarget.current = target;
+      return () => controls.stop();
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [target, duration, delay]);
+
+  return value;
+}
+
+function KPICardValue({ target, delay }: { target: number; delay: number }) {
+  const displayValue = useCountUp(target, 0.8, delay);
+  return <>{displayValue}</>;
+}
+
 export function KPICards({ stats, activeFilter, onFilter }: KPICardsProps) {
   return (
     <div className="grid grid-cols-6 gap-4">
-      {CARDS.map((card) => {
+      {CARDS.map((card, index) => {
         const isActive = activeFilter === card.key;
         return (
           <button
@@ -86,7 +114,7 @@ export function KPICards({ stats, activeFilter, onFilter }: KPICardsProps) {
             )}
           >
             <span className="text-3xl font-bold tabular-nums">
-              {stats[card.key]}
+              <KPICardValue target={stats[card.key]} delay={index * 100} />
             </span>
             <p className="mt-1 text-xs text-muted-foreground font-medium">
               {card.label}

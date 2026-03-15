@@ -2,6 +2,7 @@ import { createRootRouteWithContext, Outlet, Link } from '@tanstack/react-router
 import type { QueryClient } from '@tanstack/react-query';
 import { Bell, Settings, HelpCircle, Search, LogOut } from 'lucide-react';
 import { exitToEhr } from '@/lib/ehrExit';
+import { DemoProvider } from '@/components/demo/DemoProvider';
 
 interface RouterContext {
   queryClient: QueryClient;
@@ -85,7 +86,9 @@ function RootLayout() {
       </header>
 
       <main className="max-w-[1400px] mx-auto">
-        <Outlet />
+        <DemoProvider>
+          <Outlet />
+        </DemoProvider>
       </main>
     </div>
   );

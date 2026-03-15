@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { Activity as ActivityIcon } from 'lucide-react';
-import { DemoProvider } from '@/components/demo/DemoProvider';
 import { SceneNav } from '@/components/demo/SceneNav';
 import { usePARequests, usePAStats, useActivity, type ActivityItem } from '@/api/graphqlService';
 import { generateFleetData, type FleetPARequest, type FleetStatus } from '@/lib/fleetSeedData';
@@ -130,7 +129,6 @@ export function FleetPage() {
   };
 
   return (
-    <DemoProvider>
     <div className="p-6 space-y-6">
       <SceneNav />
       {/* Header */}
@@ -220,6 +218,5 @@ export function FleetPage() {
         </div>
       </div>
     </div>
-    </DemoProvider>
   );
 }

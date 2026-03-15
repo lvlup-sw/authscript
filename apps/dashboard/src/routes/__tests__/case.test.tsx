@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { createElement } from 'react';
+import { DemoProvider } from '@/components/demo/DemoProvider';
 
 // Mock @xyflow/react to avoid jsdom layout issues
 vi.mock('@xyflow/react', () => ({
@@ -37,13 +38,14 @@ vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => () => ({}),
   Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
   useNavigate: () => vi.fn(),
+  useLocation: () => ({ pathname: '/case/demo' }),
 }));
 
 async function renderCaseDetailPage() {
   const mod = await import('../case.$caseId');
   // The module exports CaseDetailPage as the component
   const Component = (mod as any).CaseDetailPage;
-  return render(createElement(Component));
+  return render(createElement(DemoProvider, null, createElement(Component)));
 }
 
 describe('CaseDetailPage', () => {

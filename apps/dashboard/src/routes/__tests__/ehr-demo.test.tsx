@@ -1,6 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { createElement } from 'react';
+import { DemoProvider } from '@/components/demo/DemoProvider';
+
+// Mock TanStack Router hooks used by SceneNav
+vi.mock('@tanstack/react-router', () => ({
+  createFileRoute: () => () => ({}),
+  useNavigate: () => vi.fn(),
+  useLocation: () => ({ pathname: '/ehr-demo' }),
+}));
 
 // Mock PdfViewerModal to avoid pdf-lib dependency in tests
 vi.mock('@/components/PdfViewerModal', () => ({
@@ -36,7 +44,9 @@ vi.mock('@/components/ehr/PAReadinessWidget', () => ({
 
 async function renderEhrDemoPage() {
   const { EhrDemoPage } = await import('../ehr-demo');
-  return render(createElement(EhrDemoPage));
+  return render(
+    createElement(DemoProvider, null, createElement(EhrDemoPage)),
+  );
 }
 
 describe('EhrDemoPage', () => {

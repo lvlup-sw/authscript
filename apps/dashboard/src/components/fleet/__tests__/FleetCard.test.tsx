@@ -1,7 +1,24 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { FleetCard } from '../FleetCard';
 import type { FleetPARequest } from '@/lib/fleetSeedData';
+
+// Mock motion/react to render plain divs in tests
+vi.mock('motion/react', () => ({
+  motion: {
+    div: ({ children, ...props }: any) => {
+      // Filter out motion-specific props that are not valid DOM attributes
+      const {
+        initial, animate: _animate, exit, transition, layout,
+        whileHover, whileTap, whileFocus, whileInView,
+        ...domProps
+      } = props;
+      return <div {...domProps}>{children}</div>;
+    },
+  },
+  AnimatePresence: ({ children }: any) => <>{children}</>,
+}));
+
+import { FleetCard } from '../FleetCard';
 
 function makeRequest(overrides: Partial<FleetPARequest> = {}): FleetPARequest {
   return {
@@ -134,5 +151,26 @@ describe('FleetCard', () => {
     );
     fireEvent.click(screen.getByTestId('fleet-card-fleet-001'));
     expect(onSelect).toHaveBeenCalledWith('fleet-001');
+  });
+
+  it('FleetCard_HasButtonRole_AndKeyboardSupport', () => {
+    const onSelect = vi.fn();
+    render(
+      <FleetCard
+        request={makeRequest()}
+        onSelect={onSelect}
+      />,
+    );
+    const card = screen.getByTestId('fleet-card-fleet-001');
+    expect(card).toHaveAttribute('role', 'button');
+    expect(card).toHaveAttribute('tabindex', '0');
+
+    // Enter key triggers select
+    fireEvent.keyDown(card, { key: 'Enter' });
+    expect(onSelect).toHaveBeenCalledWith('fleet-001');
+
+    // Space key triggers select
+    fireEvent.keyDown(card, { key: ' ' });
+    expect(onSelect).toHaveBeenCalledTimes(2);
   });
 });

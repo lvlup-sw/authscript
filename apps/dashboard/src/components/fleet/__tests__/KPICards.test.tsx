@@ -1,5 +1,14 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, act } from '@testing-library/react';
+
+// Mock motion's animate to immediately call onUpdate with final value
+vi.mock('motion', () => ({
+  animate: (_from: number, to: number, opts: any) => {
+    if (opts?.onUpdate) opts.onUpdate(to);
+    return { stop: vi.fn() };
+  },
+}));
+
 import { KPICards } from '../KPICards';
 
 const mockStats = {
@@ -12,6 +21,14 @@ const mockStats = {
 };
 
 describe('KPICards', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('KPICards_RendersSixCards', () => {
     render(
       <KPICards stats={mockStats} activeFilter={null} onFilter={vi.fn()} />,
@@ -24,6 +41,10 @@ describe('KPICards', () => {
     render(
       <KPICards stats={mockStats} activeFilter={null} onFilter={vi.fn()} />,
     );
+    // Advance timers to flush all staggered count-up delays (max 500ms + some buffer)
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
     expect(screen.getByText('48')).toBeInTheDocument();
     expect(screen.getByText('6')).toBeInTheDocument();
     expect(screen.getByText('8')).toBeInTheDocument();

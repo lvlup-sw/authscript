@@ -1,10 +1,13 @@
 import { cn } from '@/lib/utils';
+import { motion } from 'motion/react';
+import { getInitials } from '@/lib/formatUtils';
 import type { FleetPARequest, FleetStatus } from '@/lib/fleetSeedData';
 
 interface FleetCardProps {
   request: FleetPARequest;
   highlighted?: boolean;
   onSelect: (id: string) => void;
+  index?: number;
 }
 
 const STATUS_COLORS: Record<FleetStatus, string> = {
@@ -25,23 +28,27 @@ const ANALYZED_STATUSES: FleetStatus[] = [
   'denied',
 ];
 
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((part) => part[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
-
-export function FleetCard({ request, highlighted = false, onSelect }: FleetCardProps) {
+export function FleetCard({ request, highlighted = false, onSelect, index = 0 }: FleetCardProps) {
   const initials = getInitials(request.patient.name);
   const showConfidence = ANALYZED_STATUSES.includes(request.status);
 
   return (
-    <div
+    <motion.div
+      layout
+      initial={{ opacity: 0, scale: 0.95, y: 10 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95, y: 10 }}
+      transition={{ delay: index * 0.03, duration: 0.2 }}
       data-testid={`fleet-card-${request.id}`}
       onClick={() => onSelect(request.id)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect(request.id);
+        }
+      }}
       className={cn(
         'rounded-lg border border-border/50 bg-card p-2.5 cursor-pointer transition-all duration-200 hover:shadow-md',
         highlighted && 'ring-2 ring-teal-400/50 shadow-lg shadow-teal-500/20',
@@ -81,6 +88,6 @@ export function FleetCard({ request, highlighted = false, onSelect }: FleetCardP
           </span>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }

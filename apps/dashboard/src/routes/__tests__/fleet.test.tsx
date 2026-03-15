@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { createElement } from 'react';
 import { generateFleetData } from '@/lib/fleetSeedData';
+import { DemoProvider } from '@/components/demo/DemoProvider';
 
 // Mock TanStack Router
 vi.mock('@tanstack/react-router', () => ({
@@ -9,6 +10,30 @@ vi.mock('@tanstack/react-router', () => ({
   Link: ({ children, ...props }: { children: React.ReactNode; to?: string }) =>
     createElement('a', props, children),
   useNavigate: () => vi.fn(),
+  useLocation: () => ({ pathname: '/fleet' }),
+}));
+
+// Mock motion/react for FleetCard/FleetView animations
+vi.mock('motion/react', () => ({
+  motion: {
+    div: ({ children, ...props }: any) => {
+      const {
+        initial, animate: _animate, exit, transition, layout,
+        whileHover, whileTap, whileFocus, whileInView,
+        ...domProps
+      } = props;
+      return createElement('div', domProps, children);
+    },
+  },
+  AnimatePresence: ({ children }: any) => children,
+}));
+
+// Mock motion for KPICards count-up animation
+vi.mock('motion', () => ({
+  animate: (_from: number, to: number, opts: any) => {
+    if (opts?.onUpdate) opts.onUpdate(to);
+    return { stop: () => {} };
+  },
 }));
 
 // Mock GraphQL service hooks
@@ -28,7 +53,7 @@ vi.mock('@/api/graphqlService', () => ({
 
 async function renderFleetPage() {
   const { FleetPage } = await import('../fleet');
-  return render(createElement(FleetPage));
+  return render(createElement(DemoProvider, null, createElement(FleetPage)));
 }
 
 describe('FleetPage', () => {

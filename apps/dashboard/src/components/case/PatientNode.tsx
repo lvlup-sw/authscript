@@ -1,5 +1,6 @@
 import { Handle, Position } from '@xyflow/react';
 import { NodeCard } from './NodeCard';
+import { getInitials } from '@/lib/formatUtils';
 import type { NodeProps } from '@xyflow/react';
 
 export interface PatientNodeData {
@@ -14,12 +15,7 @@ export interface PatientNodeData {
  * Layout: initials avatar (teal ring) + name + DOB + MRN + insurance badge.
  */
 export function PatientNode({ data }: NodeProps & { data: PatientNodeData }) {
-  const initials = data.name
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
+  const initials = getInitials(data.name);
 
   return (
     <NodeCard borderColor="border-teal" className="min-w-[220px]">

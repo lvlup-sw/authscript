@@ -22,11 +22,15 @@ const STAGES: StageConfig[] = [
 
 export function CasePipeline({ stageCounts, activeStage, onFilter }: CasePipelineProps) {
   return (
-    <div className="relative flex items-center justify-between px-4 py-6">
+    <div
+      className="relative flex items-center justify-between px-4 py-6"
+      aria-label="Case progress pipeline"
+    >
       {/* SVG connecting lines */}
       <svg
         className="absolute inset-0 w-full h-full pointer-events-none"
         preserveAspectRatio="none"
+        aria-hidden="true"
       >
         <defs>
           <style>{`

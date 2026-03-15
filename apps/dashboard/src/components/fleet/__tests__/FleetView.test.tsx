@@ -1,7 +1,23 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { FleetView } from '../FleetView';
 import type { FleetPARequest } from '@/lib/fleetSeedData';
+
+// Mock motion/react to render plain divs in tests
+vi.mock('motion/react', () => ({
+  motion: {
+    div: ({ children, ...props }: any) => {
+      const {
+        initial, animate: _animate, exit, transition, layout,
+        whileHover, whileTap, whileFocus, whileInView,
+        ...domProps
+      } = props;
+      return <div {...domProps}>{children}</div>;
+    },
+  },
+  AnimatePresence: ({ children }: any) => <>{children}</>,
+}));
+
+import { FleetView } from '../FleetView';
 
 function makeRequests(): FleetPARequest[] {
   const base = {

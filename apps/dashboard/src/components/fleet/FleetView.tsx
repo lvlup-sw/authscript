@@ -1,3 +1,4 @@
+import { AnimatePresence } from 'motion/react';
 import type { FleetPARequest } from '@/lib/fleetSeedData';
 import { FleetCard } from './FleetCard';
 
@@ -20,14 +21,17 @@ export function FleetView({
 
   return (
     <div className="grid grid-cols-6 gap-3">
-      {visible.map((request) => (
-        <FleetCard
-          key={request.id}
-          request={request}
-          highlighted={request.id === highlightedCaseId}
-          onSelect={onSelectCase}
-        />
-      ))}
+      <AnimatePresence mode="popLayout">
+        {visible.map((request, index) => (
+          <FleetCard
+            key={request.id}
+            request={request}
+            highlighted={request.id === highlightedCaseId}
+            onSelect={onSelectCase}
+            index={index}
+          />
+        ))}
+      </AnimatePresence>
     </div>
   );
 }

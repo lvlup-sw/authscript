@@ -1,17 +1,46 @@
-import { useContext } from 'react';
+import { useContext, useEffect } from 'react';
+import { useNavigate, useLocation } from '@tanstack/react-router';
 import { DemoContext, type Scene } from './DemoProvider';
 
-const SCENES: { key: Scene; label: string }[] = [
-  { key: 'encounter', label: 'Encounter' },
-  { key: 'fleet', label: 'Fleet' },
-  { key: 'case', label: 'Case Detail' },
+const SCENES: { key: Scene; label: string; route: string }[] = [
+  { key: 'encounter', label: 'Encounter', route: '/ehr-demo' },
+  { key: 'fleet', label: 'Fleet', route: '/fleet' },
+  { key: 'case', label: 'Case Detail', route: '/case/demo' },
 ];
+
+/** Map pathname to scene key */
+function pathnameToScene(pathname: string): Scene | null {
+  if (pathname.startsWith('/ehr-demo')) return 'encounter';
+  if (pathname.startsWith('/fleet')) return 'fleet';
+  if (pathname.startsWith('/case')) return 'case';
+  return null;
+}
 
 export function SceneNav() {
   const ctx = useContext(DemoContext);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Sync scene state from current route
+  useEffect(() => {
+    if (!ctx) return;
+    const sceneFromRoute = pathnameToScene(location.pathname);
+    if (sceneFromRoute && sceneFromRoute !== ctx.scene) {
+      ctx.setScene(sceneFromRoute);
+    }
+  }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!ctx) return null;
 
   const { scene, setScene, autoPlay, setAutoPlay, resetDemo } = ctx;
+
+  const handleSceneClick = (key: Scene) => {
+    setScene(key);
+    const target = SCENES.find((s) => s.key === key);
+    if (target) {
+      navigate({ to: target.route });
+    }
+  };
 
   return (
     <nav
@@ -24,7 +53,7 @@ export function SceneNav() {
           <button
             key={key}
             type="button"
-            onClick={() => setScene(key)}
+            onClick={() => handleSceneClick(key)}
             className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
               scene === key
                 ? 'bg-teal-600 text-white'

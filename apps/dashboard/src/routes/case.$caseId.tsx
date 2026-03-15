@@ -6,7 +6,7 @@ import { CaseGraph } from '@/components/case/CaseGraph';
 import { CaseTimeline } from '@/components/case/CaseTimeline';
 import type { TimelinePhase } from '@/components/case/CaseTimeline';
 import { DEMO_PA_RESULT, LCD_L34220_POLICY, DEMO_PA_RESULT_SOURCES } from '@/lib/demoData';
-import { DemoProvider } from '@/components/demo/DemoProvider';
+import { getConfidenceColor } from '@/lib/formatUtils';
 import { SceneNav as DemoSceneNav } from '@/components/demo/SceneNav';
 import type { PARequest } from '@/api/graphqlService';
 
@@ -130,7 +130,6 @@ export function CaseDetailPage() {
   const totalCount = paRequest.criteria.length;
 
   return (
-    <DemoProvider>
     <div className="p-6 space-y-4 animate-fade-in">
       {/* Scene navigation */}
       <DemoSceneNav />
@@ -222,7 +221,7 @@ export function CaseDetailPage() {
               <span className="text-[10px] text-gray-400">Confidence:</span>
               <span className={cn(
                 'text-sm font-bold',
-                paRequest.confidence >= 80 ? 'text-green-600' : paRequest.confidence >= 60 ? 'text-amber-600' : 'text-red-600',
+                getConfidenceColor(paRequest.confidence),
               )}>
                 {paRequest.confidence}%
               </span>
@@ -231,6 +230,5 @@ export function CaseDetailPage() {
         </div>
       </div>
     </div>
-    </DemoProvider>
   );
 }

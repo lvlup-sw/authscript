@@ -30,6 +30,7 @@ export function CaseTimeline({ phases }: CaseTimelineProps) {
               {phase.status === 'completed' && (
                 <div
                   data-testid="phase-check"
+                  aria-label="completed"
                   className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0"
                 >
                   <span className="text-white text-xs font-bold">{'\u2713'}</span>
@@ -38,6 +39,7 @@ export function CaseTimeline({ phases }: CaseTimelineProps) {
               {phase.status === 'active' && (
                 <div
                   data-testid="phase-active"
+                  aria-label="active"
                   className="relative w-6 h-6 flex items-center justify-center flex-shrink-0"
                 >
                   <span className="absolute inline-flex h-full w-full rounded-full bg-teal opacity-30 animate-ping" />
@@ -47,6 +49,7 @@ export function CaseTimeline({ phases }: CaseTimelineProps) {
               {phase.status === 'pending' && (
                 <div
                   data-testid="phase-pending"
+                  aria-label="pending"
                   className="w-6 h-6 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center flex-shrink-0"
                 >
                   <span className="w-2 h-2 rounded-full bg-gray-300" />

@@ -1,5 +1,20 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+
+// Mock motion/react for test environment
+vi.mock('motion/react', () => ({
+  motion: {
+    div: ({ children, ...props }: any) => {
+      const {
+        initial, animate: _animate, exit, transition,
+        ...domProps
+      } = props;
+      return <div {...domProps}>{children}</div>;
+    },
+  },
+  AnimatePresence: ({ children }: any) => <>{children}</>,
+}));
+
 import { AuthDetectionBanner } from '../AuthDetectionBanner';
 
 describe('AuthDetectionBanner', () => {
