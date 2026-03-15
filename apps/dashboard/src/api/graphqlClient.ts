@@ -5,7 +5,7 @@
 
 import { GraphQLClient } from 'graphql-request';
 
-const GRAPHQL_ENDPOINT = '/api/graphql';
+const GRAPHQL_ENDPOINT = `${window.location.origin}/api/graphql`;
 
 export const graphqlClient = new GraphQLClient(GRAPHQL_ENDPOINT, {
   credentials: 'include',
