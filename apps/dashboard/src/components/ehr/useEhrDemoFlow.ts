@@ -10,13 +10,32 @@ import {
 } from '@/lib/demoData';
 import type { PreCheckCriterion } from '@/lib/demoData';
 
-export type EhrDemoState = 'idle' | 'flagged' | 'signing' | 'processing' | 'reviewing' | 'submitting' | 'complete' | 'error';
+export type EhrDemoState =
+  | 'idle'
+  | 'chart-browsing'
+  | 'order-entry'
+  | 'pa-detected'
+  | 'documenting'
+  | 'flagged'
+  | 'signing'
+  | 'processing'
+  | 'reviewing'
+  | 'submitting'
+  | 'complete'
+  | 'error';
 
 /**
  * Documentation sub-state for the "add documentation" flow.
  * idle → suggesting → inserted → saving → saved
  */
 export type DocState = 'idle' | 'suggesting' | 'inserted' | 'saving' | 'saved';
+
+export interface EhrDemoFlowOptions {
+  /** Starting state: 'idle' (legacy) or 'chart-browsing' (enhanced Scene 1). Default: 'idle' */
+  startState?: 'idle' | 'chart-browsing';
+  /** Called when transitionToFleet() is invoked after PA completion. */
+  onTransition?: () => void;
+}
 
 export interface EhrDemoFlow {
   state: EhrDemoState;
@@ -37,6 +56,12 @@ export interface EhrDemoFlow {
   sign: () => Promise<void>;
   submit: () => Promise<void>;
   reset: () => void;
+  /** Enhanced: transition from chart-browsing to order-entry */
+  addOrder: () => void;
+  /** Enhanced: transition from pa-detected to documenting */
+  startDocumenting: () => void;
+  /** Enhanced: transition out to fleet view after PA completion */
+  transitionToFleet: () => void;
 }
 
 /** Minimum time (ms) to stay in processing state for animation realism. */
@@ -48,12 +73,19 @@ const SUBMIT_DELAY_MS = 1_500;
 /** Simulated save-to-EHR delay. */
 const SAVE_TO_CHART_DELAY_MS = 1_800;
 
+/** Delay for order-entry → pa-detected auto-transition. */
+const ORDER_ENTRY_DELAY_MS = 1_200;
+
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export function useEhrDemoFlow(): EhrDemoFlow {
-  const [state, setState] = useState<EhrDemoState>('idle');
+export function useEhrDemoFlow(options?: EhrDemoFlowOptions): EhrDemoFlow {
+  const startState = options?.startState ?? 'idle';
+  const onTransitionRef = useRef(options?.onTransition);
+  onTransitionRef.current = options?.onTransition;
+
+  const [state, setState] = useState<EhrDemoState>(startState);
   const [paRequest, setPaRequest] = useState<PARequest | null>(null);
   const [preCheckCriteria, setPreCheckCriteria] = useState<PreCheckCriterion[] | null>(null);
   const [encounter, setEncounter] = useState<Encounter>(DEMO_ENCOUNTER_BASE);
@@ -63,7 +95,8 @@ export function useEhrDemoFlow(): EhrDemoFlow {
   const cancelledRef = useRef(false);
 
   const flag = useCallback(async () => {
-    if (state !== 'idle') return;
+    // Allow flag from idle OR documenting (enhanced flow)
+    if (state !== 'idle' && state !== 'documenting') return;
     cancelledRef.current = false;
     await delay(1500);
     if (cancelledRef.current) return;
@@ -152,13 +185,34 @@ export function useEhrDemoFlow(): EhrDemoFlow {
 
   const reset = useCallback(() => {
     cancelledRef.current = true;
-    setState('idle');
+    setState(startState);
     setPaRequest(null);
     setPreCheckCriteria(null);
     setEncounter(DEMO_ENCOUNTER_BASE);
     setDocState('idle');
     setInsertedHpiText(null);
     setError(null);
+  }, [startState]);
+
+  // --- Enhanced flow actions ---
+
+  const addOrder = useCallback(() => {
+    if (state !== 'chart-browsing') return;
+    setState('order-entry');
+
+    // Auto-transition to pa-detected after delay
+    setTimeout(() => {
+      setState('pa-detected');
+    }, ORDER_ENTRY_DELAY_MS);
+  }, [state]);
+
+  const startDocumenting = useCallback(() => {
+    if (state !== 'pa-detected') return;
+    setState('documenting');
+  }, [state]);
+
+  const transitionToFleet = useCallback(() => {
+    onTransitionRef.current?.();
   }, []);
 
   return {
@@ -176,5 +230,8 @@ export function useEhrDemoFlow(): EhrDemoFlow {
     sign,
     submit,
     reset,
+    addOrder,
+    startDocumenting,
+    transitionToFleet,
   };
 }

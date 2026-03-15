@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { EncounterSidebar } from '../EncounterSidebar';
+import { DEMO_CHART_DATA } from '@/lib/demoData';
 
 describe('EncounterSidebar', () => {
   it('EncounterSidebar_Renders_AllEncounterStages', () => {
@@ -76,5 +77,59 @@ describe('EncounterSidebar', () => {
     expect(completeContainer).toHaveAttribute('data-completed', 'true');
     const analyzingContainer = screen.getByText('Analyzing').closest('[data-stage]');
     expect(analyzingContainer).toHaveAttribute('data-completed', 'true');
+  });
+});
+
+describe('EncounterSidebar Enhanced', () => {
+  it('EncounterSidebar_RendersChartTabs', () => {
+    render(<EncounterSidebar chartData={DEMO_CHART_DATA} />);
+
+    expect(screen.getByRole('button', { name: /problems/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /meds/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /allergies/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /vitals/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /imaging/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /labs/i })).toBeInTheDocument();
+  });
+
+  it('EncounterSidebar_ClickTab_ShowsTabPanel', () => {
+    render(<EncounterSidebar chartData={DEMO_CHART_DATA} />);
+
+    // Click "Problems" tab
+    fireEvent.click(screen.getByRole('button', { name: /problems/i }));
+
+    // Should show ICD codes from ChartTabPanel
+    expect(screen.getByText('M54.5')).toBeInTheDocument();
+    expect(screen.getByText('Low back pain')).toBeInTheDocument();
+  });
+
+  it('EncounterSidebar_RendersEncounterStages', () => {
+    render(<EncounterSidebar chartData={DEMO_CHART_DATA} />);
+
+    // Existing encounter stages should still render
+    expect(screen.getByText('Intake')).toBeInTheDocument();
+    expect(screen.getByText('HPI')).toBeInTheDocument();
+    expect(screen.getByText('ROS')).toBeInTheDocument();
+    expect(screen.getByText('PE')).toBeInTheDocument();
+    expect(screen.getByText('A&P')).toBeInTheDocument();
+    expect(screen.getByText('Orders')).toBeInTheDocument();
+    expect(screen.getByText('Sign')).toBeInTheDocument();
+  });
+
+  it('EncounterSidebar_PADetected_ShowsPAStages', () => {
+    render(<EncounterSidebar chartData={DEMO_CHART_DATA} paDetected={true} />);
+
+    // PA stages should appear after encounter stages
+    expect(screen.getByText('PA Review')).toBeInTheDocument();
+    expect(screen.getByText('PA Submit')).toBeInTheDocument();
+  });
+
+  it('EncounterSidebar_ActiveStage_HasTealIndicator', () => {
+    render(<EncounterSidebar chartData={DEMO_CHART_DATA} activeStage="A&P" />);
+
+    const apItem = screen.getByText('A&P').closest('[aria-current]');
+    expect(apItem).toHaveAttribute('aria-current', 'step');
+    // The active stage should have teal styling (via className)
+    expect(apItem).toHaveClass('text-teal-700');
   });
 });

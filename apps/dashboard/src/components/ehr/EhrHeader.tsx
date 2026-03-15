@@ -14,6 +14,7 @@ interface EncounterMeta {
   specialty: string;
   date: string;
   type: string;
+  facility?: string;
 }
 
 interface EhrHeaderProps {
@@ -87,7 +88,15 @@ export function EhrHeader({ patient, encounterMeta }: EhrHeaderProps) {
             <span>&middot;</span>
             <span>{encounterMeta.date}</span>
             <span>&middot;</span>
-            <span>{encounterMeta.type}</span>
+            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700">
+              {encounterMeta.type}
+            </span>
+            {encounterMeta.facility && (
+              <>
+                <span>&middot;</span>
+                <span className="text-gray-600">{encounterMeta.facility}</span>
+              </>
+            )}
           </div>
         </div>
       )}

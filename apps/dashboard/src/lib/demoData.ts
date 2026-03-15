@@ -325,3 +325,26 @@ export const DEMO_PA_RESULT: PARequest = {
     },
   ],
 };
+
+/**
+ * Chart-level data for the EHR sidebar tabs (problems, medications, etc.).
+ * Used by ChartTabPanel to render clinical context during the demo.
+ */
+export const DEMO_CHART_DATA = {
+  problems: [
+    { code: 'M54.5', description: 'Low back pain', category: 'Musculoskeletal' },
+    { code: 'M54.41', description: 'Lumbago with sciatica, right side', category: 'Musculoskeletal' },
+    { code: 'M79.3', description: 'Panniculitis, unspecified', category: 'Musculoskeletal' },
+  ],
+  medications: [
+    { name: 'Ibuprofen', dosage: '800mg', frequency: 'TID', status: 'Active' },
+    { name: 'Cyclobenzaprine', dosage: '10mg', frequency: 'TID PRN', status: 'Active' },
+    { name: 'Gabapentin', dosage: '300mg', frequency: 'TID', status: 'Active' },
+  ],
+  allergies: 'NKDA' as const,
+  imagingHistory: [] as Array<{ date: string; type: string; result: string }>,
+  labResults: [
+    { name: 'CBC', value: 'Within normal limits', date: '2026-02-28' },
+    { name: 'CRP', value: '2.1 mg/L', date: '2026-02-28' },
+  ],
+};
