@@ -14,6 +14,7 @@ import {
   DEMO_PA_RESULT_SOURCES,
   LCD_L34220_POLICY,
   buildPreCheckCriteria,
+  DEMO_CHART_DATA,
 } from '../demoData';
 
 describe('demoData', () => {
@@ -139,5 +140,39 @@ describe('demoData', () => {
     expect(LCD_L34220_POLICY.procedureCode).toBe('72148');
     expect(LCD_L34220_POLICY.criteria).toHaveLength(5);
     expect(LCD_L34220_POLICY.criteria.every((c) => c.requirement.length > 0)).toBe(true);
+  });
+});
+
+describe('DEMO_CHART_DATA', () => {
+  it('demoChartData_HasProblemList_WithICDCodes', () => {
+    expect(DEMO_CHART_DATA.problems).toBeDefined();
+    expect(DEMO_CHART_DATA.problems.length).toBeGreaterThanOrEqual(2);
+
+    const codes = DEMO_CHART_DATA.problems.map((p) => p.code);
+    expect(codes).toContain('M54.5');
+    expect(codes).toContain('M54.41');
+  });
+
+  it('demoChartData_HasMedications_WithDosages', () => {
+    expect(DEMO_CHART_DATA.medications).toBeDefined();
+    expect(DEMO_CHART_DATA.medications.length).toBeGreaterThanOrEqual(2);
+
+    const names = DEMO_CHART_DATA.medications.map((m) => m.name);
+    expect(names).toContain('Ibuprofen');
+    expect(names).toContain('Cyclobenzaprine');
+
+    for (const med of DEMO_CHART_DATA.medications) {
+      expect(med.dosage).toBeTruthy();
+    }
+  });
+
+  it('demoChartData_HasAllergies_NKDA', () => {
+    expect(DEMO_CHART_DATA.allergies).toBe('NKDA');
+  });
+
+  it('demoChartData_HasEmptyImagingHistory', () => {
+    expect(DEMO_CHART_DATA.imagingHistory).toBeDefined();
+    expect(Array.isArray(DEMO_CHART_DATA.imagingHistory)).toBe(true);
+    expect(DEMO_CHART_DATA.imagingHistory).toHaveLength(0);
   });
 });
