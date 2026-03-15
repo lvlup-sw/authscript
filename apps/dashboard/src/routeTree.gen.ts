@@ -13,6 +13,7 @@ import { Route as SmartLaunchRouteImport } from './routes/smart-launch'
 import { Route as HelpRouteImport } from './routes/help'
 import { Route as EhrDemoRouteImport } from './routes/ehr-demo'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CaseCaseIdRouteImport } from './routes/case.$caseId'
 import { Route as AnalysisTransactionIdRouteImport } from './routes/analysis.$transactionId'
 
 const SmartLaunchRoute = SmartLaunchRouteImport.update({
@@ -35,6 +36,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CaseCaseIdRoute = CaseCaseIdRouteImport.update({
+  id: '/case/$caseId',
+  path: '/case/$caseId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AnalysisTransactionIdRoute = AnalysisTransactionIdRouteImport.update({
   id: '/analysis/$transactionId',
   path: '/analysis/$transactionId',
@@ -47,6 +53,7 @@ export interface FileRoutesByFullPath {
   '/help': typeof HelpRoute
   '/smart-launch': typeof SmartLaunchRoute
   '/analysis/$transactionId': typeof AnalysisTransactionIdRoute
+  '/case/$caseId': typeof CaseCaseIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +61,7 @@ export interface FileRoutesByTo {
   '/help': typeof HelpRoute
   '/smart-launch': typeof SmartLaunchRoute
   '/analysis/$transactionId': typeof AnalysisTransactionIdRoute
+  '/case/$caseId': typeof CaseCaseIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,6 +70,7 @@ export interface FileRoutesById {
   '/help': typeof HelpRoute
   '/smart-launch': typeof SmartLaunchRoute
   '/analysis/$transactionId': typeof AnalysisTransactionIdRoute
+  '/case/$caseId': typeof CaseCaseIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -71,8 +80,15 @@ export interface FileRouteTypes {
     | '/help'
     | '/smart-launch'
     | '/analysis/$transactionId'
+    | '/case/$caseId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/ehr-demo' | '/help' | '/smart-launch' | '/analysis/$transactionId'
+  to:
+    | '/'
+    | '/ehr-demo'
+    | '/help'
+    | '/smart-launch'
+    | '/analysis/$transactionId'
+    | '/case/$caseId'
   id:
     | '__root__'
     | '/'
@@ -80,6 +96,7 @@ export interface FileRouteTypes {
     | '/help'
     | '/smart-launch'
     | '/analysis/$transactionId'
+    | '/case/$caseId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -88,6 +105,7 @@ export interface RootRouteChildren {
   HelpRoute: typeof HelpRoute
   SmartLaunchRoute: typeof SmartLaunchRoute
   AnalysisTransactionIdRoute: typeof AnalysisTransactionIdRoute
+  CaseCaseIdRoute: typeof CaseCaseIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -120,6 +138,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/case/$caseId': {
+      id: '/case/$caseId'
+      path: '/case/$caseId'
+      fullPath: '/case/$caseId'
+      preLoaderRoute: typeof CaseCaseIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/analysis/$transactionId': {
       id: '/analysis/$transactionId'
       path: '/analysis/$transactionId'
@@ -136,6 +161,7 @@ const rootRouteChildren: RootRouteChildren = {
   HelpRoute: HelpRoute,
   SmartLaunchRoute: SmartLaunchRoute,
   AnalysisTransactionIdRoute: AnalysisTransactionIdRoute,
+  CaseCaseIdRoute: CaseCaseIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
