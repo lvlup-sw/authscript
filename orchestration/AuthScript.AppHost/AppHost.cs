@@ -77,7 +77,6 @@ var gateway = builder
     .WaitFor(redis)
     .WaitFor(intelligence)
     .WithHttpEndpoint(port: 5000, name: "gateway-api")
-    .WithExternalHttpEndpoints()
     // Athena configuration
     .WithEnvironment("Athena__ClientId", athenaClientId)
     .WithEnvironment("Athena__ClientSecret", athenaClientSecret)
@@ -90,11 +89,25 @@ var gateway = builder
 
 // ---------------------------------------------------------------------------
 // Dashboard (Vite + React)
+// Publish mode: containerized with nginx (for Azure deployment)
+// Run mode: Vite dev server (for local development)
 // ---------------------------------------------------------------------------
-var dashboard = builder
-    .AddViteApp("dashboard", "../../apps/dashboard")
-    .WaitFor(gateway)
-    .WithEnvironment("VITE_GATEWAY_URL", gateway.GetEndpoint("gateway-api"))
-    .WithEnvironment("VITE_INTELLIGENCE_URL", intelligence.GetEndpoint("intelligence-api"));
+if (builder.ExecutionContext.IsPublishMode)
+{
+    builder
+        .AddDockerfile("dashboard", "../..", "apps/dashboard/Dockerfile")
+        .WithHttpEndpoint(port: 80, targetPort: 80, name: "dashboard-http")
+        .WithExternalHttpEndpoints()
+        .WaitFor(gateway)
+        .WithEnvironment("GATEWAY_URL", gateway.GetEndpoint("gateway-api"));
+}
+else
+{
+    builder
+        .AddViteApp("dashboard", "../../apps/dashboard")
+        .WaitFor(gateway)
+        .WithEnvironment("VITE_GATEWAY_URL", gateway.GetEndpoint("gateway-api"))
+        .WithEnvironment("VITE_INTELLIGENCE_URL", intelligence.GetEndpoint("intelligence-api"));
+}
 
 builder.Build().Run();
