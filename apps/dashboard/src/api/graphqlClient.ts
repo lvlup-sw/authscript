@@ -1,15 +1,11 @@
 /**
  * GraphQL client for AuthScript Gateway API
- * Uses VITE_GATEWAY_URL (default http://localhost:5000) for direct calls.
- * When using Vite dev proxy, /api is proxied to the Gateway.
+ * Uses relative /api/graphql path — proxied to Gateway by Vite (dev) or nginx (prod).
  */
 
 import { GraphQLClient } from 'graphql-request';
-import { getApiConfig } from '../config/secrets';
 
-const GRAPHQL_ENDPOINT = import.meta.env.DEV
-  ? `${window.location.origin}/api/graphql`
-  : `${getApiConfig().gatewayUrl}/api/graphql`;
+const GRAPHQL_ENDPOINT = '/api/graphql';
 
 export const graphqlClient = new GraphQLClient(GRAPHQL_ENDPOINT, {
   credentials: 'include',

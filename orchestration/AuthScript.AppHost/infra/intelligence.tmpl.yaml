@@ -1,0 +1,63 @@
+api-version: 2024-02-02-preview
+location: {{ .Env.AZURE_LOCATION }}
+identity:
+  type: UserAssigned
+  userAssignedIdentities:
+    ? "{{ .Env.AZURE_CONTAINER_REGISTRY_MANAGED_IDENTITY_ID }}"
+    : {}
+properties:
+  environmentId: {{ .Env.AZURE_CONTAINER_APPS_ENVIRONMENT_ID }}
+  configuration:
+    activeRevisionsMode: single
+    runtime:
+      dotnet:
+        autoConfigureDataProtection: true
+    ingress:
+      external: false
+      targetPort: 8000
+      transport: http
+      allowInsecure: true
+    registries:
+      - server: {{ .Env.AZURE_CONTAINER_REGISTRY_ENDPOINT }}
+        identity: {{ .Env.AZURE_CONTAINER_REGISTRY_MANAGED_IDENTITY_ID }}
+    secrets:
+      - name: azure-openai-api-key
+        value: '{{ .Env.AZURE_AZURE_OPENAI_KEY }}'
+      - name: database-url
+        value: Host=postgres;Port=5432;Username=postgres;Password={{ .Env.AZURE_POSTGRES_PASSWORD }};Database=authscript
+      - name: github-token
+        value: '{{ .Env.AZURE_GITHUB_TOKEN }}'
+      - name: google-api-key
+        value: '{{ .Env.AZURE_GOOGLE_API_KEY }}'
+      - name: openai-api-key
+        value: '{{ .Env.AZURE_OPENAI_API_KEY }}'
+      - name: openai-org-id
+        value: '{{ .Env.AZURE_OPENAI_ORG_ID }}'
+  template:
+    containers:
+      - image: {{ .Image }}
+        name: intelligence
+        env:
+          - name: AZURE_CLIENT_ID
+            value: {{ .Env.MANAGED_IDENTITY_CLIENT_ID }}
+          - name: AZURE_OPENAI_ENDPOINT
+            value: '{{ .Env.AZURE_AZURE_OPENAI_ENDPOINT }}'
+          - name: LLM_PROVIDER
+            value: '{{ .Env.AZURE_LLM_PROVIDER }}'
+          - name: AZURE_OPENAI_API_KEY
+            secretRef: azure-openai-api-key
+          - name: DATABASE_URL
+            secretRef: database-url
+          - name: GITHUB_TOKEN
+            secretRef: github-token
+          - name: GOOGLE_API_KEY
+            secretRef: google-api-key
+          - name: OPENAI_API_KEY
+            secretRef: openai-api-key
+          - name: OPENAI_ORG_ID
+            secretRef: openai-org-id
+    scale:
+      minReplicas: 1
+tags:
+  azd-service-name: intelligence
+  aspire-resource-name: intelligence
