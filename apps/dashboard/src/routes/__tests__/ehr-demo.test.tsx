@@ -288,4 +288,40 @@ describe('EhrDemoPage', () => {
 
     expect(screen.getByTestId('pdf-viewer')).toBeInTheDocument();
   });
+
+  it('EhrDemo_WithDemoProvider_RendersSceneNav', async () => {
+    await renderEhrDemoPage();
+
+    // SceneNav should be rendered with the DemoProvider context
+    expect(screen.getByTestId('scene-nav')).toBeInTheDocument();
+
+    // Scene pills should be visible
+    expect(screen.getByRole('button', { name: 'Encounter' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Fleet' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Case Detail' })).toBeInTheDocument();
+  });
+
+  it('EhrDemo_CompleteFlow_TransitionToFleetAvailable', async () => {
+    await renderEhrDemoPage();
+
+    // Complete the full PA flow
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Sign Encounter' }));
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(800);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(5000);
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /submit to aetna/i }));
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(1500);
+    });
+
+    // After PA completes, a "View in Fleet" button should appear
+    expect(screen.getByRole('button', { name: /view in fleet/i })).toBeInTheDocument();
+  });
 });

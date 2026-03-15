@@ -1,68 +1,91 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
+import { createElement, useState, type ReactNode } from 'react';
 import { SceneTransition } from '../SceneTransition';
 
-// Mock motion/react to avoid animation complexity in tests
-vi.mock('motion/react', () => {
-  const React = require('react');
+// Mock motion to avoid animation issues in jsdom
+vi.mock('motion/react', () => ({
+  AnimatePresence: ({ children }: { children: ReactNode }) =>
+    createElement('div', { 'data-testid': 'animate-presence' }, children),
+  motion: {
+    div: ({ children }: { children?: ReactNode }) =>
+      createElement('div', { 'data-testid': 'motion-div' }, children),
+  },
+}));
 
-  const AnimatePresence = ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="animate-presence">{children}</div>
+function SceneController({ initialScene = 'encounter' }: { initialScene?: string }) {
+  const [sceneKey, setSceneKey] = useState(initialScene);
+
+  const sceneContent =
+    sceneKey === 'encounter'
+      ? createElement('div', { 'data-testid': 'encounter-content' }, 'Encounter Scene')
+      : sceneKey === 'fleet'
+        ? createElement('div', { 'data-testid': 'fleet-content' }, 'Fleet Scene')
+        : createElement('div', { 'data-testid': 'case-content' }, 'Case Scene');
+
+  return createElement(
+    'div',
+    null,
+    createElement('button', { 'data-testid': 'set-fleet', onClick: () => setSceneKey('fleet') }, 'Go Fleet'),
+    createElement('button', { 'data-testid': 'set-case', onClick: () => setSceneKey('case') }, 'Go Case'),
+    createElement('button', { 'data-testid': 'set-encounter', onClick: () => setSceneKey('encounter') }, 'Go Encounter'),
+    createElement(SceneTransition, { sceneKey, children: sceneContent }),
   );
-
-  const motionDiv = React.forwardRef(
-    (
-      {
-        children,
-        ...props
-      }: { children?: React.ReactNode; [key: string]: unknown },
-      ref: React.Ref<HTMLDivElement>,
-    ) => (
-      <div ref={ref} data-testid="motion-div" {...props}>
-        {children}
-      </div>
-    ),
-  );
-  motionDiv.displayName = 'motion.div';
-
-  return {
-    AnimatePresence,
-    motion: { div: motionDiv },
-  };
-});
+}
 
 describe('SceneTransition', () => {
-  it('SceneTransition_RendersActiveScene_WithChildren', () => {
-    render(
-      <SceneTransition sceneKey="encounter">
-        <div>Encounter content</div>
-      </SceneTransition>,
-    );
-
-    expect(screen.getByText('Encounter content')).toBeInTheDocument();
+  it('SceneTransition_Default_RendersEncounterContent', () => {
+    render(createElement(SceneController));
+    expect(screen.getByTestId('encounter-content')).toBeInTheDocument();
   });
 
-  it('SceneTransition_SceneChange_AnimatesTransition', () => {
-    const { rerender } = render(
-      <SceneTransition sceneKey="encounter">
-        <div>Scene A</div>
-      </SceneTransition>,
+  it('SceneTransition_EncounterToFleet_RendersFleetScene', () => {
+    render(createElement(SceneController));
+    expect(screen.getByTestId('encounter-content')).toBeInTheDocument();
+
+    act(() => {
+      screen.getByTestId('set-fleet').click();
+    });
+
+    expect(screen.getByTestId('fleet-content')).toBeInTheDocument();
+    expect(screen.queryByTestId('encounter-content')).not.toBeInTheDocument();
+  });
+
+  it('SceneTransition_FleetToCase_RendersCaseScene', () => {
+    render(createElement(SceneController, { initialScene: 'fleet' }));
+    expect(screen.getByTestId('fleet-content')).toBeInTheDocument();
+
+    act(() => {
+      screen.getByTestId('set-case').click();
+    });
+
+    expect(screen.getByTestId('case-content')).toBeInTheDocument();
+    expect(screen.queryByTestId('fleet-content')).not.toBeInTheDocument();
+  });
+
+  it('SceneTransition_PillNav_AllowsNonLinearNavigation', () => {
+    render(createElement(SceneController));
+    expect(screen.getByTestId('encounter-content')).toBeInTheDocument();
+
+    // Jump directly from encounter to case (skipping fleet)
+    act(() => {
+      screen.getByTestId('set-case').click();
+    });
+
+    expect(screen.getByTestId('case-content')).toBeInTheDocument();
+    expect(screen.queryByTestId('encounter-content')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('fleet-content')).not.toBeInTheDocument();
+  });
+
+  it('SceneTransition_AcceptsDirectionProp', () => {
+    // Verify component renders without error when direction prop is provided
+    render(
+      createElement(SceneTransition, {
+        sceneKey: 'encounter',
+        direction: 'zoom-out',
+        children: createElement('div', null, 'Test content'),
+      }),
     );
-
-    // AnimatePresence should be rendered wrapping the content
-    expect(screen.getByTestId('animate-presence')).toBeInTheDocument();
-    expect(screen.getByTestId('motion-div')).toBeInTheDocument();
-
-    // Re-render with new scene key
-    rerender(
-      <SceneTransition sceneKey="fleet">
-        <div>Scene B</div>
-      </SceneTransition>,
-    );
-
-    // New content should render
-    expect(screen.getByText('Scene B')).toBeInTheDocument();
-    // AnimatePresence should still be wrapping
-    expect(screen.getByTestId('animate-presence')).toBeInTheDocument();
+    expect(screen.getByText('Test content')).toBeInTheDocument();
   });
 });

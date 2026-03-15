@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { Activity as ActivityIcon } from 'lucide-react';
+import { DemoProvider } from '@/components/demo/DemoProvider';
+import { SceneNav } from '@/components/demo/SceneNav';
 import { usePARequests, usePAStats, useActivity, type ActivityItem } from '@/api/graphqlService';
 import { generateFleetData, type FleetPARequest, type FleetStatus } from '@/lib/fleetSeedData';
 import { KPICards, type KPIStats } from '@/components/fleet/KPICards';
@@ -128,7 +130,9 @@ export function FleetPage() {
   };
 
   return (
+    <DemoProvider>
     <div className="p-6 space-y-6">
+      <SceneNav />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -216,5 +220,6 @@ export function FleetPage() {
         </div>
       </div>
     </div>
+    </DemoProvider>
   );
 }

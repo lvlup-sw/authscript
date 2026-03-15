@@ -1,20 +1,30 @@
-import { AnimatePresence, motion } from 'motion/react';
 import type { ReactNode } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import {
+  transitionVariants,
+  type TransitionDirection,
+} from './transitionVariants';
 
 interface SceneTransitionProps {
   sceneKey: string;
   children: ReactNode;
+  direction?: TransitionDirection;
 }
 
-export function SceneTransition({ sceneKey, children }: SceneTransitionProps) {
+export function SceneTransition({
+  sceneKey,
+  children,
+  direction = 'generic',
+}: SceneTransitionProps) {
+  const variants = transitionVariants[direction];
+
   return (
     <AnimatePresence mode="wait">
       <motion.div
         key={sceneKey}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.5 }}
+        initial={variants.initial}
+        animate={variants.animate}
+        exit={variants.exit}
       >
         {children}
       </motion.div>

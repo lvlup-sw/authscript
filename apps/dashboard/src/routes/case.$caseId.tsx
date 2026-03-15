@@ -6,39 +6,14 @@ import { CaseGraph } from '@/components/case/CaseGraph';
 import { CaseTimeline } from '@/components/case/CaseTimeline';
 import type { TimelinePhase } from '@/components/case/CaseTimeline';
 import { DEMO_PA_RESULT, LCD_L34220_POLICY, DEMO_PA_RESULT_SOURCES } from '@/lib/demoData';
+import { DemoProvider } from '@/components/demo/DemoProvider';
+import { SceneNav as DemoSceneNav } from '@/components/demo/SceneNav';
 import type { PARequest } from '@/api/graphqlService';
-import '@xyflow/react/dist/style.css';
 
 export const Route = createFileRoute('/case/$caseId')({
   component: CaseDetailPage,
 });
 
-/** Scene navigation tabs for the demo */
-const SCENES = [
-  { id: 'ehr', label: 'EHR Demo' },
-  { id: 'case', label: 'Case Detail' },
-  { id: 'dashboard', label: 'Dashboard' },
-];
-
-function SceneNav() {
-  return (
-    <nav data-testid="scene-nav" className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg w-fit">
-      {SCENES.map((scene) => (
-        <button
-          key={scene.id}
-          className={cn(
-            'px-4 py-1.5 rounded-md text-sm font-medium transition-colors',
-            scene.id === 'case'
-              ? 'bg-white text-slate-900 shadow-sm'
-              : 'text-slate-500 hover:text-slate-700',
-          )}
-        >
-          {scene.label}
-        </button>
-      ))}
-    </nav>
-  );
-}
 
 /** Timeline phases derived from PA request timestamps */
 function buildTimelinePhases(pa: PARequest): TimelinePhase[] {
@@ -155,9 +130,10 @@ export function CaseDetailPage() {
   const totalCount = paRequest.criteria.length;
 
   return (
+    <DemoProvider>
     <div className="p-6 space-y-4 animate-fade-in">
       {/* Scene navigation */}
-      <SceneNav />
+      <DemoSceneNav />
 
       {/* Split layout */}
       <div className="flex gap-6" style={{ minHeight: 'calc(100vh - 180px)' }}>
@@ -255,5 +231,6 @@ export function CaseDetailPage() {
         </div>
       </div>
     </div>
+    </DemoProvider>
   );
 }

@@ -1,0 +1,295 @@
+{
+  "$schema": "https://json.schemastore.org/aspire-8.0.json",
+  "resources": {
+    "athena-client-id": {
+      "type": "parameter.v0",
+      "value": "{athena-client-id.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string",
+          "secret": true
+        }
+      }
+    },
+    "athena-client-secret": {
+      "type": "parameter.v0",
+      "value": "{athena-client-secret.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string",
+          "secret": true
+        }
+      }
+    },
+    "athena-practice-id": {
+      "type": "parameter.v0",
+      "value": "{athena-practice-id.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "github-token": {
+      "type": "parameter.v0",
+      "value": "{github-token.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string",
+          "secret": true
+        }
+      }
+    },
+    "azure-openai-key": {
+      "type": "parameter.v0",
+      "value": "{azure-openai-key.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string",
+          "secret": true
+        }
+      }
+    },
+    "azure-openai-endpoint": {
+      "type": "parameter.v0",
+      "value": "{azure-openai-endpoint.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "google-api-key": {
+      "type": "parameter.v0",
+      "value": "{google-api-key.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string",
+          "secret": true
+        }
+      }
+    },
+    "openai-api-key": {
+      "type": "parameter.v0",
+      "value": "{openai-api-key.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string",
+          "secret": true
+        }
+      }
+    },
+    "openai-org-id": {
+      "type": "parameter.v0",
+      "value": "{openai-org-id.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string",
+          "secret": true
+        }
+      }
+    },
+    "llm-provider": {
+      "type": "parameter.v0",
+      "value": "{llm-provider.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "postgres": {
+      "type": "container.v0",
+      "connectionString": "Host={postgres.bindings.tcp.host};Port={postgres.bindings.tcp.port};Username=postgres;Password={postgres-password.value}",
+      "image": "docker.io/library/postgres:17.6",
+      "volumes": [
+        {
+          "name": "authscript-postgres-data",
+          "target": "/var/lib/postgresql/data",
+          "readOnly": false
+        }
+      ],
+      "env": {
+        "POSTGRES_HOST_AUTH_METHOD": "scram-sha-256",
+        "POSTGRES_INITDB_ARGS": "--auth-host=scram-sha-256 --auth-local=scram-sha-256",
+        "POSTGRES_USER": "postgres",
+        "POSTGRES_PASSWORD": "{postgres-password.value}"
+      },
+      "bindings": {
+        "tcp": {
+          "scheme": "tcp",
+          "protocol": "tcp",
+          "transport": "tcp",
+          "targetPort": 5432
+        }
+      }
+    },
+    "authscript": {
+      "type": "value.v0",
+      "connectionString": "{postgres.connectionString};Database=authscript"
+    },
+    "redis": {
+      "type": "container.v0",
+      "connectionString": "{redis.bindings.tcp.host}:{redis.bindings.tcp.port},password={redis-password.value}",
+      "image": "docker.io/library/redis:8.2",
+      "entrypoint": "/bin/sh",
+      "args": [
+        "-c",
+        "redis-server --requirepass $REDIS_PASSWORD --save 60 1"
+      ],
+      "volumes": [
+        {
+          "name": "authscript-redis-data",
+          "target": "/data",
+          "readOnly": false
+        }
+      ],
+      "env": {
+        "REDIS_PASSWORD": "{redis-password.value}"
+      },
+      "bindings": {
+        "tcp": {
+          "scheme": "tcp",
+          "protocol": "tcp",
+          "transport": "tcp",
+          "targetPort": 6379
+        }
+      }
+    },
+    "intelligence": {
+      "type": "container.v1",
+      "build": {
+        "context": "../../apps/intelligence",
+        "dockerfile": "../../apps/intelligence/Dockerfile"
+      },
+      "env": {
+        "LLM_PROVIDER": "{llm-provider.value}",
+        "GITHUB_TOKEN": "{github-token.value}",
+        "AZURE_OPENAI_API_KEY": "{azure-openai-key.value}",
+        "AZURE_OPENAI_ENDPOINT": "{azure-openai-endpoint.value}",
+        "GOOGLE_API_KEY": "{google-api-key.value}",
+        "OPENAI_API_KEY": "{openai-api-key.value}",
+        "OPENAI_ORG_ID": "{openai-org-id.value}",
+        "DATABASE_URL": "{postgres.connectionString};Database=authscript"
+      },
+      "bindings": {
+        "intelligence-api": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http",
+          "targetPort": 8000
+        }
+      }
+    },
+    "gateway": {
+      "type": "project.v0",
+      "path": "../../apps/gateway/Gateway.API/Gateway.API.csproj",
+      "env": {
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_EMIT_EXCEPTION_LOG_ATTRIBUTES": "true",
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_EMIT_EVENT_LOG_ATTRIBUTES": "true",
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY": "in_memory",
+        "ASPNETCORE_FORWARDEDHEADERS_ENABLED": "true",
+        "HTTP_PORTS": "{gateway.bindings.http.targetPort};{gateway.bindings.gateway-api.targetPort}",
+        "ConnectionStrings__authscript": "{authscript.connectionString}",
+        "AUTHSCRIPT_HOST": "{postgres.bindings.tcp.host}",
+        "AUTHSCRIPT_PORT": "{postgres.bindings.tcp.port}",
+        "AUTHSCRIPT_USERNAME": "postgres",
+        "AUTHSCRIPT_PASSWORD": "{postgres-password.value}",
+        "AUTHSCRIPT_URI": "postgresql://postgres:{postgres-password-uri-encoded.value}@{postgres.bindings.tcp.host}:{postgres.bindings.tcp.port}/authscript",
+        "AUTHSCRIPT_JDBCCONNECTIONSTRING": "jdbc:postgresql://{postgres.bindings.tcp.host}:{postgres.bindings.tcp.port}/authscript",
+        "AUTHSCRIPT_DATABASENAME": "authscript",
+        "ConnectionStrings__redis": "{redis.connectionString}",
+        "REDIS_HOST": "{redis.bindings.tcp.host}",
+        "REDIS_PORT": "{redis.bindings.tcp.port}",
+        "REDIS_PASSWORD": "{redis-password.value}",
+        "REDIS_URI": "redis://:{redis-password-uri-encoded.value}@{redis.bindings.tcp.host}:{redis.bindings.tcp.port}",
+        "Athena__ClientId": "{athena-client-id.value}",
+        "Athena__ClientSecret": "{athena-client-secret.value}",
+        "Athena__FhirBaseUrl": "https://api.preview.platform.athenahealth.com/fhir/r4/",
+        "Athena__TokenEndpoint": "https://api.preview.platform.athenahealth.com/oauth2/v1/token",
+        "Athena__PracticeId": "{athena-practice-id.value}",
+        "Intelligence__BaseUrl": "{intelligence.bindings.intelligence-api.url}",
+        "Demo__EnableCaching": "true"
+      },
+      "bindings": {
+        "http": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http"
+        },
+        "https": {
+          "scheme": "https",
+          "protocol": "tcp",
+          "transport": "http"
+        },
+        "gateway-api": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http",
+          "port": 5000,
+          "targetPort": 8001
+        }
+      }
+    },
+    "dashboard": {
+      "type": "container.v1",
+      "build": {
+        "context": "../../apps/dashboard",
+        "dockerfile": "../../apps/dashboard/Dockerfile"
+      },
+      "env": {
+        "GATEWAY_URL": "{gateway.bindings.gateway-api.url}"
+      },
+      "bindings": {
+        "dashboard-http": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http",
+          "targetPort": 80,
+          "external": true
+        }
+      }
+    },
+    "postgres-password": {
+      "type": "parameter.v0",
+      "value": "{postgres-password.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string",
+          "secret": true,
+          "default": {
+            "generate": {
+              "minLength": 22
+            }
+          }
+        }
+      }
+    },
+    "postgres-password-uri-encoded": {
+      "type": "annotated.string",
+      "value": "{postgres-password.value}",
+      "filter": "uri"
+    },
+    "redis-password": {
+      "type": "parameter.v0",
+      "value": "{redis-password.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string",
+          "secret": true,
+          "default": {
+            "generate": {
+              "minLength": 22,
+              "special": false
+            }
+          }
+        }
+      }
+    },
+    "redis-password-uri-encoded": {
+      "type": "annotated.string",
+      "value": "{redis-password.value}",
+      "filter": "uri"
+    }
+  }
+}

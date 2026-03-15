@@ -1,36 +1,96 @@
-import { describe, it, expect } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
-import type { ReactNode } from 'react';
-import { DemoProvider, useDemoContext } from '../DemoProvider';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, act } from '@testing-library/react';
+import { createElement, useContext } from 'react';
+import { DemoProvider, DemoContext } from '../DemoProvider';
+import type { DemoContextValue } from '../DemoProvider';
 
-function wrapper({ children }: { children: ReactNode }) {
-  return <DemoProvider>{children}</DemoProvider>;
+/** Test helper that renders a consumer inside DemoProvider */
+function renderWithProvider(providerProps?: { autoPlay?: boolean }) {
+  let contextValue: DemoContextValue | null = null;
+
+  function Consumer() {
+    contextValue = useContext(DemoContext);
+    if (!contextValue) throw new Error('DemoContext not found');
+    return createElement('div', { 'data-testid': 'scene' }, contextValue.scene);
+  }
+
+  const result = render(
+    createElement(DemoProvider, { ...providerProps, children: createElement(Consumer) }),
+  );
+
+  return { result, getContext: () => contextValue! };
 }
 
 describe('DemoProvider', () => {
-  it('DemoProvider_DefaultScene_IsEncounter', () => {
-    const { result } = renderHook(() => useDemoContext(), { wrapper });
-    expect(result.current.scene).toBe('encounter');
+  beforeEach(() => {
+    vi.useFakeTimers();
   });
 
-  it('DemoProvider_SetScene_UpdatesContext', () => {
-    const { result } = renderHook(() => useDemoContext(), { wrapper });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('DemoProvider_Default_StartsWithEncounterScene', () => {
+    renderWithProvider();
+    expect(screen.getByTestId('scene').textContent).toBe('encounter');
+  });
+
+  it('DemoProvider_TransitionToFleet_SetsFleetScene', () => {
+    const { getContext } = renderWithProvider();
+
     act(() => {
-      result.current.setScene('fleet');
+      getContext().setScene('fleet');
     });
-    expect(result.current.scene).toBe('fleet');
+
+    expect(screen.getByTestId('scene').textContent).toBe('fleet');
   });
 
-  it('DemoProvider_SelectedCaseId_IsNullByDefault', () => {
-    const { result } = renderHook(() => useDemoContext(), { wrapper });
-    expect(result.current.selectedCaseId).toBeNull();
-  });
+  it('DemoProvider_AutoPlay_CyclesThroughScenes', () => {
+    const { getContext } = renderWithProvider({ autoPlay: true });
 
-  it('DemoProvider_SetSelectedCaseId_UpdatesContext', () => {
-    const { result } = renderHook(() => useDemoContext(), { wrapper });
+    // Starts at encounter
+    expect(getContext().scene).toBe('encounter');
+
+    // After 15s, should advance to fleet
     act(() => {
-      result.current.setSelectedCaseId('case-123');
+      vi.advanceTimersByTime(15000);
     });
-    expect(result.current.selectedCaseId).toBe('case-123');
+    expect(getContext().scene).toBe('fleet');
+
+    // After another 15s, should advance to case
+    act(() => {
+      vi.advanceTimersByTime(15000);
+    });
+    expect(getContext().scene).toBe('case');
+
+    // After another 15s, should cycle back to encounter
+    act(() => {
+      vi.advanceTimersByTime(15000);
+    });
+    expect(getContext().scene).toBe('encounter');
+  });
+
+  it('DemoProvider_ResetDemo_ResetsAllState', () => {
+    const { getContext } = renderWithProvider();
+
+    // Set some state
+    act(() => {
+      getContext().setScene('fleet');
+      getContext().setSelectedCaseId('case-123');
+      getContext().setAutoPlay(true);
+    });
+
+    expect(getContext().scene).toBe('fleet');
+    expect(getContext().selectedCaseId).toBe('case-123');
+    expect(getContext().autoPlay).toBe(true);
+
+    // Reset
+    act(() => {
+      getContext().resetDemo();
+    });
+
+    expect(getContext().scene).toBe('encounter');
+    expect(getContext().selectedCaseId).toBeNull();
+    expect(getContext().autoPlay).toBe(false);
   });
 });
